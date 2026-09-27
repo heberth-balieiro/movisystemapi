@@ -332,7 +332,12 @@ uses
   PlataformaWhatsApp.Model in 'src\Cursos\Model\PlataformaWhatsApp.Model.pas',
   PlataformaWhatsApp.DAO in 'src\Cursos\Dao\PlataformaWhatsApp.DAO.pas',
   PlataformaWhatsApp.Service in 'src\Cursos\Services\PlataformaWhatsApp.Service.pas',
-  PlataformaWhatsApp.Controller in 'src\Cursos\Controller\PlataformaWhatsApp.Controller.pas';
+  PlataformaWhatsApp.Controller in 'src\Cursos\Controller\PlataformaWhatsApp.Controller.pas',
+  InstituicaoWhatsApp.Model in 'src\Cursos\Model\InstituicaoWhatsApp.Model.pas',
+  InstituicaoWhatsApp.DAO in 'src\Cursos\Dao\InstituicaoWhatsApp.DAO.pas',
+  EvolutionApi.Service in 'src\Cursos\Services\EvolutionApi.Service.pas',
+  InstituicaoWhatsApp.Service in 'src\Cursos\Services\InstituicaoWhatsApp.Service.pas',
+  InstituicaoWhatsApp.Controller in 'src\Cursos\Controller\InstituicaoWhatsApp.Controller.pas';
 
 var
   LConfig       : TAppApiConfig;
