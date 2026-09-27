@@ -19,11 +19,13 @@ uses
   App.Response,
   APP.Errors,
   InstituicaoParticipanteAcesso.Model,
-  InstituicaoParticipanteAcesso.Service;
+  InstituicaoParticipanteAcesso.Service,
+  InstituicaoPermissao.Service;
 
 function AutorizarInstituicao(
   const Req: THorseRequest;
   const Res: THorseResponse;
+  const APermissao: string;
   out AClaims: TJWTClaims
 ): Boolean;
 begin
@@ -37,6 +39,18 @@ begin
     TAppResponse.Forbidden(Res, 'Token sem contexto de instituição.');
     Exit;
   end;
+
+  if AClaims.IdUsuarioInstituicao <= 0 then
+  begin
+    TAppResponse.Forbidden(Res, 'Token sem vínculo de usuário com a instituição.');
+    Exit;
+  end;
+
+  TInstituicaoPermissaoService.Exigir(
+    AClaims.IdInstituicao,
+    AClaims.IdUsuarioInstituicao,
+    APermissao
+  );
 
   Result := True;
 end;
@@ -86,7 +100,12 @@ begin
       Info: TParticipanteAcessoInfo;
     begin
       try
-        if not AutorizarInstituicao(Req, Res, Claims) then
+        if not AutorizarInstituicao(
+          Req,
+          Res,
+          'participante.visualizar',
+          Claims
+        ) then
           Exit;
 
         IdParticipante := StrToInt64Def(Req.Params.Items['id'], 0);
@@ -116,7 +135,12 @@ begin
       Info: TParticipanteAcessoInfo;
     begin
       try
-        if not AutorizarInstituicao(Req, Res, Claims) then
+        if not AutorizarInstituicao(
+          Req,
+          Res,
+          'participante.editar',
+          Claims
+        ) then
           Exit;
 
         IdParticipante := StrToInt64Def(Req.Params.Items['id'], 0);
@@ -150,7 +174,12 @@ begin
       Info: TParticipanteAcessoInfo;
     begin
       try
-        if not AutorizarInstituicao(Req, Res, Claims) then
+        if not AutorizarInstituicao(
+          Req,
+          Res,
+          'participante.editar',
+          Claims
+        ) then
           Exit;
 
         IdParticipante := StrToInt64Def(Req.Params.Items['id'], 0);
