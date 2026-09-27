@@ -70,6 +70,18 @@ type
       const ADestinatario: string
     ); static;
 
+    class function BuscarAcessoEnvio(
+      const AConn: TUniConnection;
+      const AIdInstituicao: Int64
+    ): TInstituicaoAcessoEnvioConfig; static;
+
+    class procedure SalvarAcessoEnvio(
+      const AConn: TUniConnection;
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64;
+      const ADados: TInstituicaoAcessoEnvioInput
+    ); static;
+
     class function BuscarWhatsApp(
       const AConn: TUniConnection;
       const AIdInstituicao: Int64
@@ -692,6 +704,96 @@ begin
         1,
         1000
       );
+    Qry.Execute;
+  finally
+    Qry.Free;
+  end;
+end;
+
+
+class function TInstituicaoConfiguracaoDAO.BuscarAcessoEnvio(
+  const AConn: TUniConnection;
+  const AIdInstituicao: Int64
+): TInstituicaoAcessoEnvioConfig;
+var
+  Qry: TUniQuery;
+begin
+  Result := Default(TInstituicaoAcessoEnvioConfig);
+  Result.EnviarEmail := False;
+  Result.EnviarWhatsApp := True;
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT acesso_envio_email, acesso_envio_whatsapp ' +
+      'FROM instituicao_configuracao ' +
+      'WHERE id_instituicao = :id_instituicao';
+
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.Open;
+
+    if Qry.IsEmpty then
+      Exit;
+
+    Result.EnviarEmail :=
+      Qry.FieldByName('acesso_envio_email').AsBoolean;
+
+    Result.EnviarWhatsApp :=
+      Qry.FieldByName('acesso_envio_whatsapp').AsBoolean;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class procedure TInstituicaoConfiguracaoDAO.SalvarAcessoEnvio(
+  const AConn: TUniConnection;
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64;
+  const ADados: TInstituicaoAcessoEnvioInput
+);
+var
+  Qry: TUniQuery;
+begin
+  GarantirConfiguracao(
+    AConn,
+    AIdInstituicao
+  );
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'UPDATE instituicao_configuracao SET ' +
+      ' acesso_envio_email = :enviar_email, ' +
+      ' acesso_envio_whatsapp = :enviar_whatsapp ' +
+      'WHERE id_instituicao = :id_instituicao';
+
+    Qry.ParamByName('enviar_email').AsBoolean := ADados.EnviarEmail;
+    Qry.ParamByName('enviar_whatsapp').AsBoolean := ADados.EnviarWhatsApp;
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.Execute;
+  finally
+    Qry.Free;
+  end;
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'INSERT INTO auditoria_log (' +
+      ' id_instituicao, id_usuario, id_usuario_instituicao, acao, entidade, ' +
+      ' registro_id, metodo_http, rota, sucesso, mensagem' +
+      ') VALUES (' +
+      ' :id_instituicao, NULL, :id_usuario_instituicao, ' +
+      ' ''ACESSO_ENVIO_CONFIG_ALTERADA'', ''instituicao_configuracao'', ' +
+      ' :registro_id, ''PUT'', ''/v1/certifica/configuracoes/envio-acesso'', 1, ' +
+      ' ''Canais de envio do acesso ao participante atualizados.''' +
+      ')';
+
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id_usuario_instituicao').AsLargeInt := AIdUsuarioInstituicao;
+    Qry.ParamByName('registro_id').AsString := AIdInstituicao.ToString;
     Qry.Execute;
   finally
     Qry.Free;
