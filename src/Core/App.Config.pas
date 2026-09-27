@@ -33,6 +33,10 @@ type
     MaxMB: Integer;
   end;
 
+  TAppWebConfig = record
+    PublicURL: string;
+  end;
+
   TAppApiConfig = record
     Produto: TAppProduto;
     Porta: Integer;
@@ -42,6 +46,7 @@ type
     JWT: TAppJWTConfig;
     Database: TAppDatabaseConfig;
     Upload: TAppUploadConfig;
+    Web: TAppWebConfig;
   end;
 
   TAppConfig = class
@@ -80,12 +85,12 @@ var
   SSLStr: string;
 begin
   if not FileExists(ACaminhoIni) then
-    raise Exception.Create('Config.ini n„o encontrado em: ' + ACaminhoIni);
+    raise Exception.Create('Config.ini n√£o encontrado em: ' + ACaminhoIni);
 
   Ini := TIniFile.Create(ACaminhoIni);
   try
-    // ALTERA«√O: identifica qual produto/mÛdulo a API deve executar.
-    // Padr„o CATALOGO para n„o quebrar instalaÁıes atuais.
+    // ALTERA√á√ÉO: identifica qual produto/m√≥dulo a API deve executar.
+    // Padr√£o CATALOGO para n√£o quebrar instala√ß√µes atuais.
     Result.Produto := LerProduto(Ini.ReadString('APP', 'Produto', 'MoviSystem'));
 
     // --- DATABASE / DADOS
@@ -97,13 +102,13 @@ begin
     Result.Database.Password := Ini.ReadString('DADOS', 'Password', '');
 
     if Result.Database.Database.Trim.IsEmpty then
-      raise Exception.Create('DADOS.Database n„o configurado no Config.ini.');
+      raise Exception.Create('DADOS.Database n√£o configurado no Config.ini.');
 
     if Result.Database.Server.Trim.IsEmpty then
-      raise Exception.Create('DADOS.Server n„o configurado no Config.ini.');
+      raise Exception.Create('DADOS.Server n√£o configurado no Config.ini.');
 
     if Result.Database.Username.Trim.IsEmpty then
-      raise Exception.Create('DADOS.User_Name n„o configurado no Config.ini.');
+      raise Exception.Create('DADOS.User_Name n√£o configurado no Config.ini.');
 
     if Result.Database.Port <= 0 then
       Result.Database.Port := 3306;
@@ -135,7 +140,7 @@ begin
     Result.JWT.TtlAdminMinutos          := Ini.ReadInteger('JWT', 'TTL_Admin_Minutos', 120);
 
     if Result.JWT.Secret.Trim.IsEmpty then
-      raise Exception.Create('JWT.Secret n„o configurado no Config.ini.');
+      raise Exception.Create('JWT.Secret n√£o configurado no Config.ini.');
 
     if Result.JWT.Issuer.Trim.IsEmpty then
       Result.JWT.Issuer     := 'EASYONEDIGITAL';
@@ -158,6 +163,21 @@ begin
 
     if Result.Upload.MaxMB <= 0 then
       Result.Upload.MaxMB := 5;
+
+    // --- WEB / FRONTEND P√öBLICO
+    Result.Web.PublicURL :=
+      Ini.ReadString(
+        'WEB',
+        'PublicURL',
+        'http://localhost:3000'
+      );
+
+    while Result.Web.PublicURL.EndsWith('/') do
+      Delete(
+        Result.Web.PublicURL,
+        Length(Result.Web.PublicURL),
+        1
+      );
   finally
     Ini.Free;
   end;
