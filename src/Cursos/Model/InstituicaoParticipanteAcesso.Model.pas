@@ -14,6 +14,7 @@ type
     FSituacaoVinculo: string;
     FAcessoLiberado: Boolean;
     FPrimeiroAcessoNecessario: Boolean;
+    FConviteEmailEnviado: Boolean;
     FConviteWhatsAppEnviado: Boolean;
     FConviteMensagem: string;
   public
@@ -26,6 +27,7 @@ type
     property SituacaoVinculo: string read FSituacaoVinculo write FSituacaoVinculo;
     property AcessoLiberado: Boolean read FAcessoLiberado write FAcessoLiberado;
     property PrimeiroAcessoNecessario: Boolean read FPrimeiroAcessoNecessario write FPrimeiroAcessoNecessario;
+    property ConviteEmailEnviado: Boolean read FConviteEmailEnviado write FConviteEmailEnviado;
     property ConviteWhatsAppEnviado: Boolean read FConviteWhatsAppEnviado write FConviteWhatsAppEnviado;
     property ConviteMensagem: string read FConviteMensagem write FConviteMensagem;
   end;
