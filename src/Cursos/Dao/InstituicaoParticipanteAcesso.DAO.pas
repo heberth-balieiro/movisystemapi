@@ -44,6 +44,12 @@ type
       const AEmailNormalizado: string
     ): TUsuarioGlobalAcesso; static;
 
+    class function BuscarUsuarioVinculado(
+      const AConn: TUniConnection;
+      const AIdInstituicao,
+            AIdParticipante: Int64
+    ): TUsuarioGlobalAcesso; static;
+
     class function CriarUsuario(
       const AConn: TUniConnection;
       const ANome,
@@ -188,6 +194,61 @@ begin
     Result.Nome           := Qry.FieldByName('nome').AsString;
     Result.Email          := Qry.FieldByName('email').AsString;
     Result.Situacao       := Qry.FieldByName('situacao').AsString;
+    Result.TemSenhaDefinida :=
+      not Qry.FieldByName('senha_alterada_em').IsNull;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TInstituicaoParticipanteAcessoDAO.BuscarUsuarioVinculado(
+  const AConn: TUniConnection;
+  const AIdInstituicao,
+        AIdParticipante: Int64
+): TUsuarioGlobalAcesso;
+var
+  Qry: TUniQuery;
+begin
+  Result :=
+    Default(
+      TUsuarioGlobalAcesso
+    );
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+
+    Qry.SQL.Text :=
+      'SELECT u.id, u.nome, u.email, u.situacao, u.senha_alterada_em ' +
+      'FROM participante p ' +
+      'JOIN usuario_instituicao ui ' +
+      '  ON ui.id_instituicao = p.id_instituicao ' +
+      ' AND ui.id = p.id_usuario_instituicao ' +
+      'JOIN usuario u ON u.id = ui.id_usuario ' +
+      'WHERE p.id_instituicao = :id_instituicao ' +
+      '  AND p.id = :id_participante ' +
+      'LIMIT 1';
+
+    Qry.ParamByName('id_instituicao').AsLargeInt :=
+      AIdInstituicao;
+
+    Qry.ParamByName('id_participante').AsLargeInt :=
+      AIdParticipante;
+
+    Qry.Open;
+
+    if Qry.IsEmpty then
+      Exit;
+
+    Result.Encontrado := True;
+    Result.IdUsuario :=
+      Qry.FieldByName('id').AsLargeInt;
+    Result.Nome :=
+      Qry.FieldByName('nome').AsString;
+    Result.Email :=
+      Qry.FieldByName('email').AsString;
+    Result.Situacao :=
+      Qry.FieldByName('situacao').AsString;
     Result.TemSenhaDefinida :=
       not Qry.FieldByName('senha_alterada_em').IsNull;
   finally
