@@ -38,6 +38,7 @@ begin
       InstituicaoJson: TJSONObject;
       TemaJson: TJSONObject;
       Permissoes: TJSONArray;
+      Permissao: string;
       Slug, Login, Senha: string;
     begin
       try
@@ -45,7 +46,7 @@ begin
 
         if Body = nil then
           TAppErrors.RaiseBadRequest(
-            'JSON inv·lido ou n„o informado.'
+            'JSON inv√°lido ou n√£o informado.'
           );
 
         Slug := LowerCase(
@@ -111,10 +112,10 @@ begin
 
         Permissoes := TJSONArray.Create;
 
-        // O administrador principal possui administraÁ„o total do tenant.
-        // Usu·rios comuns ser„o ligados aos perfis/permissıes posteriormente.
-        if Resultado.Dados.Principal then
-          Permissoes.Add('instituicao.*');
+        for Permissao in Resultado.Permissoes do
+          Permissoes.Add(
+            Permissao
+          );
 
         UsuarioJson.AddPair(
           'permissions',
