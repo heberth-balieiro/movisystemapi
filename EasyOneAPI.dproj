@@ -467,6 +467,13 @@
         <DCCReference Include="src\Cursos\Services\EvolutionApi.Service.pas"/>
         <DCCReference Include="src\Cursos\Services\InstituicaoWhatsApp.Service.pas"/>
         <DCCReference Include="src\Cursos\Controller\InstituicaoWhatsApp.Controller.pas"/>
+        <DCCReference Include="src\Cursos\Dao\PublicoPrimeiroAcesso.DAO.pas"/>
+        <DCCReference Include="src\Cursos\Services\PublicoPrimeiroAcesso.Service.pas"/>
+        <DCCReference Include="src\Cursos\Controller\PublicoPrimeiroAcesso.Controller.pas"/>
+        <DCCReference Include="src\Cursos\Controller\PlataformaAjuda.Controller.pas"/>
+        <DCCReference Include="src\Cursos\Dao\PlataformaAjuda.DAO.pas"/>
+        <DCCReference Include="src\Cursos\Model\PlataformaAjuda.Model.pas"/>
+        <DCCReference Include="src\Cursos\Services\PlataformaAjuda.Service.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

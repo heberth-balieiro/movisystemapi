@@ -340,7 +340,11 @@ uses
   InstituicaoWhatsApp.Controller in 'src\Cursos\Controller\InstituicaoWhatsApp.Controller.pas',
   PublicoPrimeiroAcesso.DAO in 'src\Cursos\Dao\PublicoPrimeiroAcesso.DAO.pas',
   PublicoPrimeiroAcesso.Service in 'src\Cursos\Services\PublicoPrimeiroAcesso.Service.pas',
-  PublicoPrimeiroAcesso.Controller in 'src\Cursos\Controller\PublicoPrimeiroAcesso.Controller.pas';
+  PublicoPrimeiroAcesso.Controller in 'src\Cursos\Controller\PublicoPrimeiroAcesso.Controller.pas',
+  PlataformaAjuda.Controller in 'src\Cursos\Controller\PlataformaAjuda.Controller.pas',
+  PlataformaAjuda.DAO in 'src\Cursos\Dao\PlataformaAjuda.DAO.pas',
+  PlataformaAjuda.Model in 'src\Cursos\Model\PlataformaAjuda.Model.pas',
+  PlataformaAjuda.Service in 'src\Cursos\Services\PlataformaAjuda.Service.pas';
 
 var
   LConfig       : TAppApiConfig;
