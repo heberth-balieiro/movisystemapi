@@ -71,6 +71,7 @@ var
   SSL: TIdSSLIOHandlerSocketOpenSSL;
   Mensagem: TIdMessage;
   Destinatario: string;
+  VersaoOpenSSL: string;
 begin
   Destinatario := LowerCase(Trim(ADestinatario));
 
@@ -87,6 +88,13 @@ begin
     TAppErrors.RaiseBadRequest(
       'A configuração SMTP está incompleta ou o envio de e-mail está desativado.'
     );
+
+  if not LoadOpenSSLLibrary then
+    TAppErrors.RaiseBadRequest(
+      'Não foi possível carregar a biblioteca OpenSSL utilizada pelo SMTP.'
+    );
+
+  VersaoOpenSSL := OpenSSLVersion;
 
   SMTP := TIdSMTP.Create(nil);
   SSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
@@ -138,7 +146,15 @@ begin
       on E: Exception do
         TAppErrors.RaiseBadRequest(
           'Falha ao enviar e-mail pelo servidor SMTP: ' +
-          E.Message
+          E.Message +
+          ' | OpenSSL carregado: ' +
+          VersaoOpenSSL +
+          ' | Servidor: ' +
+          Config.SmtpHost +
+          ':' +
+          Config.SmtpPorta.ToString +
+          ' | Segurança: ' +
+          Config.Seguranca
         );
     end;
   finally
