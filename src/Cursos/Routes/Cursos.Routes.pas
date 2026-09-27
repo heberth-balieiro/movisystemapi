@@ -38,7 +38,8 @@ Uses
   InstituicaoInscricaoAprovacao.Controller,
   InstituicaoPresencaQr.Controller,
   PublicoInstituicao.Controller,
-  InstituicaoConfiguracao.Controller;
+  InstituicaoConfiguracao.Controller,
+  InstituicaoPerfil.Controller;
 
 { TCursosRoutes }
 
@@ -72,6 +73,7 @@ begin
   TInstituicaoPresencaQrController.Registry;
   TPublicoInstituicaoController.Registry;
   TInstituicaoConfiguracaoController.Registry;
+  TInstituicaoPerfilController.Registry;
 end;
 
 end.
