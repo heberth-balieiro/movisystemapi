@@ -62,12 +62,6 @@ type
       const ASecret: string
     ): string; static;
 
-    class function UsuarioTemPermissao(
-      const AConn: TUniConnection;
-      const AIdInstituicao,
-            AIdUsuarioInstituicao: Int64;
-      const APermissao: string
-    ): Boolean; static;
   end;
 
 implementation
@@ -442,50 +436,5 @@ begin
   end;
 end;
 
-class function TInstituicaoConfiguracaoDAO.UsuarioTemPermissao(
-  const AConn: TUniConnection;
-  const AIdInstituicao,
-        AIdUsuarioInstituicao: Int64;
-  const APermissao: string
-): Boolean;
-var
-  Qry: TUniQuery;
-begin
-  Qry := TUniQuery.Create(nil);
-  try
-    Qry.Connection := AConn;
-    Qry.SQL.Text :=
-      'SELECT 1 ' +
-      'FROM usuario_instituicao ui ' +
-      'JOIN usuario_instituicao_perfil uip ' +
-      '  ON uip.id_instituicao = ui.id_instituicao ' +
-      ' AND uip.id_usuario_instituicao = ui.id ' +
-      'JOIN perfil p ' +
-      '  ON p.id_instituicao = uip.id_instituicao ' +
-      ' AND p.id = uip.id_perfil ' +
-      ' AND p.situacao = ''ATIVO'' ' +
-      'JOIN perfil_permissao pp ' +
-      '  ON pp.id_instituicao = p.id_instituicao ' +
-      ' AND pp.id_perfil = p.id ' +
-      'JOIN permissao pe ' +
-      '  ON pe.id = pp.id_permissao ' +
-      ' AND pe.situacao = ''ATIVA'' ' +
-      'WHERE ui.id_instituicao = :id_instituicao ' +
-      '  AND ui.id = :id_usuario_instituicao ' +
-      '  AND ui.situacao = ''ATIVO'' ' +
-      '  AND pe.codigo = :permissao ' +
-      'LIMIT 1';
-
-    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
-    Qry.ParamByName('id_usuario_instituicao').AsLargeInt :=
-      AIdUsuarioInstituicao;
-    Qry.ParamByName('permissao').AsString := APermissao;
-    Qry.Open;
-
-    Result := not Qry.IsEmpty;
-  finally
-    Qry.Free;
-  end;
-end;
 
 end.
