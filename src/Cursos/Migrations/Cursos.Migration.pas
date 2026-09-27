@@ -65,6 +65,7 @@ type
     class procedure Migration_043_PlataformaAjuda(const AConn: TUniConnection); static;
     class procedure Migration_044_InstituicaoEmailConfiguracao(const AConn: TUniConnection); static;
     class procedure Migration_045_PlataformaEmailConfiguracao(const AConn: TUniConnection); static;
+    class procedure Migration_046_RecuperacaoSenhaTenantTipo(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -207,6 +208,7 @@ begin
       Migration_043_PlataformaAjuda(Conn);
       Migration_044_InstituicaoEmailConfiguracao(Conn);
       Migration_045_PlataformaEmailConfiguracao(Conn);
+      Migration_046_RecuperacaoSenhaTenantTipo(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -1968,6 +1970,46 @@ begin
     ' CONSTRAINT ck_plataforma_email_seguranca ' +
     '   CHECK (seguranca IN (''STARTTLS'',''SSL_TLS'',''NONE''))' +
     ') ENGINE=InnoDB COMMENT=''Configuracao SMTP global da plataforma SaaS.'';'
+  );
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+
+
+class procedure TCursosMigration.Migration_046_RecuperacaoSenhaTenantTipo(
+  const AConn: TUniConnection);
+const
+  VERSION = '046';
+  DESCRIPTION = 'Vincular token de senha ao tenant e finalidade';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'ALTER TABLE usuario_recuperacao_senha ' +
+    'ADD COLUMN id_instituicao BIGINT UNSIGNED NULL AFTER id_usuario'
+  );
+
+  ExecSQL(
+    AConn,
+    'ALTER TABLE usuario_recuperacao_senha ' +
+    'ADD COLUMN tipo VARCHAR(30) NOT NULL DEFAULT ''PRIMEIRO_ACESSO'' AFTER id_instituicao'
+  );
+
+  ExecSQL(
+    AConn,
+    'ALTER TABLE usuario_recuperacao_senha ' +
+    'ADD KEY ix_recuperacao_tenant_tipo (id_instituicao, tipo, criado_em)'
+  );
+
+  ExecSQL(
+    AConn,
+    'ALTER TABLE usuario_recuperacao_senha ' +
+    'ADD CONSTRAINT fk_recuperacao_instituicao ' +
+    'FOREIGN KEY (id_instituicao) REFERENCES instituicao(id) ' +
+    'ON UPDATE RESTRICT ON DELETE CASCADE'
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
