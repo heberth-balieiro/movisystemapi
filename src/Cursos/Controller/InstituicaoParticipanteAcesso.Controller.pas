@@ -51,6 +51,13 @@ begin
   Result.AddPair('nome', AInfo.Nome);
   Result.AddPair('email', AInfo.Email);
   Result.AddPair('acesso_liberado', TJSONBool.Create(AInfo.AcessoLiberado));
+  Result.AddPair('primeiro_acesso_necessario', TJSONBool.Create(AInfo.PrimeiroAcessoNecessario));
+  Result.AddPair('convite_whatsapp_enviado', TJSONBool.Create(AInfo.ConviteWhatsAppEnviado));
+
+  if Trim(AInfo.ConviteMensagem).IsEmpty then
+    Result.AddPair('convite_mensagem', TJSONNull.Create)
+  else
+    Result.AddPair('convite_mensagem', AInfo.ConviteMensagem);
 
   if AInfo.AcessoLiberado then
   begin
@@ -106,45 +113,24 @@ begin
     var
       Claims: TJWTClaims;
       IdParticipante: Int64;
-      BodyValue: TJSONValue;
-      Body: TJSONObject;
-      SenhaInicial: string;
       Info: TParticipanteAcessoInfo;
-      V: TJSONValue;
     begin
       try
         if not AutorizarInstituicao(Req, Res, Claims) then
           Exit;
 
         IdParticipante := StrToInt64Def(Req.Params.Items['id'], 0);
-        SenhaInicial := '';
-
-        if not Trim(Req.Body).IsEmpty then
-        begin
-          BodyValue := TJSONObject.ParseJSONValue(Req.Body);
-          if not (BodyValue is TJSONObject) then
-          begin
-            BodyValue.Free;
-            TAppErrors.RaiseBadRequest('JSON inválido.');
-          end;
-
-          Body := BodyValue as TJSONObject;
-          try
-            V := Body.GetValue('senha_inicial');
-            if (V <> nil) and not (V is TJSONNull) then
-              SenhaInicial := V.Value;
-          finally
-            Body.Free;
-          end;
-        end;
 
         Info := TInstituicaoParticipanteAcessoService.Liberar(
           Claims.IdInstituicao,
-          IdParticipante,
-          SenhaInicial
+          IdParticipante
         );
         try
-          TAppResponse.Ok(Res, AcessoParaJson(Info), 'Acesso ao portal liberado com sucesso.');
+          TAppResponse.Ok(
+            Res,
+            AcessoParaJson(Info),
+            'Acesso ao portal liberado com sucesso.'
+          );
         finally
           Info.Free;
         end;
