@@ -489,12 +489,12 @@ begin
     if Qry.IsEmpty then
       Exit;
 
-    Result.Ativo := Qry.FieldByName('ativo').AsInteger = 1;
+    Result.Ativo := Qry.FieldByName('ativo').AsBoolean;
     Result.SmtpHost := Qry.FieldByName('smtp_host').AsString;
     Result.SmtpPorta := Qry.FieldByName('smtp_porta').AsInteger;
     Result.Seguranca := Qry.FieldByName('seguranca').AsString;
     Result.Usuario := Qry.FieldByName('usuario').AsString;
-    Result.SenhaConfigurada := Qry.FieldByName('senha_configurada').AsInteger = 1;
+    Result.SenhaConfigurada := Qry.FieldByName('senha_configurada').AsBoolean;
     if Result.SenhaConfigurada then
       Result.SenhaMascarada := '********' + Qry.FieldByName('senha_hint').AsString;
     Result.RemetenteNome := Qry.FieldByName('remetente_nome').AsString;
@@ -522,7 +522,7 @@ begin
       'WHERE id_instituicao = :id_instituicao';
     Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
     Qry.Open;
-    Result := (not Qry.IsEmpty) and (Qry.FieldByName('tem_senha').AsInteger = 1);
+    Result := (not Qry.IsEmpty) and Qry.FieldByName('tem_senha').AsBoolean;
   finally
     Qry.Free;
   end;
@@ -581,7 +581,7 @@ begin
     end;
 
     Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
-    Qry.ParamByName('ativo').AsInteger := Ord(ADados.Ativo);
+    Qry.ParamByName('ativo').AsBoolean := ADados.Ativo;
     Qry.ParamByName('smtp_host').AsString := ADados.SmtpHost;
     Qry.ParamByName('smtp_porta').AsInteger := ADados.SmtpPorta;
     Qry.ParamByName('seguranca').AsString := ADados.Seguranca;
