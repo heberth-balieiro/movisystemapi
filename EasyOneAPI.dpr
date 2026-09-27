@@ -328,7 +328,11 @@ uses
   InstituicaoUsuario.Model in 'src\Cursos\Model\InstituicaoUsuario.Model.pas',
   InstituicaoUsuario.DAO in 'src\Cursos\Dao\InstituicaoUsuario.DAO.pas',
   InstituicaoUsuario.Service in 'src\Cursos\Services\InstituicaoUsuario.Service.pas',
-  InstituicaoUsuario.Controller in 'src\Cursos\Controller\InstituicaoUsuario.Controller.pas';
+  InstituicaoUsuario.Controller in 'src\Cursos\Controller\InstituicaoUsuario.Controller.pas',
+  PlataformaWhatsApp.Model in 'src\Cursos\Model\PlataformaWhatsApp.Model.pas',
+  PlataformaWhatsApp.DAO in 'src\Cursos\Dao\PlataformaWhatsApp.DAO.pas',
+  PlataformaWhatsApp.Service in 'src\Cursos\Services\PlataformaWhatsApp.Service.pas',
+  PlataformaWhatsApp.Controller in 'src\Cursos\Controller\PlataformaWhatsApp.Controller.pas';
 
 var
   LConfig       : TAppApiConfig;
