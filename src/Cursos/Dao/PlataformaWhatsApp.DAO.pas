@@ -17,6 +17,11 @@ type
       const AConn: TUniConnection
     ): Boolean; static;
 
+    class function ObterApiKey(
+      const AConn: TUniConnection;
+      const ASecret: string
+    ): string; static;
+
     class procedure Salvar(
       const AConn: TUniConnection;
       const ADados: TPlataformaWhatsAppInput;
@@ -103,6 +108,38 @@ begin
     Result :=
       (not Qry.IsEmpty) and
       Qry.FieldByName('tem_key').AsBoolean;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TPlataformaWhatsAppDAO.ObterApiKey(
+  const AConn: TUniConnection;
+  const ASecret: string
+): string;
+var
+  Qry: TUniQuery;
+begin
+  Result := '';
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+
+    Qry.SQL.Text :=
+      'SELECT CAST(AES_DECRYPT(api_key_criptografada, :secret) AS CHAR(4096)) AS api_key ' +
+      'FROM plataforma_whatsapp_configuracao ' +
+      'WHERE id = 1 ' +
+      '  AND api_key_criptografada IS NOT NULL';
+
+    Qry.ParamByName('secret').AsString :=
+      ASecret;
+
+    Qry.Open;
+
+    if not Qry.IsEmpty then
+      Result :=
+        Qry.FieldByName('api_key').AsString;
   finally
     Qry.Free;
   end;
