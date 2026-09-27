@@ -18,6 +18,7 @@ uses
   System.SysUtils,
   IdSMTP,
   IdMessage,
+  IdText,
   IdSSL,
   IdSSLOpenSSL,
   IdExplicitTLSClientServerBase,
@@ -35,6 +36,7 @@ var
   SMTP: TIdSMTP;
   SSL: TIdSSLIOHandlerSocketOpenSSL;
   Mensagem: TIdMessage;
+  HtmlPart: TIdText;
 begin
   if not TPlataformaEmailService.ObterConfiguracao(Config, Senha) then
     raise Exception.Create(
@@ -74,7 +76,7 @@ begin
       SMTP.UseTLS := utNoTLSSupport;
 
     Mensagem.CharSet := 'UTF-8';
-    Mensagem.ContentType := 'text/html';
+    Mensagem.Encoding := meMIME;
     Mensagem.From.Name := Config.RemetenteNome;
     Mensagem.From.Address := Config.RemetenteEmail;
     Mensagem.Recipients.Add.Address := LowerCase(Trim(ADestinatario));
@@ -83,7 +85,16 @@ begin
       Mensagem.ReplyTo.Add.Address := Config.ResponderPara;
 
     Mensagem.Subject := AAssunto;
-    Mensagem.Body.Text := AHtml;
+
+    HtmlPart := TIdText.Create(
+      Mensagem.MessageParts,
+      nil
+    );
+
+    HtmlPart.ContentType := 'text/html';
+    HtmlPart.CharSet := 'UTF-8';
+    HtmlPart.ContentTransfer := 'quoted-printable';
+    HtmlPart.Body.Text := AHtml;
 
     SMTP.Connect;
     try
