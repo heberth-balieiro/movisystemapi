@@ -2,11 +2,14 @@ unit Cursos.Seeds;
 
 interface
 
+uses
+  Uni;
+
 type
   TCursosSeeds = class
   private
     class procedure GarantirPermissao(
-      const AConn: TObject;
+      const AConn: TUniConnection;
       const ACodigo,
             AModulo,
             ADescricao: string
@@ -19,26 +22,22 @@ implementation
 
 uses
   System.SysUtils,
-  Uni,
   App.Config,
   Database.Connection,
   InstituicaoPermissao.DAO;
 
 class procedure TCursosSeeds.GarantirPermissao(
-  const AConn: TObject;
+  const AConn: TUniConnection;
   const ACodigo,
         AModulo,
         ADescricao: string
 );
 var
-  Conn: TUniConnection;
   Qry: TUniQuery;
 begin
-  Conn := TUniConnection(AConn);
-
   Qry := TUniQuery.Create(nil);
   try
-    Qry.Connection := Conn;
+    Qry.Connection := AConn;
 
     Qry.SQL.Text :=
       'INSERT INTO permissao ' +
