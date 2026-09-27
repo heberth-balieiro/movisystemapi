@@ -264,48 +264,50 @@ begin
     );
 
   try
-    Result :=
-      TInstituicaoPerfilDAO.BuscarPorId(
-        Conn,
-        AIdInstituicao,
-        AIdPerfil
-      );
-
-    if Result = nil then
-      TAppErrors.RaiseNotFound(
-        'Perfil não encontrado.'
-      );
-
-    Permissoes :=
-      TInstituicaoPerfilDAO.ListarPermissoes(
-        Conn,
-        AIdInstituicao,
-        AIdPerfil
-      );
-
     try
-      while Permissoes.Count > 0 do
-      begin
-        Permissao :=
-          Permissoes.Extract(
-            Permissoes[0]
-          );
-
-        Result.Permissoes.Add(
-          Permissao
+      Result :=
+        TInstituicaoPerfilDAO.BuscarPorId(
+          Conn,
+          AIdInstituicao,
+          AIdPerfil
         );
+
+      if Result = nil then
+        TAppErrors.RaiseNotFound(
+          'Perfil não encontrado.'
+        );
+
+      Permissoes :=
+        TInstituicaoPerfilDAO.ListarPermissoes(
+          Conn,
+          AIdInstituicao,
+          AIdPerfil
+        );
+
+      try
+        while Permissoes.Count > 0 do
+        begin
+          Permissao :=
+            Permissoes.Extract(
+              Permissoes[0]
+            );
+
+          Result.Permissoes.Add(
+            Permissao
+          );
+        end;
+      finally
+        Permissoes.Free;
       end;
-    finally
-      Permissoes.Free;
+
+    except
+      Result.Free;
+      Result := nil;
+      raise;
     end;
-
-  except
-    Result.Free;
-    Result := nil;
-    raise;
+  finally
+    Conn.Free;
   end;
-
-  Conn.Free;
 end;
 
 class function TInstituicaoPerfilService.ListarPermissoes(
