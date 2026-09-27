@@ -35,6 +35,14 @@ type
       const AIP,
             AUserAgent: string
     ): TInstituicaoWhatsAppQrCode; static;
+
+    class function Logout(
+      const AIdInstituicao,
+            AIdUsuario,
+            AIdUsuarioInstituicao: Int64;
+      const AIP,
+            AUserAgent: string
+    ): TInstituicaoWhatsAppStatus; static;
   end;
 
 implementation
@@ -400,6 +408,115 @@ begin
       AIP,
       AUserAgent
     );
+  finally
+    Conn.Free;
+  end;
+end;
+
+
+class function TInstituicaoWhatsAppService.Logout(
+  const AIdInstituicao,
+        AIdUsuario,
+        AIdUsuarioInstituicao: Int64;
+  const AIP,
+        AUserAgent: string
+): TInstituicaoWhatsAppStatus;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  ApiUrl: string;
+  ApiKey: string;
+  NomeInstancia: string;
+  Retorno: TJSONValue;
+begin
+  Result :=
+    Default(
+      TInstituicaoWhatsAppStatus
+    );
+
+  TInstituicaoPermissaoService.Exigir(
+    AIdInstituicao,
+    AIdUsuarioInstituicao,
+    'whatsapp.gerenciar'
+  );
+
+  if not TPlataformaWhatsAppService.ObterCredenciais(
+    ApiUrl,
+    ApiKey
+  ) then
+    TAppErrors.RaiseForbidden(
+      'A integração WhatsApp não está habilitada pela MoviSystem.'
+    );
+
+  Config :=
+    TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) +
+      'Config.ini'
+    );
+
+  Conn :=
+    TDatabaseConnection.NewConnection(
+      Config.Database
+    );
+  try
+    NomeInstancia :=
+      TInstituicaoWhatsAppDAO.BuscarNomeInstancia(
+        Conn,
+        AIdInstituicao
+      );
+
+    if NomeInstancia.IsEmpty then
+      TAppErrors.RaiseBadRequest(
+        'A instituição ainda não possui uma instância WhatsApp.'
+      );
+
+    Retorno :=
+      TEvolutionApiService.LogoutInstancia(
+        ApiUrl,
+        ApiKey,
+        NomeInstancia
+      );
+    try
+      // A instância continua cadastrada. Apenas a sessão WhatsApp é encerrada.
+    finally
+      Retorno.Free;
+    end;
+
+    Conn.StartTransaction;
+    try
+      TInstituicaoWhatsAppDAO.AtualizarEstado(
+        Conn,
+        AIdInstituicao,
+        'LOGGED_OUT',
+        ''
+      );
+
+      TInstituicaoWhatsAppDAO.RegistrarAuditoria(
+        Conn,
+        AIdInstituicao,
+        AIdUsuario,
+        AIdUsuarioInstituicao,
+        'WHATSAPP_LOGOUT',
+        'Sessão WhatsApp desconectada da instância da instituição.',
+        'DELETE',
+        '/v1/certifica/configuracoes/whatsapp/logout',
+        AIP,
+        AUserAgent
+      );
+
+      Conn.Commit;
+    except
+      if Conn.InTransaction then
+        Conn.Rollback;
+      raise;
+    end;
+
+    Result.Disponivel := True;
+    Result.InstanciaCriada := True;
+    Result.InstanciaNome := NomeInstancia;
+    Result.Estado := 'LOGGED_OUT';
+    Result.Conectado := False;
+    Result.Numero := '';
   finally
     Conn.Free;
   end;
