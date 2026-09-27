@@ -45,6 +45,14 @@ type
             ANomeInstancia: string
     ): TJSONValue; static;
 
+    class function EnviarTexto(
+      const AApiUrl,
+            AApiKey,
+            ANomeInstancia,
+            ANumero,
+            AMensagem: string
+    ): TJSONValue; static;
+
     class function ExtrairEstado(
       const AJson: TJSONValue
     ): string; static;
@@ -295,6 +303,42 @@ begin
       TNetEncoding.URL.Encode(ANomeInstancia),
       AApiKey
     );
+end;
+
+class function TEvolutionApiService.EnviarTexto(
+  const AApiUrl,
+        AApiKey,
+        ANomeInstancia,
+        ANumero,
+        AMensagem: string
+): TJSONValue;
+var
+  Body: TJSONObject;
+begin
+  Body := TJSONObject.Create;
+  try
+    Body.AddPair(
+      'number',
+      ANumero
+    );
+
+    Body.AddPair(
+      'text',
+      AMensagem
+    );
+
+    Result :=
+      Request(
+        'POST',
+        AApiUrl +
+        '/message/sendText/' +
+        TNetEncoding.URL.Encode(ANomeInstancia),
+        AApiKey,
+        Body
+      );
+  finally
+    Body.Free;
+  end;
 end;
 
 class function TEvolutionApiService.ExtrairEstado(
