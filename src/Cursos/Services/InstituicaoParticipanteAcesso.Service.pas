@@ -14,7 +14,8 @@ type
     class function MontarMensagemAcesso(
       const AParticipante: TParticipanteBaseAcesso;
       const AUsuarioJaTinhaSenha: Boolean;
-      const ALink: string
+      const ALink,
+            AHomeLink: string
     ): string; static;
 
   public
@@ -92,54 +93,95 @@ end;
 class function TInstituicaoParticipanteAcessoService.MontarMensagemAcesso(
   const AParticipante: TParticipanteBaseAcesso;
   const AUsuarioJaTinhaSenha: Boolean;
-  const ALink: string
+  const ALink,
+        AHomeLink: string
 ): string;
 var
+  EmojiOla: string;
+  EmojiAcesso: string;
+  EmojiUsuario: string;
+  EmojiSenha: string;
+  EmojiLink: string;
+  EmojiHome: string;
+  EmojiSeguranca: string;
   Ola: string;
   Acesso: string;
   UsuarioLabel: string;
   Instrucao: string;
+  LinkLabel: string;
+  HomeLabel: string;
   Seguranca: string;
 begin
+  EmojiOla       := #$D83D#$DC4B;
+  EmojiAcesso    := #$2705;
+  EmojiUsuario   := #$D83D#$DCE7;
+  EmojiSenha     := #$D83D#$DD10;
+  EmojiLink      := #$D83D#$DD17;
+  EmojiHome      := #$D83C#$DFE0;
+  EmojiSeguranca := #$D83D#$DD12;
+
   Ola :=
-    'Ol' + #$00E1 + ', ' +
+    EmojiOla + ' Ol' + #$00E1 + ', ' +
     AParticipante.Nome + '.';
 
   Acesso :=
-    'Seu acesso ao portal de capacita' + #$00E7 + #$00F5 + 'es da ' +
+    EmojiAcesso +
+    ' Seu acesso ao portal de capacita' + #$00E7 + #$00F5 + 'es da ' +
     AParticipante.InstituicaoNome +
     ' foi liberado.';
 
   UsuarioLabel :=
-    'Usu' + #$00E1 + 'rio: ' +
+    EmojiUsuario +
+    ' Usu' + #$00E1 + 'rio: ' +
     AParticipante.Email;
 
   if AUsuarioJaTinhaSenha then
+  begin
     Instrucao :=
-      'Voc' + #$00EA +
+      EmojiSenha +
+      ' Voc' + #$00EA +
       ' j' + #$00E1 +
-      ' possui uma conta na plataforma. Utilize sua senha atual para acessar:' +
-      sLineBreak +
-      ALink
+      ' possui uma conta na plataforma. Utilize sua senha atual para acessar.';
+
+    LinkLabel :=
+      EmojiLink +
+      ' Acessar o portal:';
+  end
   else
+  begin
     Instrucao :=
-      'Para criar sua senha de acesso, utilize o link abaixo. ' +
-      'O link ' + #$00E9 +
+      EmojiSenha +
+      ' Para criar sua senha de acesso, utilize o link abaixo. ' +
+      'Ele ' + #$00E9 +
       ' pessoal, de uso ' + #$00FA + 'nico e v' + #$00E1 +
-      'lido por 24 horas:' +
-      sLineBreak +
-      ALink;
+      'lido por 24 horas.';
+
+    LinkLabel :=
+      EmojiLink +
+      ' Criar minha senha:';
+  end;
+
+  HomeLabel :=
+    EmojiHome +
+    ' P' + #$00E1 +
+    'gina principal da institui' + #$00E7 + #$00E3 + 'o:';
 
   Seguranca :=
-    'Por seguran' + #$00E7 +
+    EmojiSeguranca +
+    ' Por seguran' + #$00E7 +
     'a, n' + #$00E3 +
-    'o compartilhe este link com outras pessoas.';
+    'o compartilhe o link de cria' + #$00E7 + #$00E3 +
+    'o de senha com outras pessoas.';
 
   Result :=
     Ola + sLineBreak + sLineBreak +
     Acesso + sLineBreak + sLineBreak +
-    UsuarioLabel + sLineBreak +
+    UsuarioLabel + sLineBreak + sLineBreak +
     Instrucao + sLineBreak + sLineBreak +
+    LinkLabel + sLineBreak +
+    ALink + sLineBreak + sLineBreak +
+    HomeLabel + sLineBreak +
+    AHomeLink + sLineBreak + sLineBreak +
     Seguranca;
 end;
 
@@ -202,6 +244,7 @@ var
   IdUsuarioInstituicao: Int64;
   Token: string;
   Link: string;
+  HomeLink: string;
   Mensagem: string;
   UsuarioJaTinhaSenha: Boolean;
   PrimeiroAcessoNecessario: Boolean;
@@ -209,6 +252,7 @@ begin
   Result := nil;
   Token := '';
   Link := '';
+  HomeLink := '';
   UsuarioJaTinhaSenha := False;
   PrimeiroAcessoNecessario := False;
 
@@ -407,11 +451,17 @@ begin
         Participante.InstituicaoSlug +
         '/login';
 
+    HomeLink :=
+      Config.Web.PublicURL +
+      '/' +
+      Participante.InstituicaoSlug;
+
     Mensagem :=
       MontarMensagemAcesso(
         Participante,
         UsuarioJaTinhaSenha,
-        Link
+        Link,
+        HomeLink
       );
 
     if Trim(Participante.Telefone).IsEmpty then
@@ -462,12 +512,14 @@ var
   Usuario: TUsuarioGlobalAcesso;
   Token: string;
   Link: string;
+  HomeLink: string;
   Mensagem: string;
   PrimeiroAcessoNecessario: Boolean;
 begin
   Result := nil;
   Token := '';
   Link := '';
+  HomeLink := '';
 
   if AIdInstituicao <= 0 then
     TAppErrors.RaiseUnauthorized(
@@ -575,11 +627,17 @@ begin
         Participante.InstituicaoSlug +
         '/login';
 
+    HomeLink :=
+      Config.Web.PublicURL +
+      '/' +
+      Participante.InstituicaoSlug;
+
     Mensagem :=
       MontarMensagemAcesso(
         Participante,
         Usuario.TemSenhaDefinida,
-        Link
+        Link,
+        HomeLink
       );
 
     TInstituicaoWhatsAppService.EnviarMensagemSistema(
