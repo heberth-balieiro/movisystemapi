@@ -60,6 +60,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Classes,
   System.Net.HttpClient,
   System.Net.URLClient,
@@ -86,11 +87,21 @@ begin
     Client.ConnectionTimeout := 10000;
     Client.ResponseTimeout := 20000;
 
-    SetLength(Headers, 2);
+    if SameText(AMethod, 'POST') then
+      SetLength(Headers, 3)
+    else
+      SetLength(Headers, 2);
+
     Headers[0].Name := 'apikey';
     Headers[0].Value := AApiKey;
     Headers[1].Name := 'Accept';
     Headers[1].Value := 'application/json';
+
+    if Length(Headers) = 3 then
+    begin
+      Headers[2].Name := 'Content-Type';
+      Headers[2].Value := 'application/json';
+    end;
 
     if SameText(AMethod, 'GET') then
       Response :=
@@ -116,8 +127,7 @@ begin
           AUrl,
           Stream,
           nil,
-          Headers +
-          [TNameValuePair.Create('Content-Type', 'application/json')]
+          Headers
         );
     end
     else
