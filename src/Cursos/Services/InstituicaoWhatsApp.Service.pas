@@ -3,13 +3,14 @@ unit InstituicaoWhatsApp.Service;
 interface
 
 uses
+  Uni,
   InstituicaoWhatsApp.Model;
 
 type
   TInstituicaoWhatsAppService = class
   private
     class function NovaInstancia(
-      const AConn: TObject;
+      const AConn: TUniConnection;
       const AIdInstituicao: Int64
     ): string; static;
 
@@ -40,7 +41,7 @@ implementation
 
 uses
   System.SysUtils,
-  Uni,
+  System.JSON,
   App.Config,
   APP.Errors,
   Database.Connection,
@@ -50,16 +51,13 @@ uses
   EvolutionApi.Service;
 
 class function TInstituicaoWhatsAppService.NovaInstancia(
-  const AConn: TObject;
+  const AConn: TUniConnection;
   const AIdInstituicao: Int64
 ): string;
 var
-  Conn: TUniConnection;
   G: TGUID;
   Codigo: string;
 begin
-  Conn := TUniConnection(AConn);
-
   repeat
     CreateGUID(G);
 
@@ -89,7 +87,7 @@ begin
       '_' +
       Copy(Codigo, 1, 10);
   until not TInstituicaoWhatsAppDAO.NomeInstanciaExiste(
-    Conn,
+    AConn,
     Result
   );
 end;
