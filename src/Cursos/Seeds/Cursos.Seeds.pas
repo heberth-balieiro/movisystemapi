@@ -99,33 +99,33 @@ begin
       GarantirPermissao(Conn, 'participante.editar', 'PARTICIPANTE', 'Editar participantes.');
       GarantirPermissao(Conn, 'participante.inativar', 'PARTICIPANTE', 'Inativar participantes.');
 
-      GarantirPermissao(Conn, 'inscricao.visualizar', 'INSCRICAO', 'Visualizar inscrições.');
-      GarantirPermissao(Conn, 'inscricao.cadastrar', 'INSCRICAO', 'Cadastrar inscrições.');
-      GarantirPermissao(Conn, 'inscricao.editar', 'INSCRICAO', 'Editar inscrições.');
-      GarantirPermissao(Conn, 'inscricao.aprovar', 'INSCRICAO', 'Aprovar ou rejeitar inscrições.');
+      GarantirPermissao(Conn, 'inscricao.visualizar', 'INSCRICAO', 'Visualizar inscri' + #$00E7 + #$00F5 + 'es.');
+      GarantirPermissao(Conn, 'inscricao.cadastrar', 'INSCRICAO', 'Cadastrar inscri' + #$00E7 + #$00F5 + 'es.');
+      GarantirPermissao(Conn, 'inscricao.editar', 'INSCRICAO', 'Editar inscri' + #$00E7 + #$00F5 + 'es.');
+      GarantirPermissao(Conn, 'inscricao.aprovar', 'INSCRICAO', 'Aprovar ou rejeitar inscri' + #$00E7 + #$00F5 + 'es.');
 
-      GarantirPermissao(Conn, 'presenca.visualizar', 'PRESENCA', 'Visualizar presenças.');
-      GarantirPermissao(Conn, 'presenca.editar', 'PRESENCA', 'Registrar e editar presenças.');
+      GarantirPermissao(Conn, 'presenca.visualizar', 'PRESENCA', 'Visualizar presen' + #$00E7 + 'as.');
+      GarantirPermissao(Conn, 'presenca.editar', 'PRESENCA', 'Registrar e editar presen' + #$00E7 + 'as.');
 
       GarantirPermissao(Conn, 'certificado.visualizar', 'CERTIFICADO', 'Visualizar certificados.');
       GarantirPermissao(Conn, 'certificado.emitir', 'CERTIFICADO', 'Emitir e reemitir certificados.');
       GarantirPermissao(Conn, 'certificado.cancelar', 'CERTIFICADO', 'Cancelar certificados.');
       GarantirPermissao(Conn, 'certificado.configurar', 'CERTIFICADO', 'Configurar modelos e regras de certificados.');
 
-      GarantirPermissao(Conn, 'usuario.visualizar', 'USUARIO', 'Visualizar usuários da instituição.');
-      GarantirPermissao(Conn, 'usuario.cadastrar', 'USUARIO', 'Cadastrar usuários da instituição.');
-      GarantirPermissao(Conn, 'usuario.editar', 'USUARIO', 'Editar usuários da instituição.');
-      GarantirPermissao(Conn, 'usuario.inativar', 'USUARIO', 'Inativar usuários da instituição.');
+      GarantirPermissao(Conn, 'usuario.visualizar', 'USUARIO', 'Visualizar usu' + #$00E1 + 'rios da institui' + #$00E7 + #$00E3 + 'o.');
+      GarantirPermissao(Conn, 'usuario.cadastrar', 'USUARIO', 'Cadastrar usu' + #$00E1 + 'rios da institui' + #$00E7 + #$00E3 + 'o.');
+      GarantirPermissao(Conn, 'usuario.editar', 'USUARIO', 'Editar usu' + #$00E1 + 'rios da institui' + #$00E7 + #$00E3 + 'o.');
+      GarantirPermissao(Conn, 'usuario.inativar', 'USUARIO', 'Inativar usu' + #$00E1 + 'rios da institui' + #$00E7 + #$00E3 + 'o.');
 
-      GarantirPermissao(Conn, 'perfil.visualizar', 'PERFIL', 'Visualizar perfis e permissões.');
+      GarantirPermissao(Conn, 'perfil.visualizar', 'PERFIL', 'Visualizar perfis e permiss' + #$00F5 + 'es.');
       GarantirPermissao(Conn, 'perfil.cadastrar', 'PERFIL', 'Cadastrar perfis.');
-      GarantirPermissao(Conn, 'perfil.editar', 'PERFIL', 'Editar perfis e suas permissões.');
+      GarantirPermissao(Conn, 'perfil.editar', 'PERFIL', 'Editar perfis e suas permiss' + #$00F5 + 'es.');
       GarantirPermissao(Conn, 'perfil.inativar', 'PERFIL', 'Inativar perfis.');
 
-      GarantirPermissao(Conn, 'relatorio.visualizar', 'RELATORIO', 'Visualizar relatórios.');
+      GarantirPermissao(Conn, 'relatorio.visualizar', 'RELATORIO', 'Visualizar relat' + #$00F3 + 'rios.');
 
-      GarantirPermissao(Conn, 'configuracao.visualizar', 'CONFIGURACAO', 'Visualizar configurações da instituição.');
-      GarantirPermissao(Conn, 'configuracao.editar', 'CONFIGURACAO', 'Editar configurações da instituição.');
+      GarantirPermissao(Conn, 'configuracao.visualizar', 'CONFIGURACAO', 'Visualizar configura' + #$00E7 + #$00F5 + 'es da institui' + #$00E7 + #$00E3 + 'o.');
+      GarantirPermissao(Conn, 'configuracao.editar', 'CONFIGURACAO', 'Editar configura' + #$00E7 + #$00F5 + 'es da institui' + #$00E7 + #$00E3 + 'o.');
 
       TInstituicaoPermissaoDAO.GarantirPerfisAdministradores(
         Conn
