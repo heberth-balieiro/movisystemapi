@@ -154,7 +154,7 @@ begin
     AQry.FieldByName('descricao').AsString;
 
   Result.Sistema :=
-    AQry.FieldByName('sistema').AsInteger = 1;
+    AQry.FieldByName('sistema').AsBoolean;
 
   Result.Situacao :=
     AQry.FieldByName('situacao').AsString;
