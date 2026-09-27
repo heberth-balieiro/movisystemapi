@@ -31,6 +31,7 @@ uses
   Uni,
   IdSMTP,
   IdMessage,
+  IdText,
   IdSSL,
   IdSSLOpenSSL,
   IdExplicitTLSClientServerBase,
@@ -70,6 +71,7 @@ var
   SMTP: TIdSMTP;
   SSL: TIdSSLIOHandlerSocketOpenSSL;
   Mensagem: TIdMessage;
+  HtmlPart: TIdText;
   Destinatario: string;
   VersaoOpenSSL: string;
 begin
@@ -128,7 +130,7 @@ begin
 
     Mensagem.Clear;
     Mensagem.CharSet := 'UTF-8';
-    Mensagem.ContentType := 'text/html';
+    Mensagem.Encoding := meMIME;
     Mensagem.From.Name := Config.RemetenteNome;
     Mensagem.From.Address := Config.RemetenteEmail;
     Mensagem.Recipients.Add.Address := Destinatario;
@@ -137,7 +139,16 @@ begin
       Mensagem.ReplyTo.Add.Address := Config.ResponderPara;
 
     Mensagem.Subject := AAssunto;
-    Mensagem.Body.Text := AHtml;
+
+    HtmlPart := TIdText.Create(
+      Mensagem.MessageParts,
+      nil
+    );
+
+    HtmlPart.ContentType := 'text/html';
+    HtmlPart.CharSet := 'UTF-8';
+    HtmlPart.ContentTransfer := 'quoted-printable';
+    HtmlPart.Body.Text := AHtml;
 
     try
       SMTP.Connect;
