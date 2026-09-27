@@ -41,7 +41,8 @@ Uses
   PublicoInstituicao.Controller,
   InstituicaoConfiguracao.Controller,
   InstituicaoPerfil.Controller,
-  InstituicaoUsuario.Controller;
+  InstituicaoUsuario.Controller,
+  InstituicaoWhatsApp.Controller;
 
 { TCursosRoutes }
 
@@ -78,6 +79,7 @@ begin
   TInstituicaoConfiguracaoController.Registry;
   TInstituicaoPerfilController.Registry;
   TInstituicaoUsuarioController.Registry;
+  TInstituicaoWhatsAppController.Registry;
 end;
 
 end.
