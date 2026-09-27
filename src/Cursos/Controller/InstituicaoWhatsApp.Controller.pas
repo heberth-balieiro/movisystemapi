@@ -206,6 +206,56 @@ begin
 
   {$ENDREGION}
 
+
+  {$REGION 'Logout'}
+
+  THorse.Delete(
+    '/v1/certifica/configuracoes/whatsapp/logout',
+
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Claims: TJWTClaims;
+      Status: TInstituicaoWhatsAppStatus;
+    begin
+      try
+        if not AutorizarInstituicao(
+          Req,
+          Res,
+          Claims
+        ) then
+          Exit;
+
+        Status :=
+          TInstituicaoWhatsAppService.Logout(
+            Claims.IdInstituicao,
+            Claims.UserId,
+            Claims.IdUsuarioInstituicao,
+            TAppRequestInfo.GetIP(Req),
+            TAppRequestInfo.GetUserAgent(Req)
+          );
+
+        TAppResponse.Ok(
+          Res,
+          Status.ToJSON,
+          'WhatsApp desconectado com sucesso.'
+        );
+
+      except
+        on E: Exception do
+          TAppErrors.HandleException(
+            Res,
+            E
+          );
+      end;
+    end
+  );
+
+  {$ENDREGION}
+
 end;
 
 end.
