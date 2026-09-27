@@ -171,9 +171,14 @@ class procedure TInstituicaoPermissaoDAO.GarantirPerfilAdministrador(
 var
   Qry: TUniQuery;
   IdPerfil: Int64;
+  DescricaoAdministrador: string;
 begin
   if AIdInstituicao <= 0 then
     Exit;
+
+  DescricaoAdministrador :=
+    'Perfil administrador padr' + #$00E3 +
+    'o da institui' + #$00E7 + #$00E3 + 'o.';
 
   Qry := TUniQuery.Create(nil);
   try
@@ -183,8 +188,7 @@ begin
       'INSERT INTO perfil ' +
       '(id_instituicao, nome, descricao, sistema, situacao) ' +
       'VALUES ' +
-      '(:id_instituicao, ''Administrador'', ' +
-      '''Perfil administrador padrão da instituição.'', 1, ''ATIVO'') ' +
+      '(:id_instituicao, ''Administrador'', :descricao, 1, ''ATIVO'') ' +
       'ON DUPLICATE KEY UPDATE ' +
       'descricao = VALUES(descricao), ' +
       'sistema = 1, ' +
@@ -192,6 +196,9 @@ begin
 
     Qry.ParamByName('id_instituicao').AsLargeInt :=
       AIdInstituicao;
+
+    Qry.ParamByName('descricao').AsString :=
+      DescricaoAdministrador;
 
     Qry.Execute;
 
