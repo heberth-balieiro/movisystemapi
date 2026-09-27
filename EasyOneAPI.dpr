@@ -324,7 +324,11 @@ uses
   InstituicaoPerfil.Model in 'src\Cursos\Model\InstituicaoPerfil.Model.pas',
   InstituicaoPerfil.DAO in 'src\Cursos\Dao\InstituicaoPerfil.DAO.pas',
   InstituicaoPerfil.Service in 'src\Cursos\Services\InstituicaoPerfil.Service.pas',
-  InstituicaoPerfil.Controller in 'src\Cursos\Controller\InstituicaoPerfil.Controller.pas';
+  InstituicaoPerfil.Controller in 'src\Cursos\Controller\InstituicaoPerfil.Controller.pas',
+  InstituicaoUsuario.Model in 'src\Cursos\Model\InstituicaoUsuario.Model.pas',
+  InstituicaoUsuario.DAO in 'src\Cursos\Dao\InstituicaoUsuario.DAO.pas',
+  InstituicaoUsuario.Service in 'src\Cursos\Services\InstituicaoUsuario.Service.pas',
+  InstituicaoUsuario.Controller in 'src\Cursos\Controller\InstituicaoUsuario.Controller.pas';
 
 var
   LConfig       : TAppApiConfig;
