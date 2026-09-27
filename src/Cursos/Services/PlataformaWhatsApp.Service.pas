@@ -15,6 +15,11 @@ type
   public
     class function Buscar: TPlataformaWhatsAppConfig; static;
 
+    class function ObterCredenciais(
+      out AApiUrl,
+          AApiKey: string
+    ): Boolean; static;
+
     class function Atualizar(
       const AIdUsuario: Int64;
       const ADados: TPlataformaWhatsAppInput;
@@ -87,6 +92,60 @@ begin
       TPlataformaWhatsAppDAO.Buscar(
         Conn
       );
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TPlataformaWhatsAppService.ObterCredenciais(
+  out AApiUrl,
+      AApiKey: string
+): Boolean;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  WhatsAppConfig: TPlataformaWhatsAppConfig;
+begin
+  Result := False;
+  AApiUrl := '';
+  AApiKey := '';
+
+  Config :=
+    TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) +
+      'Config.ini'
+    );
+
+  Conn :=
+    TDatabaseConnection.NewConnection(
+      Config.Database
+    );
+
+  try
+    WhatsAppConfig :=
+      TPlataformaWhatsAppDAO.Buscar(
+        Conn
+      );
+
+    if not WhatsAppConfig.Habilitado then
+      Exit;
+
+    if Trim(WhatsAppConfig.ApiUrl).IsEmpty then
+      Exit;
+
+    AApiKey :=
+      TPlataformaWhatsAppDAO.ObterApiKey(
+        Conn,
+        TCertificaSecrets.WhatsAppTokenSecret
+      );
+
+    if Trim(AApiKey).IsEmpty then
+      Exit;
+
+    AApiUrl :=
+      WhatsAppConfig.ApiUrl;
+
+    Result := True;
   finally
     Conn.Free;
   end;
