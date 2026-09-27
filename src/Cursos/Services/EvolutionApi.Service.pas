@@ -39,6 +39,12 @@ type
             ANomeInstancia: string
     ): TJSONValue; static;
 
+    class function LogoutInstancia(
+      const AApiUrl,
+            AApiKey,
+            ANomeInstancia: string
+    ): TJSONValue; static;
+
     class function ExtrairEstado(
       const AJson: TJSONValue
     ): string; static;
@@ -130,6 +136,13 @@ begin
           Headers
         );
     end
+    else if SameText(AMethod, 'DELETE') then
+      Response :=
+        Client.Delete(
+          AUrl,
+          nil,
+          Headers
+        )
     else
       raise Exception.Create(
         'Método HTTP não suportado.'
@@ -263,6 +276,22 @@ begin
       'GET',
       AApiUrl +
       '/instance/connectionState/' +
+      TNetEncoding.URL.Encode(ANomeInstancia),
+      AApiKey
+    );
+end;
+
+class function TEvolutionApiService.LogoutInstancia(
+  const AApiUrl,
+        AApiKey,
+        ANomeInstancia: string
+): TJSONValue;
+begin
+  Result :=
+    Request(
+      'DELETE',
+      AApiUrl +
+      '/instance/logout/' +
       TNetEncoding.URL.Encode(ANomeInstancia),
       AApiKey
     );
