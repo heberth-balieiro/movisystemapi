@@ -478,7 +478,7 @@ begin
     Qry.Connection := AConn;
     Qry.SQL.Text :=
       'SELECT ativo, smtp_host, smtp_porta, seguranca, usuario, ' +
-      '       senha_criptografada IS NOT NULL AS senha_configurada, senha_hint, ' +
+      '       senha_criptografada, senha_hint, ' +
       '       remetente_nome, remetente_email, responder_para ' +
       'FROM instituicao_email_configuracao ' +
       'WHERE id_instituicao = :id_instituicao';
@@ -494,7 +494,7 @@ begin
     Result.SmtpPorta := Qry.FieldByName('smtp_porta').AsInteger;
     Result.Seguranca := Qry.FieldByName('seguranca').AsString;
     Result.Usuario := Qry.FieldByName('usuario').AsString;
-    Result.SenhaConfigurada := Qry.FieldByName('senha_configurada').AsBoolean;
+    Result.SenhaConfigurada := not Qry.FieldByName('senha_criptografada').IsNull;
     if Result.SenhaConfigurada then
       Result.SenhaMascarada := '********' + Qry.FieldByName('senha_hint').AsString;
     Result.RemetenteNome := Qry.FieldByName('remetente_nome').AsString;
@@ -517,12 +517,14 @@ begin
   try
     Qry.Connection := AConn;
     Qry.SQL.Text :=
-      'SELECT senha_criptografada IS NOT NULL AS tem_senha ' +
+      'SELECT senha_criptografada ' +
       'FROM instituicao_email_configuracao ' +
       'WHERE id_instituicao = :id_instituicao';
     Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
     Qry.Open;
-    Result := (not Qry.IsEmpty) and Qry.FieldByName('tem_senha').AsBoolean;
+    Result :=
+      (not Qry.IsEmpty) and
+      (not Qry.FieldByName('senha_criptografada').IsNull);
   finally
     Qry.Free;
   end;
