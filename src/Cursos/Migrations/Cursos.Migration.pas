@@ -62,6 +62,7 @@ type
     class procedure Migration_040_ConfigInstituicaoMidiasWhatsApp(const AConn: TUniConnection); static;
     class procedure Migration_041_PlataformaWhatsAppConfiguracao(const AConn: TUniConnection); static;
     class procedure Migration_042_InstituicaoWhatsAppInstancia(const AConn: TUniConnection); static;
+    class procedure Migration_043_PlataformaAjuda(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -201,6 +202,7 @@ begin
       Migration_040_ConfigInstituicaoMidiasWhatsApp(Conn);
       Migration_041_PlataformaWhatsAppConfiguracao(Conn);
       Migration_042_InstituicaoWhatsAppInstancia(Conn);
+      Migration_043_PlataformaAjuda(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -1856,6 +1858,38 @@ begin
     VERSION,
     DESCRIPTION
   );
+end;
+
+
+class procedure TCursosMigration.Migration_043_PlataformaAjuda(
+  const AConn: TUniConnection);
+const
+  VERSION = '043';
+  DESCRIPTION = 'Conteudo global de ajuda da plataforma';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS plataforma_ajuda (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' url_youtube VARCHAR(1000) NOT NULL,' +
+    ' assunto VARCHAR(180) NOT NULL,' +
+    ' descricao TEXT NOT NULL,' +
+    ' situacao VARCHAR(20) NOT NULL DEFAULT ''ATIVO'',' +
+    ' ordem INT NOT NULL DEFAULT 0,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ' +
+    '   ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' KEY ix_plataforma_ajuda_situacao_ordem (situacao, ordem, id),' +
+    ' CONSTRAINT ck_plataforma_ajuda_situacao ' +
+    '   CHECK (situacao IN (''ATIVO'',''INATIVO''))' +
+    ') ENGINE=InnoDB COMMENT=''Videos e orientacoes globais publicados pelo administrador SaaS.'';'
+  );
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
 
 {$ENDREGION}
