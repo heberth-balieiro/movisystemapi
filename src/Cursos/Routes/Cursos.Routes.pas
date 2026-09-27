@@ -18,6 +18,7 @@ Uses
   PlataformaWhatsApp.Controller,
   PlataformaEmail.Controller,
   PlataformaAjuda.Controller,
+  PublicoRecuperacaoSenha.Controller,
   InstituicaoAuth.Controller,
   InstituicaoDashboard.Controller,
   InstituicaoCurso.Controller,
@@ -58,6 +59,7 @@ begin
   TPlataformaWhatsAppController.Registry;
   TPlataformaEmailController.Registry;
   TPlataformaAjudaController.Registry;
+  TPublicoRecuperacaoSenhaController.Registry;
   TInstituicaoAuthController.Registry;
   TInstituicaoDashboardController.Registry;
   TInstituicaoCursoController.Registry;
