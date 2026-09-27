@@ -135,7 +135,16 @@ class function TInstituicaoUsuarioDAO.MontarWhere(
 ): string;
 begin
   Result :=
-    ' WHERE ui.id_instituicao = :id_instituicao ';
+    ' WHERE ui.id_instituicao = :id_instituicao ' +
+    '   AND (' +
+    '     ui.principal = 1 ' +
+    '     OR EXISTS (' +
+    '       SELECT 1 ' +
+    '       FROM usuario_instituicao_perfil uip_filtro ' +
+    '       WHERE uip_filtro.id_instituicao = ui.id_instituicao ' +
+    '         AND uip_filtro.id_usuario_instituicao = ui.id' +
+    '     )' +
+    '   ) ';
 
   if not Trim(AFiltro.Busca).IsEmpty then
     Result :=
@@ -392,6 +401,15 @@ begin
       'JOIN usuario u ON u.id = ui.id_usuario ' +
       'WHERE ui.id_instituicao = :id_instituicao ' +
       '  AND ui.id = :id_usuario_instituicao ' +
+      '  AND (' +
+      '    ui.principal = 1 ' +
+      '    OR EXISTS (' +
+      '      SELECT 1 ' +
+      '      FROM usuario_instituicao_perfil uip_filtro ' +
+      '      WHERE uip_filtro.id_instituicao = ui.id_instituicao ' +
+      '        AND uip_filtro.id_usuario_instituicao = ui.id' +
+      '    )' +
+      '  ) ' +
       'LIMIT 1';
 
     Qry.ParamByName('id_instituicao').AsLargeInt :=
