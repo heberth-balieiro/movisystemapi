@@ -154,19 +154,20 @@ class function TPublicoRecuperacaoSenhaService.MontarEmail(
 ): string;
 begin
   Result :=
-    '<!doctype html><html><body style="margin:0;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">' +
+    '<!doctype html><html><head><meta charset="UTF-8"></head>' +
+    '<body style="margin:0;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">' +
     '<div style="max-width:620px;margin:0 auto;padding:32px 18px;">' +
     '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:32px;">' +
     '<div style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#2563eb;text-transform:uppercase;">MoviSystem Certifica</div>' +
-    '<h1 style="font-size:24px;margin:14px 0 8px;">Redefinição de senha</h1>' +
-    '<p style="font-size:15px;line-height:1.6;color:#475569;">Olá, ' +
+    '<h1 style="font-size:24px;margin:14px 0 8px;">Redefini&ccedil;&atilde;o de senha</h1>' +
+    '<p style="font-size:15px;line-height:1.6;color:#475569;">Ol&aacute;, ' +
     EscapeHtml(ADados.Nome) + '.</p>' +
-    '<p style="font-size:15px;line-height:1.6;color:#475569;">Recebemos uma solicitação para redefinir sua senha de acesso ao portal de capacitações da ' +
+    '<p style="font-size:15px;line-height:1.6;color:#475569;">Recebemos uma solicita&ccedil;&atilde;o para redefinir sua senha de acesso ao portal de capacita&ccedil;&otilde;es da ' +
     EscapeHtml(ADados.InstituicaoNome) + '.</p>' +
     '<p style="margin:28px 0;"><a href="' + EscapeHtml(ALink) +
     '" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:9px;">Redefinir minha senha</a></p>' +
-    '<p style="font-size:14px;line-height:1.6;color:#64748b;">Este link é pessoal, de uso único e válido por 30 minutos. Se você não solicitou a alteração, ignore esta mensagem.</p>' +
-    '<p style="font-size:12px;line-height:1.5;color:#94a3b8;margin-top:28px;">Por segurança, nunca envie sua senha por e-mail e não compartilhe este link.</p>' +
+    '<p style="font-size:14px;line-height:1.6;color:#64748b;">Este link &eacute; pessoal, de uso &uacute;nico e v&aacute;lido por 30 minutos. Se voc&ecirc; n&atilde;o solicitou a altera&ccedil;&atilde;o, ignore esta mensagem.</p>' +
+    '<p style="font-size:12px;line-height:1.5;color:#94a3b8;margin-top:28px;">Por seguran&ccedil;a, nunca envie sua senha por e-mail e n&atilde;o compartilhe este link.</p>' +
     '</div></div></body></html>';
 end;
 
@@ -247,7 +248,7 @@ begin
     try
       TPlataformaEmailEnvioService.Enviar(
         Dados.Email,
-        'Redefinição de senha - ' + Dados.InstituicaoNome,
+        'Redefini' + #$00E7 + #$00E3 + 'o de senha - ' + Dados.InstituicaoNome,
         MontarEmail(Dados, Link)
       );
     except
