@@ -3,6 +3,7 @@ unit InstituicaoPerfil.Service;
 interface
 
 uses
+  Uni,
   System.Generics.Collections,
   InstituicaoPerfil.Model;
 
@@ -18,7 +19,7 @@ type
     ); static;
 
     class function NormalizarPermissoes(
-      const AConn: TObject;
+      const AConn: TUniConnection;
       const APermissoes: TArray<Int64>
     ): TArray<Int64>; static;
 
@@ -87,7 +88,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Uni,
   App.Config,
   APP.Errors,
   Database.Connection,
@@ -119,15 +119,13 @@ begin
 end;
 
 class function TInstituicaoPerfilService.NormalizarPermissoes(
-  const AConn: TObject;
+  const AConn: TUniConnection;
   const APermissoes: TArray<Int64>
 ): TArray<Int64>;
 var
-  Conn: TUniConnection;
   Lista: TList<Int64>;
   IdPermissao: Int64;
 begin
-  Conn := TUniConnection(AConn);
   Lista := TList<Int64>.Create;
 
   try
@@ -142,7 +140,7 @@ begin
         Continue;
 
       if not TInstituicaoPerfilDAO.ExistePermissaoAtiva(
-        Conn,
+        AConn,
         IdPermissao
       ) then
         TAppErrors.RaiseBadRequest(
