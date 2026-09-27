@@ -126,9 +126,11 @@ begin
     Qry.SQL.Text :=
       'SELECT p.id, p.id_unidade_organizacional, p.id_usuario_instituicao, ' +
       '       p.nome, p.email, p.telefone, p.situacao, ' +
-      '       i.nome AS instituicao_nome, i.slug AS instituicao_slug ' +
+      '       COALESCE(NULLIF(ic.nome_exibicao, ''''), i.nome_fantasia) AS instituicao_nome, ' +
+      '       i.slug AS instituicao_slug ' +
       'FROM participante p ' +
       'JOIN instituicao i ON i.id = p.id_instituicao ' +
+      'LEFT JOIN instituicao_configuracao ic ON ic.id_instituicao = i.id ' +
       'WHERE p.id_instituicao = :id_instituicao AND p.id = :id LIMIT 1';
 
     Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
