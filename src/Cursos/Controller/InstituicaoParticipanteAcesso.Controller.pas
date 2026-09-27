@@ -66,6 +66,7 @@ begin
   Result.AddPair('email', AInfo.Email);
   Result.AddPair('acesso_liberado', TJSONBool.Create(AInfo.AcessoLiberado));
   Result.AddPair('primeiro_acesso_necessario', TJSONBool.Create(AInfo.PrimeiroAcessoNecessario));
+  Result.AddPair('convite_email_enviado', TJSONBool.Create(AInfo.ConviteEmailEnviado));
   Result.AddPair('convite_whatsapp_enviado', TJSONBool.Create(AInfo.ConviteWhatsAppEnviado));
 
   if Trim(AInfo.ConviteMensagem).IsEmpty then
