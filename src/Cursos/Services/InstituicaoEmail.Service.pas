@@ -31,6 +31,7 @@ uses
   Uni,
   IdSMTP,
   IdMessage,
+  IdSSL,
   IdSSLOpenSSL,
   IdExplicitTLSClientServerBase,
   App.Config,
@@ -97,6 +98,12 @@ begin
     SMTP.Password := Senha;
     SMTP.ConnectTimeout := 15000;
     SMTP.ReadTimeout := 20000;
+
+    // Zoho e demais provedores modernos exigem TLS atual.
+    // O Indy pode negociar versões antigas por padrão dependendo das DLLs
+    // do OpenSSL disponíveis no servidor, resultando em "SSL negotiation failed".
+    SSL.SSLOptions.Mode := sslmClient;
+    SSL.SSLOptions.SSLVersions := [sslvTLSv1_2];
 
     if SameText(Config.Seguranca, 'SSL_TLS') then
     begin
