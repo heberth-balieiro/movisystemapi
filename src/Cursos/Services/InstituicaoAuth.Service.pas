@@ -68,17 +68,17 @@ begin
       Dados
     ) then
       TAppErrors.RaiseUnauthorized(
-        'Usuário ou senha inválidos.'
+        'Usu' + #$00E1 + 'rio ou senha inv' + #$00E1 + 'lidos.'
       );
 
     if not SameText(Dados.UsuarioSituacao, 'ATIVO') then
       TAppErrors.RaiseUnauthorized(
-        'Usuário ou senha inválidos.'
+        'Usu' + #$00E1 + 'rio ou senha inv' + #$00E1 + 'lidos.'
       );
 
     if not SameText(Dados.VinculoSituacao, 'ATIVO') then
       TAppErrors.RaiseUnauthorized(
-        'Usuário ou senha inválidos.'
+        'Usu' + #$00E1 + 'rio ou senha inv' + #$00E1 + 'lidos.'
       );
 
     // Durante implantação o administrador precisa conseguir acessar.
@@ -91,7 +91,7 @@ begin
       );
 
     if not VerifySenha(ASenha, Dados.SenhaHash) then
-      TAppErrors.RaiseUnauthorized('Usuário ou senha inválidos.');
+      TAppErrors.RaiseUnauthorized('Usu' + #$00E1 + 'rio ou senha inv' + #$00E1 + 'lidos.');
 
     if Dados.Principal then
       Roles := ['ADMIN_INSTITUICAO']
