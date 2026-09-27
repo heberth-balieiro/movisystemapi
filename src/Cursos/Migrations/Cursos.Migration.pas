@@ -60,6 +60,7 @@ type
     class procedure Migration_038_CreateAuditoriaLog(const AConn: TUniConnection); static;
     class procedure Migration_039_AtualizaInstituicaoAdministracao(const AConn: TUniConnection); static;
     class procedure Migration_040_ConfigInstituicaoMidiasWhatsApp(const AConn: TUniConnection); static;
+    class procedure Migration_041_PlataformaWhatsAppConfiguracao(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -197,6 +198,7 @@ begin
       Migration_038_CreateAuditoriaLog(Conn);
       Migration_039_AtualizaInstituicaoAdministracao(Conn);
       Migration_040_ConfigInstituicaoMidiasWhatsApp(Conn);
+      Migration_041_PlataformaWhatsAppConfiguracao(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -222,8 +224,8 @@ begin
 
   ExecSQL(AConn,'CREATE TABLE IF NOT EXISTS instituicao (                                                                                               '+
     'id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,                                                                                          '+
-    'codigo_publico CHAR(26) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT ''Código público gerado pela API, ex.: ULID.'',       '+
-    'slug VARCHAR(120) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL COMMENT ''Identifica o ambiente público da instituição.'',   '+
+    'codigo_publico CHAR(26) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT ''CÃ³digo pÃºblico gerado pela API, ex.: ULID.'',       '+
+    'slug VARCHAR(120) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL COMMENT ''Identifica o ambiente pÃºblico da instituiÃ§Ã£o.'',   '+
     'razao_social VARCHAR(180) NOT NULL,                                                                                                  '+
     'nome_fantasia VARCHAR(180) NOT NULL,                                                                                                 '+
     'cnpj VARCHAR(14) NULL,                                                                                                               '+
@@ -269,14 +271,14 @@ begin
     'telefone_contato VARCHAR(30) NULL,                                         '+
     'timezone VARCHAR(64) NOT NULL DEFAULT ''America/Sao_Paulo'',                 '+
     'permitir_inscricao_publica TINYINT(1) NOT NULL DEFAULT 0,                  '+
-    'configuracao_publica JSON NULL COMMENT ''Configurações públicas futuras sem exigir nova coluna a cada evolução.'',   '+
+    'configuracao_publica JSON NULL COMMENT ''ConfiguraÃ§Ãµes pÃºblicas futuras sem exigir nova coluna a cada evoluÃ§Ã£o.'',   '+
     'criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),                                                       '+
     'atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),                    '+
     'PRIMARY KEY (id_instituicao),                                                                                      '+
     'CONSTRAINT fk_instituicao_configuracao_instituicao                                                                 '+
     '    FOREIGN KEY (id_instituicao) REFERENCES instituicao(id)                                                        '+
     '    ON UPDATE RESTRICT ON DELETE CASCADE                                                                           '+
-    ') ENGINE=InnoDB COMMENT=''Tema e configurações públicas do tenant.'';');
+    ') ENGINE=InnoDB COMMENT=''Tema e configuraÃ§Ãµes pÃºblicas do tenant.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -330,10 +332,10 @@ begin
     'id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,                                                     '+
     'nome VARCHAR(180) NOT NULL,                                                                     '+
     'email VARCHAR(254) NOT NULL,                                                                    '+
-    'email_normalizado VARCHAR(254) NOT NULL COMMENT ''E-mail em lowercase/trim para autenticação.'',  '+
+    'email_normalizado VARCHAR(254) NOT NULL COMMENT ''E-mail em lowercase/trim para autenticaÃ§Ã£o.'',  '+
     'senha_hash VARCHAR(255) NOT NULL COMMENT ''Hash Argon2id/bcrypt. Nunca armazenar senha pura.'',   '+
     'email_verificado_em DATETIME(3) NULL,                                                           '+
-    'is_super_admin TINYINT(1) NOT NULL DEFAULT 0 COMMENT ''Acesso da administração global do SaaS.'', '+
+    'is_super_admin TINYINT(1) NOT NULL DEFAULT 0 COMMENT ''Acesso da administraÃ§Ã£o global do SaaS.'', '+
     'situacao VARCHAR(20) NOT NULL DEFAULT ''ATIVO'',                                                  '+
     'ultimo_login_em DATETIME(3) NULL,                                                               '+
     'senha_alterada_em DATETIME(3) NULL,                                                             '+
@@ -343,7 +345,7 @@ begin
     'UNIQUE KEY uq_usuario_email_normalizado (email_normalizado),                                    '+
     'KEY ix_usuario_situacao (situacao),                                                             '+
     'CONSTRAINT ck_usuario_situacao CHECK (situacao IN (''ATIVO'',''INATIVO'',''BLOQUEADO''))              '+
-    ') ENGINE=InnoDB COMMENT=''Identidade global de autenticação.'';');
+    ') ENGINE=InnoDB COMMENT=''Identidade global de autenticaÃ§Ã£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -361,7 +363,7 @@ begin
     'id_instituicao BIGINT UNSIGNED NOT NULL,                                         '+
     'id_usuario BIGINT UNSIGNED NOT NULL,                                             '+
     'id_unidade_organizacional BIGINT UNSIGNED NULL,                                  '+
-    'login VARCHAR(80) NULL COMMENT ''Login opcional específico dentro do tenant.'',    '+
+    'login VARCHAR(80) NULL COMMENT ''Login opcional especÃ­fico dentro do tenant.'',    '+
     'situacao VARCHAR(20) NOT NULL DEFAULT ''ATIVO'',                                   '+
     'principal TINYINT(1) NOT NULL DEFAULT 0,                                         '+
     'ultimo_acesso_em DATETIME(3) NULL,                                               '+
@@ -384,7 +386,7 @@ begin
     '    REFERENCES unidade_organizacional(id_instituicao, id)                                          '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT,                                                         '+
     'CONSTRAINT ck_usuario_instituicao_situacao CHECK (situacao IN (''ATIVO'',''INATIVO'',''BLOQUEADO''))     '+
-    ') ENGINE=InnoDB COMMENT=''Vínculo do usuário global com cada instituição.'';');
+    ') ENGINE=InnoDB COMMENT=''VÃ­nculo do usuÃ¡rio global com cada instituiÃ§Ã£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -408,7 +410,7 @@ begin
     'UNIQUE KEY uq_permissao_codigo (codigo),                                   '+
     'KEY ix_permissao_modulo (modulo),                                          '+
     'CONSTRAINT ck_permissao_situacao CHECK (situacao IN (''ATIVA'',''INATIVA'')) '+
-    ') ENGINE=InnoDB COMMENT=''Catálogo global de permissões da aplicação.'';');
+    ') ENGINE=InnoDB COMMENT=''CatÃ¡logo global de permissÃµes da aplicaÃ§Ã£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -437,7 +439,7 @@ begin
     '    FOREIGN KEY (id_instituicao) REFERENCES instituicao(id)             '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT,                              '+
     'CONSTRAINT ck_perfil_situacao CHECK (situacao IN (''ATIVO'',''INATIVO''))   '+
-    ') ENGINE=InnoDB COMMENT=''Perfis configuráveis por instituição.'';');
+    ') ENGINE=InnoDB COMMENT=''Perfis configurÃ¡veis por instituiÃ§Ã£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -464,7 +466,7 @@ begin
     'CONSTRAINT fk_perfil_permissao_permissao                            '+
     '    FOREIGN KEY (id_permissao) REFERENCES permissao(id)             '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT                           '+
-    ') ENGINE=InnoDB COMMENT=''Permissões concedidas a cada perfil.'';');
+    ') ENGINE=InnoDB COMMENT=''PermissÃµes concedidas a cada perfil.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -491,7 +493,7 @@ begin
     '    FOREIGN KEY (id_instituicao, id_perfil)                            '+
     '    REFERENCES perfil(id_instituicao, id)                              '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT                              '+
-    ') ENGINE=InnoDB COMMENT=''Perfis atribuídos ao usuário dentro do tenant.'';');
+    ') ENGINE=InnoDB COMMENT=''Perfis atribuÃ­dos ao usuÃ¡rio dentro do tenant.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -519,7 +521,7 @@ begin
     'CONSTRAINT fk_recuperacao_usuario                                   '+
     '    FOREIGN KEY (id_usuario) REFERENCES usuario(id)                 '+
     '    ON UPDATE RESTRICT ON DELETE CASCADE                            '+
-  ') ENGINE=InnoDB COMMENT=''Tokens de recuperação de senha armazenados somente em forma de hash.'';');
+  ') ENGINE=InnoDB COMMENT=''Tokens de recuperaÃ§Ã£o de senha armazenados somente em forma de hash.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -554,7 +556,7 @@ begin
     'CONSTRAINT fk_usuario_sessao_instituicao             '+
     '    FOREIGN KEY (id_instituicao) REFERENCES instituicao(id)  '+
     '    ON UPDATE RESTRICT ON DELETE CASCADE                      '+
-    ') ENGINE=InnoDB COMMENT=''Sessões/refresh tokens revogáveis. JWT de acesso pode continuar stateless.'';');
+    ') ENGINE=InnoDB COMMENT=''SessÃµes/refresh tokens revogÃ¡veis. JWT de acesso pode continuar stateless.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -576,7 +578,7 @@ begin
     'nome VARCHAR(180) NOT NULL,                                                                                      '+
     'cpf_criptografado VARBINARY(512) NULL COMMENT ''CPF criptografado pela API, preferencialmente AES-GCM.'',          '+
     'cpf_hash_busca CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT ''HMAC-SHA256 do CPF normalizado para busca/uniqueness.'', '+
-    'cpf_mascarado VARCHAR(20) NULL COMMENT ''Versão mascarada própria para grids e logs.'', '+
+    'cpf_mascarado VARCHAR(20) NULL COMMENT ''VersÃ£o mascarada prÃ³pria para grids e logs.'', '+
     'email VARCHAR(254) NULL,                                                              '+
     'matricula VARCHAR(80) NULL,                                                           '+
     'telefone VARCHAR(30) NULL,                                                            '+
@@ -672,7 +674,7 @@ begin
     'nome VARCHAR(120) NOT NULL,                                                                           '+
     'descricao VARCHAR(500) NULL,                                                                          '+
     'template_html LONGTEXT NULL COMMENT ''Opcional: template HTML quando o gerador de PDF utilizar HTML.'', '+
-    'template_configuracao JSON NULL COMMENT ''Posições, fontes, logos, assinaturas e demais parâmetros.'',  '+
+    'template_configuracao JSON NULL COMMENT ''PosiÃ§Ãµes, fontes, logos, assinaturas e demais parÃ¢metros.'',  '+
     'imagem_fundo_url VARCHAR(1000) NULL,                                                                  '+
     'situacao VARCHAR(20) NOT NULL DEFAULT ''ATIVO'',                                                        '+
     'criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),                                          '+
@@ -684,7 +686,7 @@ begin
     '    FOREIGN KEY (id_instituicao) REFERENCES instituicao(id)                                          '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT,                                                           '+
     'CONSTRAINT ck_certificado_modelo_situacao CHECK (situacao IN (''ATIVO'',''INATIVO''))                    '+
-    ') ENGINE=InnoDB COMMENT=''Modelos de certificado configuráveis por instituição.'';');
+    ') ENGINE=InnoDB COMMENT=''Modelos de certificado configurÃ¡veis por instituiÃ§Ã£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -712,7 +714,7 @@ begin
     '    FOREIGN KEY (id_instituicao) REFERENCES instituicao(id)                                      '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT,                                                       '+
     'CONSTRAINT ck_curso_categoria_situacao CHECK (situacao IN (''ATIVA'',''INATIVA''))               '+
-    ') ENGINE=InnoDB COMMENT=''Categorias configuráveis de cursos.'';');
+    ') ENGINE=InnoDB COMMENT=''Categorias configurÃ¡veis de cursos.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -736,7 +738,7 @@ begin
     'descricao TEXT NULL,                                                      '+
     'objetivo TEXT NULL,                                                       '+
     'conteudo_programatico LONGTEXT NULL,                                       '+
-    'carga_horaria_minutos INT UNSIGNED NOT NULL COMMENT ''Armazenar em minutos evita inconsistência com casas decimais.'',  '+
+    'carga_horaria_minutos INT UNSIGNED NOT NULL COMMENT ''Armazenar em minutos evita inconsistÃªncia com casas decimais.'',  '+
     'modalidade VARCHAR(20) NOT NULL,                                         '+
     'imagem_url VARCHAR(1000) NULL,                                           '+
     'permitir_inscricao_publica TINYINT(1) NOT NULL DEFAULT 0,                '+
@@ -766,7 +768,7 @@ begin
     '    ON UPDATE RESTRICT ON DELETE RESTRICT,                             '+
    ' CONSTRAINT ck_curso_modalidade CHECK (modalidade IN (''PRESENCIAL'',''ONLINE'',''HIBRIDO'')), '+
    ' CONSTRAINT ck_curso_situacao CHECK (situacao IN (''RASCUNHO'',''ATIVO'',''INATIVO''))    '+
-  ') ENGINE=InnoDB COMMENT=''Cadastro mestre de cursos/capacitações.'';');
+  ') ENGINE=InnoDB COMMENT=''Cadastro mestre de cursos/capacitaÃ§Ãµes.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -794,7 +796,7 @@ begin
     '    FOREIGN KEY (id_instituicao, id_instrutor)                       '+
     '    REFERENCES instrutor(id_instituicao, id)                         '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT                            '+
-    ') ENGINE=InnoDB COMMENT=''Instrutores padrão associados ao curso.'';');
+    ') ENGINE=InnoDB COMMENT=''Instrutores padrÃ£o associados ao curso.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -826,7 +828,7 @@ begin
     '    REFERENCES curso(id_instituicao, id)                                  '+
     '    ON UPDATE RESTRICT ON DELETE CASCADE,                                 '+
     'CONSTRAINT ck_curso_modulo_situacao CHECK (situacao IN (''ATIVO'',''INATIVO''))   '+
-    ') ENGINE=InnoDB COMMENT=''Módulos opcionais para cursos online/híbridos.'';');
+    ') ENGINE=InnoDB COMMENT=''MÃ³dulos opcionais para cursos online/hÃ­bridos.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -868,7 +870,7 @@ begin
     '    ON UPDATE RESTRICT ON DELETE CASCADE,                                '+
     'CONSTRAINT ck_curso_aula_tipo CHECK (tipo IN (''CONTEUDO'',''VIDEO'',''LINK'',''ARQUIVO'')), '+
     ' CONSTRAINT ck_curso_aula_situacao CHECK (situacao IN (''ATIVA'',''INATIVA'')) '+
-    ') ENGINE=InnoDB COMMENT=''Aulas/conteúdos de módulos.'';');
+    ') ENGINE=InnoDB COMMENT=''Aulas/conteÃºdos de mÃ³dulos.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -937,7 +939,7 @@ begin
     'limite_participantes INT UNSIGNED NULL,                                   '+
     'local VARCHAR(255) NULL,                                                  '+
     'url_online VARCHAR(1000) NULL,                                            '+
-    'carga_horaria_minutos INT UNSIGNED NULL COMMENT ''Quando nulo, utilizar a carga horária do curso.'', '+
+    'carga_horaria_minutos INT UNSIGNED NULL COMMENT ''Quando nulo, utilizar a carga horÃ¡ria do curso.'', '+
     'permitir_inscricao_publica TINYINT(1) NOT NULL DEFAULT 0,                 '+
     'situacao VARCHAR(20) NOT NULL DEFAULT ''PLANEJADA'',                      '+
     'criado_por BIGINT UNSIGNED NULL,                                          '+
@@ -968,7 +970,7 @@ begin
     'CONSTRAINT ck_turma_situacao CHECK (situacao IN (''PLANEJADA'',''INSCRICOES_ABERTAS'',''EM_ANDAMENTO'',''ENCERRADA'',''CANCELADA'')), '+
     'CONSTRAINT ck_turma_periodo CHECK (data_hora_fim >= data_hora_inicio),                                                     '+
     'CONSTRAINT ck_turma_inscricao_periodo CHECK (inscricao_inicio IS NULL OR inscricao_fim IS NULL OR inscricao_fim >= inscricao_inicio)  '+
-    ') ENGINE=InnoDB COMMENT=''Execução concreta de um curso.'';');
+    ') ENGINE=InnoDB COMMENT=''ExecuÃ§Ã£o concreta de um curso.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -996,7 +998,7 @@ begin
     '    FOREIGN KEY (id_instituicao, id_instrutor)                           '+
     '    REFERENCES instrutor(id_instituicao, id)                             '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT                                '+
-    ') ENGINE=InnoDB COMMENT=''Instrutores efetivamente responsáveis pela turma.'';');
+    ') ENGINE=InnoDB COMMENT=''Instrutores efetivamente responsÃ¡veis pela turma.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1033,7 +1035,7 @@ begin
     '    ON UPDATE RESTRICT ON DELETE CASCADE,                                   '+
     'CONSTRAINT ck_turma_encontro_periodo CHECK (data_hora_fim >= data_hora_inicio), '+
     'CONSTRAINT ck_turma_encontro_situacao CHECK (situacao IN (''AGENDADO'',''REALIZADO'',''CANCELADO''))  '+
-    ') ENGINE=InnoDB COMMENT=''Encontros/aulas presenciais ou síncronas para controle de presença.'';');
+    ') ENGINE=InnoDB COMMENT=''Encontros/aulas presenciais ou sÃ­ncronas para controle de presenÃ§a.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1067,7 +1069,7 @@ begin
     '    ON UPDATE RESTRICT ON DELETE CASCADE,                                                          '+
     'CONSTRAINT ck_turma_criterio_tipo CHECK (tipo IN (''PRESENCA_MINIMA'',''AULAS_CONCLUIDAS'',''AVALIACAO'',''ATIVIDADE'',''APROVACAO_MANUAL'',''OUTRO'')),'+
     'CONSTRAINT ck_turma_criterio_situacao CHECK (situacao IN (''ATIVO'',''INATIVO''))    '+
-    ') ENGINE=InnoDB COMMENT=''Regras flexíveis que determinam a conclusão/certificação.'';');
+    ') ENGINE=InnoDB COMMENT=''Regras flexÃ­veis que determinam a conclusÃ£o/certificaÃ§Ã£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1129,7 +1131,7 @@ begin
     'CONSTRAINT ck_inscricao_situacao CHECK (situacao IN (''INSCRITO'',''CONFIRMADO'',''EM_ANDAMENTO'',''CONCLUIDO'',''CANCELADO'',''REPROVADO'',''DESISTENTE'')), '+
     'CONSTRAINT ck_inscricao_presenca CHECK (percentual_presenca IS NULL OR (percentual_presenca >= 0 AND percentual_presenca <= 100)),   '+
     'CONSTRAINT ck_inscricao_progresso CHECK (percentual_progresso >= 0 AND percentual_progresso <= 100)    '+
-    ') ENGINE=InnoDB COMMENT=''Vínculo entre participante e turma.'';');
+    ') ENGINE=InnoDB COMMENT=''VÃ­nculo entre participante e turma.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1162,7 +1164,7 @@ begin
     '    FOREIGN KEY (id_instituicao, alterado_por)                      '+
     '    REFERENCES usuario_instituicao(id_instituicao, id)              '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT                           '+
-    ') ENGINE=InnoDB COMMENT=''Histórico de mudanças de situação da inscrição.'';');
+    ') ENGINE=InnoDB COMMENT=''HistÃ³rico de mudanÃ§as de situaÃ§Ã£o da inscriÃ§Ã£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1205,7 +1207,7 @@ begin
     '    REFERENCES usuario_instituicao(id_instituicao, id)             '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT,                         '+
     'CONSTRAINT ck_presenca_situacao CHECK (situacao IN (''PRESENTE'',''AUSENTE'',''JUSTIFICADA'',''PARCIAL'')) '+
-    ') ENGINE=InnoDB COMMENT=''Presença do inscrito em cada encontro da turma.'';');
+    ') ENGINE=InnoDB COMMENT=''PresenÃ§a do inscrito em cada encontro da turma.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1243,7 +1245,7 @@ begin
     '    REFERENCES curso_aula(id_instituicao, id_curso, id)                                         '+
     '    ON UPDATE RESTRICT ON DELETE CASCADE,                                                       '+
     'CONSTRAINT ck_inscricao_aula_percentual CHECK (percentual >= 0 AND percentual <= 100)           '+
-    ') ENGINE=InnoDB COMMENT=''Progresso em aulas online/híbridas.'';');
+    ') ENGINE=InnoDB COMMENT=''Progresso em aulas online/hÃ­bridas.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1262,8 +1264,8 @@ begin
     'id_turma BIGINT UNSIGNED NOT NULL,                                            '+
     'id_inscricao BIGINT UNSIGNED NOT NULL,                                        '+
     'id_criterio BIGINT UNSIGNED NOT NULL,                                         '+
-    'atendido TINYINT(1) NULL COMMENT ''NULL = ainda não avaliado.'',                '+
-    'resultado JSON NULL COMMENT ''Ex.: percentual obtido, nota, observações.'',     '+
+    'atendido TINYINT(1) NULL COMMENT ''NULL = ainda nÃ£o avaliado.'',                '+
+    'resultado JSON NULL COMMENT ''Ex.: percentual obtido, nota, observaÃ§Ãµes.'',     '+
     'avaliado_por BIGINT UNSIGNED NULL,                                              '+
     'avaliado_em DATETIME(3) NULL,                                                   '+
     'atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),'+
@@ -1281,7 +1283,7 @@ begin
     '    FOREIGN KEY (id_instituicao, avaliado_por)                                 '+
     '    REFERENCES usuario_instituicao(id_instituicao, id)                         '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT                                      '+
-    ') ENGINE=InnoDB COMMENT=''Resultado de cada critério de conclusão para cada inscrição.'';');
+    ') ENGINE=InnoDB COMMENT=''Resultado de cada critÃ©rio de conclusÃ£o para cada inscriÃ§Ã£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1297,7 +1299,7 @@ begin
   ExecSQL(AConn,'CREATE TABLE IF NOT EXISTS certificado_configuracao (    '+
     'id_instituicao BIGINT UNSIGNED NOT NULL,    '+
     'id_modelo_padrao BIGINT UNSIGNED NULL,    '+
-    'prefixo VARCHAR(30) NULL COMMENT ''Ex.: CERT. A API monta o número público.'', '+
+    'prefixo VARCHAR(30) NULL COMMENT ''Ex.: CERT. A API monta o nÃºmero pÃºblico.'', '+
     'usar_ano TINYINT(1) NOT NULL DEFAULT 1,                '+
     'digitos_sequencia TINYINT UNSIGNED NOT NULL DEFAULT 6,  '+
     'texto_validacao VARCHAR(255) NOT NULL DEFAULT ''Valide este certificado'',    '+
@@ -1312,7 +1314,7 @@ begin
     '    REFERENCES certificado_modelo(id_instituicao, id)                    '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT,                               '+
     'CONSTRAINT ck_certificado_digitos CHECK (digitos_sequencia BETWEEN 4 AND 12)   '+
-    ') ENGINE=InnoDB COMMENT=''Configuração de emissão/numeração por instituição.'';');
+    ') ENGINE=InnoDB COMMENT=''ConfiguraÃ§Ã£o de emissÃ£o/numeraÃ§Ã£o por instituiÃ§Ã£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1327,14 +1329,14 @@ begin
 
   ExecSQL(AConn,'CREATE TABLE IF NOT EXISTS certificado_sequencia (                               '+
     'id_instituicao BIGINT UNSIGNED NOT NULL,                                       '+
-    'ano SMALLINT UNSIGNED NOT NULL COMMENT ''Use 0 se a instituição não reiniciar a numeração por ano.'',  '+
+    'ano SMALLINT UNSIGNED NOT NULL COMMENT ''Use 0 se a instituiÃ§Ã£o nÃ£o reiniciar a numeraÃ§Ã£o por ano.'',  '+
     'ultimo_numero BIGINT UNSIGNED NOT NULL DEFAULT 0,                                          '+
     'atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),'+
     'PRIMARY KEY (id_instituicao, ano),                                '+
     'CONSTRAINT fk_certificado_sequencia_instituicao                   '+
     '    FOREIGN KEY (id_instituicao) REFERENCES instituicao(id)       '+
     '    ON UPDATE RESTRICT ON DELETE CASCADE                          '+
-    ') ENGINE=InnoDB COMMENT=''Controle transacional da sequência pública do certificado.'';');
+    ') ENGINE=InnoDB COMMENT=''Controle transacional da sequÃªncia pÃºblica do certificado.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1360,34 +1362,34 @@ begin
     'id_modelo BIGINT UNSIGNED NULL, ' +
 
     'id_certificado_origem BIGINT UNSIGNED NULL ' +
-    'COMMENT ''Preenchido quando for reemissão de outro certificado.'', ' +
+    'COMMENT ''Preenchido quando for reemissÃ£o de outro certificado.'', ' +
 
     'numero_publico VARCHAR(80) ' +
     'CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL, ' +
 
     'codigo_validacao VARCHAR(80) ' +
     'CHARACTER SET ascii COLLATE ascii_bin NOT NULL ' +
-    'COMMENT ''Token público aleatório; mínimo recomendado: 128 bits.'', ' +
+    'COMMENT ''Token pÃºblico aleatÃ³rio; mÃ­nimo recomendado: 128 bits.'', ' +
 
     'versao SMALLINT UNSIGNED NOT NULL DEFAULT 1, ' +
 
     'situacao VARCHAR(20) NOT NULL DEFAULT ''PENDENTE'', ' +
 
-    // Só deve ser preenchido quando o certificado tornar-se válido.
+    // SÃ³ deve ser preenchido quando o certificado tornar-se vÃ¡lido.
     'emitido_em DATETIME(3) NULL, ' +
 
     'cancelado_em DATETIME(3) NULL, ' +
     'motivo_cancelamento VARCHAR(500) NULL, ' +
     'motivo_reemissao VARCHAR(500) NULL, ' +
 
-    // Snapshot histórico do conteúdo certificado.
+    // Snapshot histÃ³rico do conteÃºdo certificado.
     'participante_nome VARCHAR(180) NOT NULL, ' +
     'curso_nome VARCHAR(200) NOT NULL, ' +
     'instituicao_nome VARCHAR(180) NOT NULL, ' +
     'carga_horaria_minutos INT UNSIGNED NOT NULL, ' +
     'data_conclusao DATETIME(3) NOT NULL, ' +
 
-    // Dados físicos/integridade do PDF.
+    // Dados fÃ­sicos/integridade do PDF.
     'pdf_storage_key VARCHAR(500) NULL, ' +
     'pdf_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL, ' +
     'pdf_tamanho_bytes BIGINT UNSIGNED NULL, ' +
@@ -1477,7 +1479,7 @@ begin
     ')) ' +
 
     ') ENGINE=InnoDB ' +
-    'COMMENT=''Certificados emitidos com snapshot histórico e validação pública.'';'
+    'COMMENT=''Certificados emitidos com snapshot histÃ³rico e validaÃ§Ã£o pÃºblica.'';'
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
@@ -1511,7 +1513,7 @@ begin
     '    REFERENCES usuario_instituicao(id_instituicao, id)        '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT,                    '+
     'CONSTRAINT ck_certificado_historico_evento CHECK (evento IN (''EMITIDO'',''PDF_GERADO'',''CANCELADO'',''REEMITIDO'',''ERRO'')) '+
-    ') ENGINE=InnoDB COMMENT=''Rastreabilidade de emissão, cancelamento e reemissão.'';');
+    ') ENGINE=InnoDB COMMENT=''Rastreabilidade de emissÃ£o, cancelamento e reemissÃ£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1526,9 +1528,9 @@ begin
 
   ExecSQL(AConn,'CREATE TABLE IF NOT EXISTS certificado_validacao_acesso (    '+
     'id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,                '+
-    'id_instituicao BIGINT UNSIGNED NULL COMMENT ''Pode ser NULL quando um código inexistente não permite identificar o tenant.'', '+
-    'id_certificado BIGINT UNSIGNED NULL COMMENT ''Pode ser NULL quando um código inexistente for consultado.'','+
-    'codigo_consultado_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT ''Evita logar o token público em claro.'', '+
+    'id_instituicao BIGINT UNSIGNED NULL COMMENT ''Pode ser NULL quando um cÃ³digo inexistente nÃ£o permite identificar o tenant.'', '+
+    'id_certificado BIGINT UNSIGNED NULL COMMENT ''Pode ser NULL quando um cÃ³digo inexistente for consultado.'','+
+    'codigo_consultado_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT ''Evita logar o token pÃºblico em claro.'', '+
     'resultado VARCHAR(30) NOT NULL,                                       '+
     'ip VARCHAR(45) NULL,                                                  '+
     'user_agent VARCHAR(1000) NULL,                                        '+
@@ -1544,7 +1546,7 @@ begin
     '    REFERENCES certificado(id_instituicao, id)                            '+
     '    ON UPDATE RESTRICT ON DELETE SET NULL,                                 '+
     'CONSTRAINT ck_validacao_resultado CHECK (resultado IN (''VALIDO'',''CANCELADO'',''NAO_ENCONTRADO'',''ERRO''))  '+
-    ') ENGINE=InnoDB COMMENT=''Log opcional das validações públicas. Aplicar política de retenção LGPD.'';');
+    ') ENGINE=InnoDB COMMENT=''Log opcional das validaÃ§Ãµes pÃºblicas. Aplicar polÃ­tica de retenÃ§Ã£o LGPD.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1576,7 +1578,7 @@ begin
     '    FOREIGN KEY (id_instituicao) REFERENCES instituicao(id)                       '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT,                                       '+
     'CONSTRAINT ck_termo_tipo CHECK (tipo IN (''PRIVACIDADE'',''USO'',''CONSENTIMENTO'',''OUTRO'')) '+
-    ') ENGINE=InnoDB COMMENT=''Versões de termos e política de privacidade por instituição.'';');
+    ') ENGINE=InnoDB COMMENT=''VersÃµes de termos e polÃ­tica de privacidade por instituiÃ§Ã£o.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1618,7 +1620,7 @@ begin
     '    OR                                                                              '+
     '    (id_participante IS NULL AND id_usuario_instituicao IS NOT NULL)                '+
     '  )                                                                                 '+
-    '    ) ENGINE=InnoDB COMMENT=''Prova de aceite de termos pelo participante ou usuário administrativo.'';');
+    '    ) ENGINE=InnoDB COMMENT=''Prova de aceite de termos pelo participante ou usuÃ¡rio administrativo.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1661,7 +1663,7 @@ begin
     '    ON UPDATE RESTRICT ON DELETE RESTRICT,                                   '+
     'CONSTRAINT ck_lgpd_tipo CHECK (tipo IN (''ACESSO'',''CORRECAO'',''ANONIMIZACAO'',''EXCLUSAO'',''PORTABILIDADE'',''REVOGACAO'',''OUTRO'')),       '+
     'CONSTRAINT ck_lgpd_situacao CHECK (situacao IN (''ABERTA'',''EM_ANALISE'',''ATENDIDA'',''NEGADA'',''CANCELADA''))     '+
-    ') ENGINE=InnoDB COMMENT=''Registro de solicitações relacionadas aos direitos do titular.'';');
+    ') ENGINE=InnoDB COMMENT=''Registro de solicitaÃ§Ãµes relacionadas aos direitos do titular.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1676,7 +1678,7 @@ begin
 
   ExecSQL(AConn,'CREATE TABLE IF NOT EXISTS auditoria_log (                                        '+
     'id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,                                                   '+
-    'id_instituicao BIGINT UNSIGNED NULL COMMENT ''NULL para ações estritamente globais do SaaS.'',  '+
+    'id_instituicao BIGINT UNSIGNED NULL COMMENT ''NULL para aÃ§Ãµes estritamente globais do SaaS.'',  '+
     'id_usuario BIGINT UNSIGNED NULL,                                                             '+
     'id_usuario_instituicao BIGINT UNSIGNED NULL,                                                 '+
     'acao VARCHAR(80) NOT NULL,                                                                   '+
@@ -1688,7 +1690,7 @@ begin
     'user_agent VARCHAR(1000) NULL,                         '+
     'sucesso TINYINT(1) NOT NULL DEFAULT 1,                 '+
     'mensagem VARCHAR(1000) NULL,                           '+
-    'dados_anteriores JSON NULL COMMENT ''Nunca registrar senha, token ou dados pessoais desnecessários.'', '+
+    'dados_anteriores JSON NULL COMMENT ''Nunca registrar senha, token ou dados pessoais desnecessÃ¡rios.'', '+
     'dados_novos JSON NULL COMMENT ''Aplicar redaction antes de persistir.'', '+
     'criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),'+
     'PRIMARY KEY (id),                                           '+
@@ -1706,7 +1708,7 @@ begin
     '    FOREIGN KEY (id_instituicao, id_usuario_instituicao)  '+
     '    REFERENCES usuario_instituicao(id_instituicao, id)      '+
     '    ON UPDATE RESTRICT ON DELETE RESTRICT                     '+
-    ') ENGINE=InnoDB COMMENT=''Auditoria central de operações relevantes.'';');
+    ') ENGINE=InnoDB COMMENT=''Auditoria central de operaÃ§Ãµes relevantes.'';');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
@@ -1717,12 +1719,12 @@ const
   DESCRIPTION = 'Adicionar tipo e situacao implantacao em instituicao';
 begin
   if MigrationExists(AConn, VERSION) then Exit;
-  // Define se o tenant é uma empresa privada ou instituição pública.
+  // Define se o tenant Ã© uma empresa privada ou instituiÃ§Ã£o pÃºblica.
   ExecSQL(AConn,
     'ALTER TABLE instituicao ' +
     'ADD COLUMN tipo VARCHAR(20) NOT NULL DEFAULT ''PRIVADA'' AFTER cnpj'
   );
-  // Inclui a etapa de implantação utilizada no onboarding do cliente.
+  // Inclui a etapa de implantaÃ§Ã£o utilizada no onboarding do cliente.
   ExecSQL(AConn, 'ALTER TABLE instituicao DROP CHECK ck_instituicao_situacao');
   ExecSQL(AConn,
     'ALTER TABLE instituicao ' +
@@ -1776,6 +1778,45 @@ begin
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+
+class procedure TCursosMigration.Migration_041_PlataformaWhatsAppConfiguracao(
+  const AConn: TUniConnection);
+const
+  VERSION = '041';
+  DESCRIPTION = 'Configuracao global da API WhatsApp';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS plataforma_whatsapp_configuracao (' +
+    ' id TINYINT UNSIGNED NOT NULL,' +
+    ' habilitado TINYINT(1) NOT NULL DEFAULT 0,' +
+    ' api_url VARCHAR(1000) NOT NULL DEFAULT '''',' +
+    ' api_key_criptografada VARBINARY(2048) NULL,' +
+    ' api_key_hint VARCHAR(16) NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ' +
+    '   ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' CONSTRAINT ck_plataforma_whatsapp_unico CHECK (id = 1)' +
+    ') ENGINE=InnoDB COMMENT=''Configuracao global da Evolution API para o SaaS.'';'
+  );
+
+  ExecSQL(
+    AConn,
+    'INSERT IGNORE INTO plataforma_whatsapp_configuracao ' +
+    '(id, habilitado, api_url) VALUES (1, 0, '''')'
+  );
+
+  RegisterMigration(
+    AConn,
+    VERSION,
+    DESCRIPTION
+  );
 end;
 
 {$ENDREGION}
