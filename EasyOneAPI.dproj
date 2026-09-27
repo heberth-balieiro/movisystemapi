@@ -467,6 +467,10 @@
         <DCCReference Include="src\Cursos\Dao\PlataformaEmail.DAO.pas"/>
         <DCCReference Include="src\Cursos\Model\PlataformaEmail.Model.pas"/>
         <DCCReference Include="src\Cursos\Services\PlataformaEmail.Service.pas"/>
+        <DCCReference Include="src\Cursos\Services\PlataformaEmailEnvio.Service.pas"/>
+        <DCCReference Include="src\Cursos\Controller\PublicoRecuperacaoSenha.Controller.pas"/>
+        <DCCReference Include="src\Cursos\Dao\PublicoRecuperacaoSenha.DAO.pas"/>
+        <DCCReference Include="src\Cursos\Services\PublicoRecuperacaoSenha.Service.pas"/>
         <DCCReference Include="src\Cursos\Model\InstituicaoWhatsApp.Model.pas"/>
         <DCCReference Include="src\Cursos\Dao\InstituicaoWhatsApp.DAO.pas"/>
         <DCCReference Include="src\Cursos\Services\EvolutionApi.Service.pas"/>
