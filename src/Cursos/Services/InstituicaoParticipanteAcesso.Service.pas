@@ -499,7 +499,8 @@ begin
 
       if PrimeiroAcessoNecessario then
         Result.ConviteMensagem :=
-          'Acesso liberado e convite para criação da senha enviado pelo WhatsApp.'
+          'Acesso liberado e convite para cria' + #$00E7 + #$00E3 +
+          'o da senha enviado pelo WhatsApp.'
       else
         Result.ConviteMensagem :=
           'Acesso liberado e dados de acesso enviados pelo WhatsApp.';
