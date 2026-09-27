@@ -82,41 +82,44 @@ begin
   Result := TObjectList<TPlataformaAjudaModel>.Create(True);
   Qry := TUniQuery.Create(nil);
   try
-    Qry.Connection := AConn;
-    Qry.SQL.Text :=
-      'SELECT id, url_youtube, assunto, descricao, situacao, ordem, criado_em, atualizado_em ' +
-      'FROM plataforma_ajuda WHERE 1=1 ';
+    try
+      Qry.Connection := AConn;
+      Qry.SQL.Text :=
+        'SELECT id, url_youtube, assunto, descricao, situacao, ordem, criado_em, atualizado_em ' +
+        'FROM plataforma_ajuda WHERE 1=1 ';
 
-    if ASomenteAtivos then
-      Qry.SQL.Add('AND situacao = ''ATIVO'' ')
-    else if not Trim(ASituacao).IsEmpty then
-      Qry.SQL.Add('AND situacao = :situacao ');
+      if ASomenteAtivos then
+        Qry.SQL.Add('AND situacao = ''ATIVO'' ')
+      else if not Trim(ASituacao).IsEmpty then
+        Qry.SQL.Add('AND situacao = :situacao ');
 
-    Pesquisa := Trim(APesquisa);
-    if not Pesquisa.IsEmpty then
-      Qry.SQL.Add(
-        'AND (LOWER(assunto) LIKE :pesquisa OR LOWER(descricao) LIKE :pesquisa) '
-      );
+      Pesquisa := Trim(APesquisa);
+      if not Pesquisa.IsEmpty then
+        Qry.SQL.Add(
+          'AND (LOWER(assunto) LIKE :pesquisa OR LOWER(descricao) LIKE :pesquisa) '
+        );
 
-    Qry.SQL.Add('ORDER BY ordem ASC, assunto ASC, id ASC');
+      Qry.SQL.Add('ORDER BY ordem ASC, assunto ASC, id ASC');
 
-    if not ASomenteAtivos and not Trim(ASituacao).IsEmpty then
-      Qry.ParamByName('situacao').AsString := UpperCase(Trim(ASituacao));
+      if not ASomenteAtivos and not Trim(ASituacao).IsEmpty then
+        Qry.ParamByName('situacao').AsString := UpperCase(Trim(ASituacao));
 
-    if not Pesquisa.IsEmpty then
-      Qry.ParamByName('pesquisa').AsString := '%' + LowerCase(Pesquisa) + '%';
+      if not Pesquisa.IsEmpty then
+        Qry.ParamByName('pesquisa').AsString := '%' + LowerCase(Pesquisa) + '%';
 
-    Qry.Open;
-    while not Qry.Eof do
-    begin
-      Result.Add(ModelFromQuery(Qry));
-      Qry.Next;
+      Qry.Open;
+      while not Qry.Eof do
+      begin
+        Result.Add(ModelFromQuery(Qry));
+        Qry.Next;
+      end;
+    except
+      Result.Free;
+      raise;
     end;
-  except
-    Result.Free;
-    raise;
+  finally
+    Qry.Free;
   end;
-  Qry.Free;
 end;
 
 class function TPlataformaAjudaDAO.BuscarPorId(
