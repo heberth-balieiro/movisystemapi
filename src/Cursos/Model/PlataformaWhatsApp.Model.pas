@@ -15,7 +15,7 @@ type
   TPlataformaWhatsAppConfig = record
     Habilitado: Boolean;
     ApiUrl: string;
-    ApiKeyConfigurada: Boolean;
+    ApiKeyConfigurada: String;
     ApiKeyMascarada: string;
     function ToJSON: TJSONObject;
   end;
@@ -37,11 +37,10 @@ begin
   );
 
   Result.AddPair(
-    'api_key_configurada',
-    TJSONBool.Create(ApiKeyConfigurada)
+    'api_key_configurada',ApiKeyConfigurada
   );
 
-  if ApiKeyConfigurada then
+  if ApiKeyConfigurada <>'' then
     Result.AddPair(
       'api_key_mascarada',
       ApiKeyMascarada

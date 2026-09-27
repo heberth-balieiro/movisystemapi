@@ -1,4 +1,4 @@
-unit PlataformaWhatsApp.DAO;
+﻿unit PlataformaWhatsApp.DAO;
 
 interface
 
@@ -75,9 +75,9 @@ begin
       Qry.FieldByName('api_url').AsString;
 
     Result.ApiKeyConfigurada :=
-      Qry.FieldByName('api_key_configurada').AsBoolean;
+      Qry.FieldByName('api_key_configurada').asstring;
 
-    if Result.ApiKeyConfigurada then
+    if Result.ApiKeyConfigurada <> '' then
       Result.ApiKeyMascarada :=
         '********' +
         Qry.FieldByName('api_key_hint').AsString;
