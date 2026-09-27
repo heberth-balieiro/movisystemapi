@@ -1,4 +1,4 @@
-program EasyOneAPI;
+﻿program EasyOneAPI;
 
 {API nova para windows e linux}
 
