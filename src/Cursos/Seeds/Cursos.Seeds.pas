@@ -127,6 +127,9 @@ begin
       GarantirPermissao(Conn, 'configuracao.visualizar', 'CONFIGURACAO', 'Visualizar configura' + #$00E7 + #$00F5 + 'es da institui' + #$00E7 + #$00E3 + 'o.');
       GarantirPermissao(Conn, 'configuracao.editar', 'CONFIGURACAO', 'Editar configura' + #$00E7 + #$00F5 + 'es da institui' + #$00E7 + #$00E3 + 'o.');
 
+      GarantirPermissao(Conn, 'whatsapp.visualizar', 'WHATSAPP', 'Visualizar conex' + #$00E3 + 'o WhatsApp.');
+      GarantirPermissao(Conn, 'whatsapp.gerenciar', 'WHATSAPP', 'Criar inst' + #$00E2 + 'ncia e conectar WhatsApp.');
+
       TInstituicaoPermissaoDAO.GarantirPerfisAdministradores(
         Conn
       );
