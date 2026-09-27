@@ -16,6 +16,9 @@ type
     TemUsuarioInstituicao: Boolean;
     Nome: string;
     Email: string;
+    Telefone: string;
+    InstituicaoNome: string;
+    InstituicaoSlug: string;
     Situacao: string;
   end;
 
@@ -25,6 +28,7 @@ type
     Nome: string;
     Email: string;
     Situacao: string;
+    TemSenhaDefinida: Boolean;
   end;
 
   TInstituicaoParticipanteAcessoDAO = class
@@ -47,6 +51,18 @@ type
             AEmailNormalizado,
             ASenhaHash: string
     ): Int64; static;
+
+    class procedure RevogarTokensSenha(
+      const AConn: TUniConnection;
+      const AIdUsuario: Int64
+    ); static;
+
+    class procedure CriarTokenSenha(
+      const AConn: TUniConnection;
+      const AIdUsuario: Int64;
+      const AToken: string;
+      const AExpiraHoras: Integer
+    ); static;
 
     class function BuscarUsuarioInstituicao(
       const AConn: TUniConnection;
@@ -108,9 +124,12 @@ begin
   try
     Qry.Connection := AConn;
     Qry.SQL.Text :=
-      'SELECT id, id_unidade_organizacional, id_usuario_instituicao, nome, email, situacao ' +
-      'FROM participante ' +
-      'WHERE id_instituicao = :id_instituicao AND id = :id LIMIT 1';
+      'SELECT p.id, p.id_unidade_organizacional, p.id_usuario_instituicao, ' +
+      '       p.nome, p.email, p.telefone, p.situacao, ' +
+      '       i.nome AS instituicao_nome, i.slug AS instituicao_slug ' +
+      'FROM participante p ' +
+      'JOIN instituicao i ON i.id = p.id_instituicao ' +
+      'WHERE p.id_instituicao = :id_instituicao AND p.id = :id LIMIT 1';
 
     Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
     Qry.ParamByName('id').AsLargeInt := AIdParticipante;
@@ -131,6 +150,9 @@ begin
 
     Result.Nome := Qry.FieldByName('nome').AsString;
     Result.Email := Qry.FieldByName('email').AsString;
+    Result.Telefone := Qry.FieldByName('telefone').AsString;
+    Result.InstituicaoNome := Qry.FieldByName('instituicao_nome').AsString;
+    Result.InstituicaoSlug := Qry.FieldByName('instituicao_slug').AsString;
     Result.Situacao := Qry.FieldByName('situacao').AsString;
   finally
     Qry.Free;
@@ -150,7 +172,7 @@ begin
   try
     Qry.Connection := AConn;
     Qry.SQL.Text :=
-      'SELECT id, nome, email, situacao ' +
+      'SELECT id, nome, email, situacao, senha_alterada_em ' +
       'FROM usuario WHERE email_normalizado = :email LIMIT 1';
 
     Qry.ParamByName('email').AsString := AEmailNormalizado;
@@ -164,6 +186,8 @@ begin
     Result.Nome           := Qry.FieldByName('nome').AsString;
     Result.Email          := Qry.FieldByName('email').AsString;
     Result.Situacao       := Qry.FieldByName('situacao').AsString;
+    Result.TemSenhaDefinida :=
+      not Qry.FieldByName('senha_alterada_em').IsNull;
   finally
     Qry.Free;
   end;
@@ -185,7 +209,7 @@ begin
     Qry.SQL.Text :=
       'INSERT INTO usuario ' +
       '(nome, email, email_normalizado, senha_hash, is_super_admin, situacao, senha_alterada_em) ' +
-      'VALUES (:nome, :email, :email_normalizado, :senha_hash, 0, ''ATIVO'', CURRENT_TIMESTAMP(3))';
+      'VALUES (:nome, :email, :email_normalizado, :senha_hash, 0, ''ATIVO'', NULL)';
 
     Qry.ParamByName('nome').AsString := ANome;
     Qry.ParamByName('email').AsString := AEmail;
@@ -196,6 +220,65 @@ begin
     Qry.SQL.Text := 'SELECT LAST_INSERT_ID() AS id';
     Qry.Open;
     Result := Qry.FieldByName('id').AsLargeInt;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class procedure TInstituicaoParticipanteAcessoDAO.RevogarTokensSenha(
+  const AConn: TUniConnection;
+  const AIdUsuario: Int64
+);
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'UPDATE usuario_recuperacao_senha ' +
+      'SET revogado_em = CURRENT_TIMESTAMP(3) ' +
+      'WHERE id_usuario = :id_usuario ' +
+      '  AND utilizado_em IS NULL ' +
+      '  AND revogado_em IS NULL';
+
+    Qry.ParamByName('id_usuario').AsLargeInt :=
+      AIdUsuario;
+
+    Qry.ExecSQL;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class procedure TInstituicaoParticipanteAcessoDAO.CriarTokenSenha(
+  const AConn: TUniConnection;
+  const AIdUsuario: Int64;
+  const AToken: string;
+  const AExpiraHoras: Integer
+);
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'INSERT INTO usuario_recuperacao_senha ' +
+      '(id_usuario, token_hash, expira_em) ' +
+      'VALUES (:id_usuario, SHA2(:token, 256), ' +
+      'DATE_ADD(CURRENT_TIMESTAMP(3), INTERVAL :horas HOUR))';
+
+    Qry.ParamByName('id_usuario').AsLargeInt :=
+      AIdUsuario;
+
+    Qry.ParamByName('token').AsString :=
+      AToken;
+
+    Qry.ParamByName('horas').AsInteger :=
+      AExpiraHoras;
+
+    Qry.ExecSQL;
   finally
     Qry.Free;
   end;
