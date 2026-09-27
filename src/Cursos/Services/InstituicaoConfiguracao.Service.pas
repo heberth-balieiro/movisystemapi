@@ -91,7 +91,8 @@ uses
   App.JWT,
   Database.Connection,
   Certifica.Secrets,
-  InstituicaoConfiguracao.DAO;
+  InstituicaoConfiguracao.DAO,
+  InstituicaoPermissao.Service;
 
 const
   MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -100,43 +101,12 @@ class procedure TInstituicaoConfiguracaoService.ValidarTenant(
   const AIdInstituicao,
         AIdUsuarioInstituicao: Int64
 );
-var
-  Config: TAppApiConfig;
-  Conn: TUniConnection;
 begin
-  if AIdInstituicao <= 0 then
-    TAppErrors.RaiseUnauthorized(
-      'Instituicao nao identificada.'
-    );
-
-  if AIdUsuarioInstituicao <= 0 then
-    TAppErrors.RaiseUnauthorized(
-      'Usuario da instituicao nao identificado.'
-    );
-
-  Config :=
-    TAppConfig.Carregar(
-      ExtractFilePath(ParamStr(0)) +
-      'Config.ini'
-    );
-
-  Conn :=
-    TDatabaseConnection.NewConnection(
-      Config.Database
-    );
-  try
-    if not TInstituicaoConfiguracaoDAO.UsuarioTemPermissao(
-      Conn,
-      AIdInstituicao,
-      AIdUsuarioInstituicao,
-      'configuracao.editar'
-    ) then
-      TAppErrors.RaiseUnauthorized(
-        'Usuario sem permissao para alterar configuracoes.'
-      );
-  finally
-    Conn.Free;
-  end;
+  TInstituicaoPermissaoService.Exigir(
+    AIdInstituicao,
+    AIdUsuarioInstituicao,
+    'configuracao.editar'
+  );
 end;
 
 class function TInstituicaoConfiguracaoService.SomenteDigitos(
