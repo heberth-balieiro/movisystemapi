@@ -318,7 +318,9 @@ uses
   InstituicaoConfiguracao.DAO in 'src\Cursos\Dao\InstituicaoConfiguracao.DAO.pas',
   InstituicaoConfiguracao.Model in 'src\Cursos\Model\InstituicaoConfiguracao.Model.pas',
   Certifica.Secrets in 'src\Cursos\Security\Certifica.Secrets.pas',
-  InstituicaoConfiguracao.Service in 'src\Cursos\Services\InstituicaoConfiguracao.Service.pas';
+  InstituicaoConfiguracao.Service in 'src\Cursos\Services\InstituicaoConfiguracao.Service.pas',
+  InstituicaoPermissao.DAO in 'src\Cursos\Dao\InstituicaoPermissao.DAO.pas',
+  InstituicaoPermissao.Service in 'src\Cursos\Services\InstituicaoPermissao.Service.pas';
 
 var
   LConfig       : TAppApiConfig;
@@ -326,7 +328,7 @@ var
   LDatabaseCfg  : TAppDatabaseConfig;
 begin
   try
-    // Carrega o arquivo Config.ini na mesma pasta do execut·vel
+    // Carrega o arquivo Config.ini na mesma pasta do execut√°vel
     LConfig := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
 
     case LConfig.Produto of
@@ -361,10 +363,10 @@ begin
 
           //Eleicao
           TEleicaoMigration.Run(LConfig.Database);
-          Writeln('Migrations do EleiÁ„o executadas com sucesso.');
+          Writeln('Migrations do Elei√ß√£o executadas com sucesso.');
 
           TEleicaoSeeds.Run;
-          Writeln('Seeds do EleiÁ„o executadas com sucesso.');
+          Writeln('Seeds do Elei√ß√£o executadas com sucesso.');
 
         end;
       {$ENDREGION}
@@ -372,9 +374,9 @@ begin
       {$REGION 'MoviSystem'}
       apMoviSystem:
         begin
-          // Cria uma configuraÁ„o tempor·ria sem banco selecionado.
+          // Cria uma configura√ß√£o tempor√°ria sem banco selecionado.
           // Assim conseguimos conectar no servidor MySQL mesmo quando
-          // o banco configurado ainda n„o existe.
+          // o banco configurado ainda n√£o existe.
           LDatabaseCfg          := LConfig.Database;
           LDatabaseCfg.Database := '';
           LConn := TDatabaseConnection.NewConnection(LDatabaseCfg);
@@ -391,7 +393,10 @@ begin
 
           //Roda o seeds com dados inicial
           TCertificaSeeds.Run;
-          Writeln('Seeds do MoviSystem executadas com sucesso.');
+          Writeln('Seed do administrador MoviSystem executado com sucesso.');
+
+          TCursosSeeds.Run;
+          Writeln('Seeds de permissoes e perfis executadas com sucesso.');
 
         end;
       {$ENDREGION}
@@ -422,7 +427,7 @@ begin
           Writeln('Rotas do EasyOne registradas com sucesso.');
 
           TEleicaoRoutes.Registry;
-          Writeln('Rotas do EleiÁ„o registradas com sucesso.');
+          Writeln('Rotas do Elei√ß√£o registradas com sucesso.');
         end;
       {$ENDREGION}
 
