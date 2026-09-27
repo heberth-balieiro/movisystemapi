@@ -337,7 +337,10 @@ uses
   InstituicaoWhatsApp.DAO in 'src\Cursos\Dao\InstituicaoWhatsApp.DAO.pas',
   EvolutionApi.Service in 'src\Cursos\Services\EvolutionApi.Service.pas',
   InstituicaoWhatsApp.Service in 'src\Cursos\Services\InstituicaoWhatsApp.Service.pas',
-  InstituicaoWhatsApp.Controller in 'src\Cursos\Controller\InstituicaoWhatsApp.Controller.pas';
+  InstituicaoWhatsApp.Controller in 'src\Cursos\Controller\InstituicaoWhatsApp.Controller.pas',
+  PublicoPrimeiroAcesso.DAO in 'src\Cursos\Dao\PublicoPrimeiroAcesso.DAO.pas',
+  PublicoPrimeiroAcesso.Service in 'src\Cursos\Services\PublicoPrimeiroAcesso.Service.pas',
+  PublicoPrimeiroAcesso.Controller in 'src\Cursos\Controller\PublicoPrimeiroAcesso.Controller.pas';
 
 var
   LConfig       : TAppApiConfig;
