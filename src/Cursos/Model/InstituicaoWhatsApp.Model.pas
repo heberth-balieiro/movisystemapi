@@ -27,6 +27,9 @@ type
 
 implementation
 
+uses
+  System.SysUtils;
+
 function TInstituicaoWhatsAppStatus.ToJSON: TJSONObject;
 begin
   Result := TJSONObject.Create;
