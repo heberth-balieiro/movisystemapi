@@ -66,6 +66,7 @@ type
     class procedure Migration_044_InstituicaoEmailConfiguracao(const AConn: TUniConnection); static;
     class procedure Migration_045_PlataformaEmailConfiguracao(const AConn: TUniConnection); static;
     class procedure Migration_046_RecuperacaoSenhaTenantTipo(const AConn: TUniConnection); static;
+    class procedure Migration_047_CanaisEnvioAcesso(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -209,6 +210,7 @@ begin
       Migration_044_InstituicaoEmailConfiguracao(Conn);
       Migration_045_PlataformaEmailConfiguracao(Conn);
       Migration_046_RecuperacaoSenhaTenantTipo(Conn);
+      Migration_047_CanaisEnvioAcesso(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2010,6 +2012,32 @@ begin
     'ADD CONSTRAINT fk_recuperacao_instituicao ' +
     'FOREIGN KEY (id_instituicao) REFERENCES instituicao(id) ' +
     'ON UPDATE RESTRICT ON DELETE CASCADE'
+  );
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+
+
+class procedure TCursosMigration.Migration_047_CanaisEnvioAcesso(
+  const AConn: TUniConnection);
+const
+  VERSION = '047';
+  DESCRIPTION = 'Canais de envio do acesso ao participante';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'ALTER TABLE instituicao_configuracao ' +
+    'ADD COLUMN acesso_envio_email TINYINT(1) NOT NULL DEFAULT 0 AFTER cor_texto'
+  );
+
+  ExecSQL(
+    AConn,
+    'ALTER TABLE instituicao_configuracao ' +
+    'ADD COLUMN acesso_envio_whatsapp TINYINT(1) NOT NULL DEFAULT 1 AFTER acesso_envio_email'
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
