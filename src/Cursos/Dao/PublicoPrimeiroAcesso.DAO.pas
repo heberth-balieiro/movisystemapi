@@ -71,6 +71,7 @@ begin
       '  ON p.id_instituicao = ui.id_instituicao ' +
       ' AND p.id_usuario_instituicao = ui.id ' +
       'WHERE i.slug = :slug ' +
+      '  AND r.tipo = ''PRIMEIRO_ACESSO'' ' +
       '  AND r.token_hash = SHA2(:token, 256) ' +
       '  AND r.utilizado_em IS NULL ' +
       '  AND r.revogado_em IS NULL ' +
