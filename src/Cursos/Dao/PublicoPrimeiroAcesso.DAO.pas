@@ -60,12 +60,13 @@ begin
       'r.id AS id_token, ' +
       'u.id AS id_usuario, ' +
       'u.nome, u.email, ' +
-      'i.nome AS instituicao_nome, ' +
+      'COALESCE(NULLIF(ic.nome_exibicao, ''''), i.nome_fantasia) AS instituicao_nome, ' +
       'i.slug AS instituicao_slug ' +
       'FROM usuario_recuperacao_senha r ' +
       'JOIN usuario u ON u.id = r.id_usuario ' +
       'JOIN usuario_instituicao ui ON ui.id_usuario = u.id ' +
       'JOIN instituicao i ON i.id = ui.id_instituicao ' +
+      'LEFT JOIN instituicao_configuracao ic ON ic.id_instituicao = i.id ' +
       'JOIN participante p ' +
       '  ON p.id_instituicao = ui.id_instituicao ' +
       ' AND p.id_usuario_instituicao = ui.id ' +
