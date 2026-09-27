@@ -63,6 +63,7 @@ type
     class procedure Migration_041_PlataformaWhatsAppConfiguracao(const AConn: TUniConnection); static;
     class procedure Migration_042_InstituicaoWhatsAppInstancia(const AConn: TUniConnection); static;
     class procedure Migration_043_PlataformaAjuda(const AConn: TUniConnection); static;
+    class procedure Migration_044_InstituicaoEmailConfiguracao(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -203,6 +204,7 @@ begin
       Migration_041_PlataformaWhatsAppConfiguracao(Conn);
       Migration_042_InstituicaoWhatsAppInstancia(Conn);
       Migration_043_PlataformaAjuda(Conn);
+      Migration_044_InstituicaoEmailConfiguracao(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -1887,6 +1889,45 @@ begin
     ' CONSTRAINT ck_plataforma_ajuda_situacao ' +
     '   CHECK (situacao IN (''ATIVO'',''INATIVO''))' +
     ') ENGINE=InnoDB COMMENT=''Videos e orientacoes globais publicados pelo administrador SaaS.'';'
+  );
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+
+class procedure TCursosMigration.Migration_044_InstituicaoEmailConfiguracao(
+  const AConn: TUniConnection);
+const
+  VERSION = '044';
+  DESCRIPTION = 'Configuracao SMTP por instituicao';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS instituicao_email_configuracao (' +
+    ' id_instituicao BIGINT UNSIGNED NOT NULL,' +
+    ' ativo TINYINT(1) NOT NULL DEFAULT 0,' +
+    ' smtp_host VARCHAR(255) NOT NULL DEFAULT '''',' +
+    ' smtp_porta SMALLINT UNSIGNED NOT NULL DEFAULT 587,' +
+    ' seguranca VARCHAR(20) NOT NULL DEFAULT ''STARTTLS'',' +
+    ' usuario VARCHAR(254) NOT NULL DEFAULT '''',' +
+    ' senha_criptografada VARBINARY(4096) NULL,' +
+    ' senha_hint VARCHAR(16) NULL,' +
+    ' remetente_nome VARCHAR(180) NOT NULL DEFAULT '''',' +
+    ' remetente_email VARCHAR(254) NOT NULL DEFAULT '''',' +
+    ' responder_para VARCHAR(254) NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ' +
+    '   ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id_instituicao),' +
+    ' CONSTRAINT fk_instituicao_email_config_instituicao ' +
+    '   FOREIGN KEY (id_instituicao) REFERENCES instituicao(id) ' +
+    '   ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT ck_instituicao_email_seguranca ' +
+    '   CHECK (seguranca IN (''STARTTLS'',''SSL_TLS'',''NONE''))' +
+    ') ENGINE=InnoDB COMMENT=''Configuracao SMTP isolada por instituicao.'';'
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);

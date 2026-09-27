@@ -41,7 +41,7 @@ begin
   begin
     TAppResponse.Forbidden(
       Res,
-      'Token sem contexto de instituiÁ„o.'
+      'Token sem contexto de institui√ß√£o.'
     );
     Exit;
   end;
@@ -113,7 +113,7 @@ begin
 
   if Host.IsEmpty then
     TAppErrors.RaiseBadRequest(
-      'N„o foi possÌvel identificar o host da API.'
+      'N√£o foi poss√≠vel identificar o host da API.'
     );
 
   Result :=
@@ -124,7 +124,7 @@ end;
 
 class procedure TInstituicaoConfiguracaoController.Registry;
 begin
-  {$REGION 'Atualizar InstituiÁ„o'}
+  {$REGION 'Atualizar Institui√ß√£o'}
 
   THorse.Put(
     '/v1/certifica/configuracoes/instituicao',
@@ -153,7 +153,7 @@ begin
         begin
           TAppResponse.Forbidden(
             Res,
-            'Token sem vÌnculo de usu·rio com a instituiÁ„o.'
+            'Token sem v√≠nculo de usu√°rio com a institui√ß√£o.'
           );
           Exit;
         end;
@@ -168,7 +168,7 @@ begin
           JsonValue.Free;
 
           TAppErrors.RaiseBadRequest(
-            'JSON inv·lido.'
+            'JSON inv√°lido.'
           );
         end;
 
@@ -236,7 +236,7 @@ begin
         TAppResponse.Ok(
           Res,
           Retorno,
-          'Dados da instituiÁ„o atualizados com sucesso.'
+          'Dados da institui√ß√£o atualizados com sucesso.'
         );
 
       except
@@ -278,14 +278,14 @@ begin
         begin
           TAppResponse.Forbidden(
             Res,
-            'Token sem vÌnculo de usu·rio com a instituiÁ„o.'
+            'Token sem v√≠nculo de usu√°rio com a institui√ß√£o.'
           );
           Exit;
         end;
 
         if Req.ContentFields.Field('arquivo') = nil then
           TAppErrors.RaiseBadRequest(
-            'Arquivo n„o informado.'
+            'Arquivo n√£o informado.'
           );
 
         Stream :=
@@ -295,7 +295,7 @@ begin
 
         if Stream = nil then
           TAppErrors.RaiseBadRequest(
-            'Arquivo inv·lido.'
+            'Arquivo inv√°lido.'
           );
 
         Retorno :=
@@ -352,14 +352,14 @@ begin
         begin
           TAppResponse.Forbidden(
             Res,
-            'Token sem vÌnculo de usu·rio com a instituiÁ„o.'
+            'Token sem v√≠nculo de usu√°rio com a institui√ß√£o.'
           );
           Exit;
         end;
 
         if Req.ContentFields.Field('arquivo') = nil then
           TAppErrors.RaiseBadRequest(
-            'Arquivo n„o informado.'
+            'Arquivo n√£o informado.'
           );
 
         Stream :=
@@ -369,7 +369,7 @@ begin
 
         if Stream = nil then
           TAppErrors.RaiseBadRequest(
-            'Arquivo inv·lido.'
+            'Arquivo inv√°lido.'
           );
 
         Retorno :=
@@ -399,7 +399,107 @@ begin
 
   {$ENDREGION}
 
-  {$REGION 'Buscar ConfiguraÁ„o WhatsApp'}
+
+  {$REGION 'Configura√ß√£o de E-mail'}
+
+  THorse.Get(
+    '/v1/certifica/configuracoes/email',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Config: TInstituicaoEmailConfig;
+    begin
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then
+          Exit;
+
+        if Claims.IdUsuarioInstituicao <= 0 then
+        begin
+          TAppResponse.Forbidden(Res, 'Token sem v√≠nculo de usu√°rio com a institui√ß√£o.');
+          Exit;
+        end;
+
+        Config := TInstituicaoConfiguracaoService.BuscarEmail(
+          Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao
+        );
+
+        TAppResponse.Ok(
+          Res,
+          Config.ToJSON,
+          'Configura√ß√£o de e-mail carregada com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  THorse.Put(
+    '/v1/certifica/configuracoes/email',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      JsonValue: TJSONValue;
+      Body: TJSONObject;
+      Dados: TInstituicaoEmailInput;
+      Config: TInstituicaoEmailConfig;
+    begin
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then
+          Exit;
+
+        if Claims.IdUsuarioInstituicao <= 0 then
+        begin
+          TAppResponse.Forbidden(Res, 'Token sem v√≠nculo de usu√°rio com a institui√ß√£o.');
+          Exit;
+        end;
+
+        JsonValue := TJSONObject.ParseJSONValue(Req.Body);
+        if not (JsonValue is TJSONObject) then
+        begin
+          JsonValue.Free;
+          TAppErrors.RaiseBadRequest('JSON inv√°lido.');
+        end;
+
+        Body := JsonValue as TJSONObject;
+        try
+          Dados := Default(TInstituicaoEmailInput);
+          Dados.Ativo := JsonBoolean(Body, 'ativo', False);
+          Dados.SmtpHost := JsonString(Body, 'smtp_host');
+          Dados.SmtpPorta := StrToIntDef(JsonString(Body, 'smtp_porta', '587'), 587);
+          Dados.Seguranca := JsonString(Body, 'seguranca', 'STARTTLS');
+          Dados.Usuario := JsonString(Body, 'usuario');
+          Dados.Senha := JsonString(Body, 'senha');
+          Dados.RemetenteNome := JsonString(Body, 'remetente_nome');
+          Dados.RemetenteEmail := JsonString(Body, 'remetente_email');
+          Dados.ResponderPara := JsonString(Body, 'responder_para');
+        finally
+          Body.Free;
+        end;
+
+        Config := TInstituicaoConfiguracaoService.AtualizarEmail(
+          Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao,
+          Dados
+        );
+
+        TAppResponse.Ok(
+          Res,
+          Config.ToJSON,
+          'Configura√ß√£o de e-mail atualizada com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  {$ENDREGION}
+
+  {$REGION 'Buscar Configura√ß√£o WhatsApp'}
 
   THorse.Get(
     '/v1/certifica/configuracoes/whatsapp',
@@ -425,7 +525,7 @@ begin
         begin
           TAppResponse.Forbidden(
             Res,
-            'Token sem vÌnculo de usu·rio com a instituiÁ„o.'
+            'Token sem v√≠nculo de usu√°rio com a institui√ß√£o.'
           );
           Exit;
         end;
@@ -439,7 +539,7 @@ begin
         TAppResponse.Ok(
           Res,
           Config.ToJSON,
-          'ConfiguraÁ„o do WhatsApp carregada com sucesso.'
+          'Configura√ß√£o do WhatsApp carregada com sucesso.'
         );
 
       except
@@ -454,7 +554,7 @@ begin
 
   {$ENDREGION}
 
-  {$REGION 'Atualizar ConfiguraÁ„o WhatsApp'}
+  {$REGION 'Atualizar Configura√ß√£o WhatsApp'}
 
   THorse.Put(
     '/v1/certifica/configuracoes/whatsapp',
@@ -483,7 +583,7 @@ begin
         begin
           TAppResponse.Forbidden(
             Res,
-            'Token sem vÌnculo de usu·rio com a instituiÁ„o.'
+            'Token sem v√≠nculo de usu√°rio com a institui√ß√£o.'
           );
           Exit;
         end;
@@ -498,7 +598,7 @@ begin
           JsonValue.Free;
 
           TAppErrors.RaiseBadRequest(
-            'JSON inv·lido.'
+            'JSON inv√°lido.'
           );
         end;
 
@@ -543,7 +643,7 @@ begin
         TAppResponse.Ok(
           Res,
           Config.ToJSON,
-          'IntegraÁ„o com WhatsApp atualizada com sucesso.'
+          'Integra√ß√£o com WhatsApp atualizada com sucesso.'
         );
 
       except
@@ -558,7 +658,7 @@ begin
 
   {$ENDREGION}
 
-  {$REGION 'MÌdia P˙blica'}
+  {$REGION 'M√≠dia P√∫blica'}
 
   THorse.Get(
     '/v1/certifica/publico/midias/instituicoes/:id/:tipo/:arquivo',
@@ -581,7 +681,7 @@ begin
 
         if IdInstituicao <= 0 then
           TAppErrors.RaiseBadRequest(
-            'InstituiÁ„o inv·lida.'
+            'Institui√ß√£o inv√°lida.'
           );
 
         Caminho :=

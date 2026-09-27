@@ -57,6 +57,23 @@ type
       const AStream: TStream
     ): TJSONObject; static;
 
+    class function BuscarEmail(
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64
+    ): TInstituicaoEmailConfig; static;
+
+    class function AtualizarEmail(
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64;
+      const ADados: TInstituicaoEmailInput
+    ): TInstituicaoEmailConfig; static;
+
+    class function ObterEmailConfigurado(
+      const AIdInstituicao: Int64;
+      out AConfig: TInstituicaoEmailConfig;
+      out ASenha: string
+    ): Boolean; static;
+
     class function BuscarWhatsApp(
       const AIdInstituicao,
             AIdUsuarioInstituicao: Int64
@@ -721,5 +738,170 @@ begin
   end;
 end;
 
-end.
 
+class function EmailValido(const AEmail: string): Boolean;
+var
+  P: Integer;
+begin
+  P := Pos('@', Trim(AEmail));
+  Result := (P > 1) and (Pos('.', Copy(Trim(AEmail), P + 2, MaxInt)) > 0);
+end;
+
+class function TInstituicaoConfiguracaoService.BuscarEmail(
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64
+): TInstituicaoEmailConfig;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  ValidarTenant(AIdInstituicao, AIdUsuarioInstituicao);
+
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Result := TInstituicaoConfiguracaoDAO.BuscarEmail(Conn, AIdInstituicao);
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TInstituicaoConfiguracaoService.AtualizarEmail(
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64;
+  const ADados: TInstituicaoEmailInput
+): TInstituicaoEmailConfig;
+var
+  AppConfig: TAppApiConfig;
+  Conn: TUniConnection;
+  Dados: TInstituicaoEmailInput;
+  TemSenha: Boolean;
+begin
+  ValidarTenant(AIdInstituicao, AIdUsuarioInstituicao);
+
+  Dados := ADados;
+  Dados.SmtpHost := Trim(Dados.SmtpHost);
+  Dados.Seguranca := UpperCase(Trim(Dados.Seguranca));
+  Dados.Usuario := Trim(Dados.Usuario);
+  Dados.Senha := Trim(Dados.Senha);
+  Dados.RemetenteNome := Trim(Dados.RemetenteNome);
+  Dados.RemetenteEmail := LowerCase(Trim(Dados.RemetenteEmail));
+  Dados.ResponderPara := LowerCase(Trim(Dados.ResponderPara));
+
+  if Dados.SmtpPorta <= 0 then
+    Dados.SmtpPorta := 587;
+
+  if (Dados.SmtpPorta < 1) or (Dados.SmtpPorta > 65535) then
+    TAppErrors.RaiseBadRequest('Porta SMTP inválida.');
+
+  if not SameText(Dados.Seguranca, 'STARTTLS') and
+     not SameText(Dados.Seguranca, 'SSL_TLS') and
+     not SameText(Dados.Seguranca, 'NONE') then
+    TAppErrors.RaiseBadRequest('Tipo de segurança SMTP inválido.');
+
+  if Length(Dados.SmtpHost) > 255 then
+    TAppErrors.RaiseBadRequest('Servidor SMTP inválido.');
+
+  if Length(Dados.Usuario) > 254 then
+    TAppErrors.RaiseBadRequest('Usuário SMTP inválido.');
+
+  if Length(Dados.Senha) > 4096 then
+    TAppErrors.RaiseBadRequest('Senha SMTP inválida.');
+
+  if Length(Dados.RemetenteNome) > 180 then
+    TAppErrors.RaiseBadRequest('Nome do remetente excede o tamanho permitido.');
+
+  if (Dados.RemetenteEmail <> '') and not EmailValido(Dados.RemetenteEmail) then
+    TAppErrors.RaiseBadRequest('E-mail do remetente inválido.');
+
+  if (Dados.ResponderPara <> '') and not EmailValido(Dados.ResponderPara) then
+    TAppErrors.RaiseBadRequest('E-mail de resposta inválido.');
+
+  AppConfig := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(AppConfig.Database);
+  try
+    TemSenha := not Dados.Senha.IsEmpty;
+    if not TemSenha then
+      TemSenha := TInstituicaoConfiguracaoDAO.TemSenhaEmail(Conn, AIdInstituicao);
+
+    if Dados.Ativo then
+    begin
+      if Dados.SmtpHost.IsEmpty then
+        TAppErrors.RaiseBadRequest('Informe o servidor SMTP antes de ativar o envio.');
+
+      if Dados.Usuario.IsEmpty then
+        TAppErrors.RaiseBadRequest('Informe o usuário SMTP antes de ativar o envio.');
+
+      if not TemSenha then
+        TAppErrors.RaiseBadRequest('Informe a senha SMTP antes de ativar o envio.');
+
+      if Dados.RemetenteNome.IsEmpty then
+        TAppErrors.RaiseBadRequest('Informe o nome do remetente.');
+
+      if Dados.RemetenteEmail.IsEmpty or not EmailValido(Dados.RemetenteEmail) then
+        TAppErrors.RaiseBadRequest('Informe um e-mail válido para o remetente.');
+    end;
+
+    Conn.StartTransaction;
+    try
+      TInstituicaoConfiguracaoDAO.SalvarEmail(
+        Conn,
+        AIdInstituicao,
+        AIdUsuarioInstituicao,
+        Dados,
+        TCertificaSecrets.EmailSmtpSecret
+      );
+
+      Result := TInstituicaoConfiguracaoDAO.BuscarEmail(Conn, AIdInstituicao);
+      Conn.Commit;
+    except
+      if Conn.InTransaction then
+        Conn.Rollback;
+      raise;
+    end;
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TInstituicaoConfiguracaoService.ObterEmailConfigurado(
+  const AIdInstituicao: Int64;
+  out AConfig: TInstituicaoEmailConfig;
+  out ASenha: string
+): Boolean;
+var
+  AppConfig: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  Result := False;
+  ASenha := '';
+  AConfig := Default(TInstituicaoEmailConfig);
+
+  if AIdInstituicao <= 0 then
+    Exit;
+
+  AppConfig := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(AppConfig.Database);
+  try
+    AConfig := TInstituicaoConfiguracaoDAO.BuscarEmail(Conn, AIdInstituicao);
+
+    if not AConfig.Ativo or
+       AConfig.SmtpHost.IsEmpty or
+       AConfig.Usuario.IsEmpty or
+       not AConfig.SenhaConfigurada or
+       AConfig.RemetenteEmail.IsEmpty then
+      Exit;
+
+    ASenha := TInstituicaoConfiguracaoDAO.ObterSenhaEmail(
+      Conn,
+      AIdInstituicao,
+      TCertificaSecrets.EmailSmtpSecret
+    );
+
+    Result := not ASenha.IsEmpty;
+  finally
+    Conn.Free;
+  end;
+end;
+
+end.

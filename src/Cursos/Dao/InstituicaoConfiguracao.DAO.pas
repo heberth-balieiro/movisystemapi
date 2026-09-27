@@ -39,6 +39,30 @@ type
             AUrl: string
     ); static;
 
+    class function BuscarEmail(
+      const AConn: TUniConnection;
+      const AIdInstituicao: Int64
+    ): TInstituicaoEmailConfig; static;
+
+    class function TemSenhaEmail(
+      const AConn: TUniConnection;
+      const AIdInstituicao: Int64
+    ): Boolean; static;
+
+    class procedure SalvarEmail(
+      const AConn: TUniConnection;
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64;
+      const ADados: TInstituicaoEmailInput;
+      const ASecret: string
+    ); static;
+
+    class function ObterSenhaEmail(
+      const AConn: TUniConnection;
+      const AIdInstituicao: Int64;
+      const ASecret: string
+    ): string; static;
+
     class function BuscarWhatsApp(
       const AConn: TUniConnection;
       const AIdInstituicao: Int64
@@ -436,5 +460,195 @@ begin
   end;
 end;
 
+
+
+class function TInstituicaoConfiguracaoDAO.BuscarEmail(
+  const AConn: TUniConnection;
+  const AIdInstituicao: Int64
+): TInstituicaoEmailConfig;
+var
+  Qry: TUniQuery;
+begin
+  Result := Default(TInstituicaoEmailConfig);
+  Result.SmtpPorta := 587;
+  Result.Seguranca := 'STARTTLS';
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT ativo, smtp_host, smtp_porta, seguranca, usuario, ' +
+      '       senha_criptografada IS NOT NULL AS senha_configurada, senha_hint, ' +
+      '       remetente_nome, remetente_email, responder_para ' +
+      'FROM instituicao_email_configuracao ' +
+      'WHERE id_instituicao = :id_instituicao';
+
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.Open;
+
+    if Qry.IsEmpty then
+      Exit;
+
+    Result.Ativo := Qry.FieldByName('ativo').AsInteger = 1;
+    Result.SmtpHost := Qry.FieldByName('smtp_host').AsString;
+    Result.SmtpPorta := Qry.FieldByName('smtp_porta').AsInteger;
+    Result.Seguranca := Qry.FieldByName('seguranca').AsString;
+    Result.Usuario := Qry.FieldByName('usuario').AsString;
+    Result.SenhaConfigurada := Qry.FieldByName('senha_configurada').AsInteger = 1;
+    if Result.SenhaConfigurada then
+      Result.SenhaMascarada := '********' + Qry.FieldByName('senha_hint').AsString;
+    Result.RemetenteNome := Qry.FieldByName('remetente_nome').AsString;
+    Result.RemetenteEmail := Qry.FieldByName('remetente_email').AsString;
+    Result.ResponderPara := Qry.FieldByName('responder_para').AsString;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TInstituicaoConfiguracaoDAO.TemSenhaEmail(
+  const AConn: TUniConnection;
+  const AIdInstituicao: Int64
+): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Result := False;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT senha_criptografada IS NOT NULL AS tem_senha ' +
+      'FROM instituicao_email_configuracao ' +
+      'WHERE id_instituicao = :id_instituicao';
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.Open;
+    Result := (not Qry.IsEmpty) and (Qry.FieldByName('tem_senha').AsInteger = 1);
+  finally
+    Qry.Free;
+  end;
+end;
+
+class procedure TInstituicaoConfiguracaoDAO.SalvarEmail(
+  const AConn: TUniConnection;
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64;
+  const ADados: TInstituicaoEmailInput;
+  const ASecret: string
+);
+var
+  Qry: TUniQuery;
+  Hint: string;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+
+    if ADados.Senha <> '' then
+    begin
+      if Length(ADados.Senha) <= 4 then
+        Hint := ADados.Senha
+      else
+        Hint := Copy(ADados.Senha, Length(ADados.Senha) - 3, 4);
+
+      Qry.SQL.Text :=
+        'INSERT INTO instituicao_email_configuracao (' +
+        ' id_instituicao, ativo, smtp_host, smtp_porta, seguranca, usuario, ' +
+        ' senha_criptografada, senha_hint, remetente_nome, remetente_email, responder_para' +
+        ') VALUES (' +
+        ' :id_instituicao, :ativo, :smtp_host, :smtp_porta, :seguranca, :usuario, ' +
+        ' AES_ENCRYPT(:senha, :secret), :hint, :remetente_nome, :remetente_email, NULLIF(:responder_para, '''')' +
+        ') ON DUPLICATE KEY UPDATE ' +
+        ' ativo = VALUES(ativo), smtp_host = VALUES(smtp_host), smtp_porta = VALUES(smtp_porta), ' +
+        ' seguranca = VALUES(seguranca), usuario = VALUES(usuario), ' +
+        ' senha_criptografada = VALUES(senha_criptografada), senha_hint = VALUES(senha_hint), ' +
+        ' remetente_nome = VALUES(remetente_nome), remetente_email = VALUES(remetente_email), ' +
+        ' responder_para = VALUES(responder_para)';
+    end
+    else
+    begin
+      Qry.SQL.Text :=
+        'INSERT INTO instituicao_email_configuracao (' +
+        ' id_instituicao, ativo, smtp_host, smtp_porta, seguranca, usuario, ' +
+        ' remetente_nome, remetente_email, responder_para' +
+        ') VALUES (' +
+        ' :id_instituicao, :ativo, :smtp_host, :smtp_porta, :seguranca, :usuario, ' +
+        ' :remetente_nome, :remetente_email, NULLIF(:responder_para, '''')' +
+        ') ON DUPLICATE KEY UPDATE ' +
+        ' ativo = VALUES(ativo), smtp_host = VALUES(smtp_host), smtp_porta = VALUES(smtp_porta), ' +
+        ' seguranca = VALUES(seguranca), usuario = VALUES(usuario), ' +
+        ' remetente_nome = VALUES(remetente_nome), remetente_email = VALUES(remetente_email), ' +
+        ' responder_para = VALUES(responder_para)';
+    end;
+
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('ativo').AsInteger := Ord(ADados.Ativo);
+    Qry.ParamByName('smtp_host').AsString := ADados.SmtpHost;
+    Qry.ParamByName('smtp_porta').AsInteger := ADados.SmtpPorta;
+    Qry.ParamByName('seguranca').AsString := ADados.Seguranca;
+    Qry.ParamByName('usuario').AsString := ADados.Usuario;
+    Qry.ParamByName('remetente_nome').AsString := ADados.RemetenteNome;
+    Qry.ParamByName('remetente_email').AsString := ADados.RemetenteEmail;
+    Qry.ParamByName('responder_para').AsString := ADados.ResponderPara;
+
+    if ADados.Senha <> '' then
+    begin
+      Qry.ParamByName('senha').AsString := ADados.Senha;
+      Qry.ParamByName('secret').AsString := ASecret;
+      Qry.ParamByName('hint').AsString := Hint;
+    end;
+
+    Qry.Execute;
+  finally
+    Qry.Free;
+  end;
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'INSERT INTO auditoria_log (' +
+      ' id_instituicao, id_usuario, id_usuario_instituicao, acao, entidade, registro_id, ' +
+      ' metodo_http, rota, sucesso, mensagem' +
+      ') VALUES (' +
+      ' :id_instituicao, NULL, :id_usuario_instituicao, ''EMAIL_CONFIG_ALTERADA'', ' +
+      ' ''instituicao_email_configuracao'', :registro_id, ''PUT'', ' +
+      ' ''/v1/certifica/configuracoes/email'', 1, ' +
+      ' ''Configuração de e-mail da instituição atualizada.''' +
+      ')';
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id_usuario_instituicao').AsLargeInt := AIdUsuarioInstituicao;
+    Qry.ParamByName('registro_id').AsString := AIdInstituicao.ToString;
+    Qry.Execute;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TInstituicaoConfiguracaoDAO.ObterSenhaEmail(
+  const AConn: TUniConnection;
+  const AIdInstituicao: Int64;
+  const ASecret: string
+): string;
+var
+  Qry: TUniQuery;
+begin
+  Result := '';
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT CAST(AES_DECRYPT(senha_criptografada, :secret) AS CHAR(4096)) AS senha ' +
+      'FROM instituicao_email_configuracao ' +
+      'WHERE id_instituicao = :id_instituicao ' +
+      '  AND senha_criptografada IS NOT NULL';
+    Qry.ParamByName('secret').AsString := ASecret;
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.Open;
+    if not Qry.IsEmpty then
+      Result := Qry.FieldByName('senha').AsString;
+  finally
+    Qry.Free;
+  end;
+end;
 
 end.
