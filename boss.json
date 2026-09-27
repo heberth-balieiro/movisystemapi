@@ -1,0 +1,16 @@
+{
+	"name": "EasyNovaAPI",
+	"description": "",
+	"version": "1.0.0",
+	"homepage": "",
+	"mainsrc": "./src",
+	"projects": [],
+	"dependencies": {
+		"github.com/giorgiobazzo/horse-upload": "^1.1.0",
+		"github.com/hashload/horse": "^3.2.0",
+		"github.com/hashload/horse-cors": "^1.0.8",
+		"github.com/hashload/horse-jwt": "^2.0.18",
+		"github.com/hashload/jhonson": "^1.2.1",
+		"github.com/paolo-rossi/delphi-jose-jwt": "^v3.3.1"
+	}
+}
