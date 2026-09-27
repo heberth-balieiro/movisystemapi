@@ -9,6 +9,7 @@ type
   TInstituicaoLoginResult = record
     Token: string;
     Dados: TInstituicaoLoginDados;
+    Permissoes: TArray<string>;
   end;
 
   TInstituicaoAuthService = class
@@ -27,7 +28,8 @@ uses
   App.JWT,
   APP.Errors,
   Auth.Passwords,
-  Database.Connection;
+  Database.Connection,
+  InstituicaoPermissao.DAO;
 
 class function TInstituicaoAuthService.Login(
   const ASlug, ALogin, ASenha: string
@@ -42,12 +44,12 @@ begin
 
   if Trim(ASlug).IsEmpty then
     TAppErrors.RaiseBadRequest(
-      'InstituiÁ„o n„o informada.'
+      'Institui√ß√£o n√£o informada.'
     );
 
   if Trim(ALogin).IsEmpty or Trim(ASenha).IsEmpty then
     TAppErrors.RaiseBadRequest(
-      'Informe usu·rio e senha.'
+      'Informe usu√°rio e senha.'
     );
 
   Config := TAppConfig.Carregar(
@@ -66,30 +68,30 @@ begin
       Dados
     ) then
       TAppErrors.RaiseUnauthorized(
-        'Usu·rio ou senha inv·lidos.'
+        'Usu√°rio ou senha inv√°lidos.'
       );
 
     if not SameText(Dados.UsuarioSituacao, 'ATIVO') then
       TAppErrors.RaiseUnauthorized(
-        'Usu·rio ou senha inv·lidos.'
+        'Usu√°rio ou senha inv√°lidos.'
       );
 
     if not SameText(Dados.VinculoSituacao, 'ATIVO') then
       TAppErrors.RaiseUnauthorized(
-        'Usu·rio ou senha inv·lidos.'
+        'Usu√°rio ou senha inv√°lidos.'
       );
 
-    // Durante implantaÁ„o o administrador precisa conseguir acessar.
+    // Durante implanta√ß√£o o administrador precisa conseguir acessar.
     if not (
       SameText(Dados.InstituicaoSituacao, 'ATIVA') or
       SameText(Dados.InstituicaoSituacao, 'IMPLANTACAO')
     ) then
       TAppErrors.RaiseUnauthorized(
-        'Acesso ‡ instituiÁ„o indisponÌvel.'
+        'Acesso √† institui√ß√£o indispon√≠vel.'
       );
 
     if not VerifySenha(ASenha, Dados.SenhaHash) then
-      TAppErrors.RaiseUnauthorized('Usu·rio ou senha inv·lidos.');
+      TAppErrors.RaiseUnauthorized('Usu√°rio ou senha inv√°lidos.');
 
     if Dados.Principal then
       Roles := ['ADMIN_INSTITUICAO']
@@ -104,7 +106,14 @@ begin
         Roles,
         Dados.IdUsuarioInstituicao);
 
-    Result.Dados    := Dados;
+    Result.Dados := Dados;
+
+    Result.Permissoes :=
+      TInstituicaoPermissaoDAO.ListarPermissoesUsuario(
+        Conn,
+        Dados.IdInstituicao,
+        Dados.IdUsuarioInstituicao
+      );
 
     TInstituicaoAuthDAO.RegistrarLogin(
       Conn,
