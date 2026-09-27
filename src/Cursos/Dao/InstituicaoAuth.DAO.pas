@@ -103,6 +103,26 @@ begin
       '       LOWER(ui.login) = :login ' +
       '       OR u.email_normalizado = :login' +
       '      ) ' +
+      '  AND (' +
+      '       ui.principal = 1 ' +
+      '       OR EXISTS (' +
+      '          SELECT 1 ' +
+      '          FROM usuario_instituicao_perfil uip ' +
+      '          JOIN perfil pf ' +
+      '            ON pf.id_instituicao = uip.id_instituicao ' +
+      '           AND pf.id = uip.id_perfil ' +
+      '           AND pf.situacao = ''ATIVO'' ' +
+      '          WHERE uip.id_instituicao = ui.id_instituicao ' +
+      '            AND uip.id_usuario_instituicao = ui.id' +
+      '       ) ' +
+      '       OR EXISTS (' +
+      '          SELECT 1 ' +
+      '          FROM participante p ' +
+      '          WHERE p.id_instituicao = ui.id_instituicao ' +
+      '            AND p.id_usuario_instituicao = ui.id ' +
+      '            AND p.situacao = ''ATIVO''' +
+      '       )' +
+      '      ) ' +
       'LIMIT 1';
 
     Qry.ParamByName('slug').AsString :=

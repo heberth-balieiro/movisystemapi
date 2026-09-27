@@ -248,6 +248,8 @@ var
   Mensagem: string;
   UsuarioJaTinhaSenha: Boolean;
   PrimeiroAcessoNecessario: Boolean;
+  VinculoJaExistia: Boolean;
+  VinculoAdministrativo: Boolean;
 begin
   Result := nil;
   Token := '';
@@ -255,6 +257,8 @@ begin
   HomeLink := '';
   UsuarioJaTinhaSenha := False;
   PrimeiroAcessoNecessario := False;
+  VinculoJaExistia := False;
+  VinculoAdministrativo := False;
 
   if AIdInstituicao <= 0 then
     TAppErrors.RaiseUnauthorized(
@@ -366,6 +370,17 @@ begin
           IdUsuario
         );
 
+      VinculoJaExistia :=
+        IdUsuarioInstituicao > 0;
+
+      if VinculoJaExistia then
+        VinculoAdministrativo :=
+          TInstituicaoParticipanteAcessoDAO.UsuarioInstituicaoEhAdministrativo(
+            Conn,
+            AIdInstituicao,
+            IdUsuarioInstituicao
+          );
+
       if IdUsuarioInstituicao <= 0 then
         IdUsuarioInstituicao :=
           TInstituicaoParticipanteAcessoDAO.CriarUsuarioInstituicao(
@@ -394,7 +409,8 @@ begin
       );
 
       PrimeiroAcessoNecessario :=
-        not UsuarioJaTinhaSenha;
+        (not UsuarioJaTinhaSenha) or
+        (VinculoJaExistia and not VinculoAdministrativo);
 
       if PrimeiroAcessoNecessario then
       begin
@@ -459,7 +475,7 @@ begin
     Mensagem :=
       MontarMensagemAcesso(
         Participante,
-        UsuarioJaTinhaSenha,
+        not PrimeiroAcessoNecessario,
         Link,
         HomeLink
       );
@@ -585,7 +601,11 @@ begin
       );
 
     PrimeiroAcessoNecessario :=
-      not Usuario.TemSenhaDefinida;
+      (not Usuario.TemSenhaDefinida) or
+      TInstituicaoParticipanteAcessoDAO.UsuarioPossuiTokenSenhaPendente(
+        Conn,
+        Usuario.IdUsuario
+      );
 
     if PrimeiroAcessoNecessario then
     begin
@@ -635,7 +655,7 @@ begin
     Mensagem :=
       MontarMensagemAcesso(
         Participante,
-        Usuario.TemSenhaDefinida,
+        not PrimeiroAcessoNecessario,
         Link,
         HomeLink
       );

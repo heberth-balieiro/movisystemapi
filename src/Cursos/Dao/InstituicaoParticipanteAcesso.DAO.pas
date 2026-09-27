@@ -76,6 +76,17 @@ type
             AIdUsuario: Int64
     ): Int64; static;
 
+    class function UsuarioInstituicaoEhAdministrativo(
+      const AConn: TUniConnection;
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64
+    ): Boolean; static;
+
+    class function UsuarioPossuiTokenSenhaPendente(
+      const AConn: TUniConnection;
+      const AIdUsuario: Int64
+    ): Boolean; static;
+
     class function CriarUsuarioInstituicao(
       const AConn: TUniConnection;
       const AIdInstituicao,
@@ -370,6 +381,83 @@ begin
 
     if not Qry.IsEmpty then
       Result := Qry.FieldByName('id').AsLargeInt;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TInstituicaoParticipanteAcessoDAO.UsuarioInstituicaoEhAdministrativo(
+  const AConn: TUniConnection;
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64
+): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Result := False;
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT 1 ' +
+      'FROM usuario_instituicao ui ' +
+      'WHERE ui.id_instituicao = :id_instituicao ' +
+      '  AND ui.id = :id_usuario_instituicao ' +
+      '  AND (' +
+      '       ui.principal = 1 ' +
+      '       OR EXISTS (' +
+      '          SELECT 1 ' +
+      '          FROM usuario_instituicao_perfil uip ' +
+      '          JOIN perfil p ' +
+      '            ON p.id_instituicao = uip.id_instituicao ' +
+      '           AND p.id = uip.id_perfil ' +
+      '           AND p.situacao = ''ATIVO'' ' +
+      '          WHERE uip.id_instituicao = ui.id_instituicao ' +
+      '            AND uip.id_usuario_instituicao = ui.id' +
+      '       )' +
+      '      ) ' +
+      'LIMIT 1';
+
+    Qry.ParamByName('id_instituicao').AsLargeInt :=
+      AIdInstituicao;
+
+    Qry.ParamByName('id_usuario_instituicao').AsLargeInt :=
+      AIdUsuarioInstituicao;
+
+    Qry.Open;
+    Result := not Qry.IsEmpty;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TInstituicaoParticipanteAcessoDAO.UsuarioPossuiTokenSenhaPendente(
+  const AConn: TUniConnection;
+  const AIdUsuario: Int64
+): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Result := False;
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT 1 ' +
+      'FROM usuario_recuperacao_senha ' +
+      'WHERE id_usuario = :id_usuario ' +
+      '  AND utilizado_em IS NULL ' +
+      '  AND revogado_em IS NULL ' +
+      '  AND expira_em > CURRENT_TIMESTAMP(3) ' +
+      'LIMIT 1';
+
+    Qry.ParamByName('id_usuario').AsLargeInt :=
+      AIdUsuario;
+
+    Qry.Open;
+    Result := not Qry.IsEmpty;
   finally
     Qry.Free;
   end;
