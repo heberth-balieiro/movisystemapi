@@ -20,7 +20,8 @@ uses
   App.Response,
   APP.Errors,
   InstituicaoConfiguracao.Model,
-  InstituicaoConfiguracao.Service;
+  InstituicaoConfiguracao.Service,
+  InstituicaoEmail.Service;
 
 function AutorizarInstituicao(
   const Req: THorseRequest;
@@ -489,6 +490,76 @@ begin
           Res,
           Config.ToJSON,
           'Configuração de e-mail atualizada com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+
+  THorse.Post(
+    '/v1/certifica/configuracoes/email/teste',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      JsonValue: TJSONValue;
+      Body: TJSONObject;
+      Destinatario: string;
+      Retorno: TJSONObject;
+    begin
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then
+          Exit;
+
+        if Claims.IdUsuarioInstituicao <= 0 then
+        begin
+          TAppResponse.Forbidden(
+            Res,
+            'Token sem vínculo de usuário com a instituição.'
+          );
+          Exit;
+        end;
+
+        JsonValue := TJSONObject.ParseJSONValue(Req.Body);
+        if not (JsonValue is TJSONObject) then
+        begin
+          JsonValue.Free;
+          TAppErrors.RaiseBadRequest('JSON inválido.');
+        end;
+
+        Body := JsonValue as TJSONObject;
+        try
+          Destinatario :=
+            JsonString(
+              Body,
+              'destinatario'
+            );
+        finally
+          Body.Free;
+        end;
+
+        TInstituicaoEmailService.EnviarTeste(
+          Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao,
+          Destinatario
+        );
+
+        Retorno := TJSONObject.Create;
+        Retorno.AddPair(
+          'enviado',
+          TJSONBool.Create(True)
+        );
+        Retorno.AddPair(
+          'destinatario',
+          LowerCase(Trim(Destinatario))
+        );
+
+        TAppResponse.Ok(
+          Res,
+          Retorno,
+          'E-mail de teste enviado com sucesso.'
         );
       except
         on E: Exception do

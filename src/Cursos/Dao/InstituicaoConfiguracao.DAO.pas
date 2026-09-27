@@ -63,6 +63,13 @@ type
       const ASecret: string
     ): string; static;
 
+    class procedure RegistrarTesteEmail(
+      const AConn: TUniConnection;
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64;
+      const ADestinatario: string
+    ); static;
+
     class function BuscarWhatsApp(
       const AConn: TUniConnection;
       const AIdInstituicao: Int64
@@ -648,6 +655,44 @@ begin
     Qry.Open;
     if not Qry.IsEmpty then
       Result := Qry.FieldByName('senha').AsString;
+  finally
+    Qry.Free;
+  end;
+end;
+
+
+class procedure TInstituicaoConfiguracaoDAO.RegistrarTesteEmail(
+  const AConn: TUniConnection;
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64;
+  const ADestinatario: string
+);
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'INSERT INTO auditoria_log (' +
+      ' id_instituicao, id_usuario, id_usuario_instituicao, acao, entidade, registro_id, ' +
+      ' metodo_http, rota, sucesso, mensagem' +
+      ') VALUES (' +
+      ' :id_instituicao, NULL, :id_usuario_instituicao, ''EMAIL_TESTE_ENVIADO'', ' +
+      ' ''instituicao_email_configuracao'', :registro_id, ''POST'', ' +
+      ' ''/v1/certifica/configuracoes/email/teste'', 1, :mensagem' +
+      ')';
+
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id_usuario_instituicao').AsLargeInt := AIdUsuarioInstituicao;
+    Qry.ParamByName('registro_id').AsString := AIdInstituicao.ToString;
+    Qry.ParamByName('mensagem').AsString :=
+      Copy(
+        'E-mail de teste enviado para ' + ADestinatario + '.',
+        1,
+        1000
+      );
+    Qry.Execute;
   finally
     Qry.Free;
   end;

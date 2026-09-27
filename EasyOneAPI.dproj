@@ -448,6 +448,7 @@
         <DCCReference Include="src\Cursos\Model\InstituicaoConfiguracao.Model.pas"/>
         <DCCReference Include="src\Cursos\Security\Certifica.Secrets.pas"/>
         <DCCReference Include="src\Cursos\Services\InstituicaoConfiguracao.Service.pas"/>
+        <DCCReference Include="src\Cursos\Services\InstituicaoEmail.Service.pas"/>
         <DCCReference Include="src\Cursos\Dao\InstituicaoPermissao.DAO.pas"/>
         <DCCReference Include="src\Cursos\Services\InstituicaoPermissao.Service.pas"/>
         <DCCReference Include="src\Cursos\Model\InstituicaoPerfil.Model.pas"/>

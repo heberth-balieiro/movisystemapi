@@ -319,6 +319,7 @@ uses
   InstituicaoConfiguracao.Model in 'src\Cursos\Model\InstituicaoConfiguracao.Model.pas',
   Certifica.Secrets in 'src\Cursos\Security\Certifica.Secrets.pas',
   InstituicaoConfiguracao.Service in 'src\Cursos\Services\InstituicaoConfiguracao.Service.pas',
+  InstituicaoEmail.Service in 'src\Cursos\Services\InstituicaoEmail.Service.pas',
   InstituicaoPermissao.DAO in 'src\Cursos\Dao\InstituicaoPermissao.DAO.pas',
   InstituicaoPermissao.Service in 'src\Cursos\Services\InstituicaoPermissao.Service.pas',
   InstituicaoPerfil.Model in 'src\Cursos\Model\InstituicaoPerfil.Model.pas',
