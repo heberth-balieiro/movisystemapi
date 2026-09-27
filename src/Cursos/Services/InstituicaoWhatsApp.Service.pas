@@ -43,6 +43,12 @@ type
       const AIP,
             AUserAgent: string
     ): TInstituicaoWhatsAppStatus; static;
+
+    class procedure EnviarMensagemSistema(
+      const AIdInstituicao: Int64;
+      const ANumero,
+            AMensagem: string
+    ); static;
   end;
 
 implementation
@@ -517,6 +523,115 @@ begin
     Result.Estado := 'LOGGED_OUT';
     Result.Conectado := False;
     Result.Numero := '';
+  finally
+    Conn.Free;
+  end;
+end;
+
+
+class procedure TInstituicaoWhatsAppService.EnviarMensagemSistema(
+  const AIdInstituicao: Int64;
+  const ANumero,
+        AMensagem: string
+);
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  ApiUrl: string;
+  ApiKey: string;
+  NomeInstancia: string;
+  Numero: string;
+  I: Integer;
+  Retorno: TJSONValue;
+begin
+  if AIdInstituicao <= 0 then
+    TAppErrors.RaiseBadRequest(
+      'Instituição inválida para envio de WhatsApp.'
+    );
+
+  Numero := '';
+
+  for I := 1 to Length(ANumero) do
+    if CharInSet(ANumero[I], ['0'..'9']) then
+      Numero := Numero + ANumero[I];
+
+  if Numero.IsEmpty then
+    TAppErrors.RaiseBadRequest(
+      'Número de WhatsApp não informado.'
+    );
+
+  if (Length(Numero) = 10) or
+     (Length(Numero) = 11) then
+    Numero := '55' + Numero;
+
+  if Trim(AMensagem).IsEmpty then
+    TAppErrors.RaiseBadRequest(
+      'Mensagem de WhatsApp não informada.'
+    );
+
+  if not TPlataformaWhatsAppService.ObterCredenciais(
+    ApiUrl,
+    ApiKey
+  ) then
+    TAppErrors.RaiseBadRequest(
+      'A integração WhatsApp não está habilitada.'
+    );
+
+  Config :=
+    TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) +
+      'Config.ini'
+    );
+
+  Conn :=
+    TDatabaseConnection.NewConnection(
+      Config.Database
+    );
+  try
+    NomeInstancia :=
+      TInstituicaoWhatsAppDAO.BuscarNomeInstancia(
+        Conn,
+        AIdInstituicao
+      );
+
+    if NomeInstancia.IsEmpty then
+      TAppErrors.RaiseBadRequest(
+        'A instituição ainda não possui uma instância WhatsApp.'
+      );
+
+    Retorno :=
+      TEvolutionApiService.EstadoInstancia(
+        ApiUrl,
+        ApiKey,
+        NomeInstancia
+      );
+    try
+      if not (
+        SameText(
+          TEvolutionApiService.ExtrairEstado(Retorno),
+          'OPEN'
+        ) or
+        SameText(
+          TEvolutionApiService.ExtrairEstado(Retorno),
+          'CONNECTED'
+        )
+      ) then
+        TAppErrors.RaiseBadRequest(
+          'A instância WhatsApp da instituição não está conectada.'
+        );
+    finally
+      Retorno.Free;
+    end;
+
+    Retorno :=
+      TEvolutionApiService.EnviarTexto(
+        ApiUrl,
+        ApiKey,
+        NomeInstancia,
+        Numero,
+        AMensagem
+      );
+    Retorno.Free;
   finally
     Conn.Free;
   end;
