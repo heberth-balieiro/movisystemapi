@@ -61,6 +61,7 @@ type
     class procedure Migration_039_AtualizaInstituicaoAdministracao(const AConn: TUniConnection); static;
     class procedure Migration_040_ConfigInstituicaoMidiasWhatsApp(const AConn: TUniConnection); static;
     class procedure Migration_041_PlataformaWhatsAppConfiguracao(const AConn: TUniConnection); static;
+    class procedure Migration_042_InstituicaoWhatsAppInstancia(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -199,6 +200,7 @@ begin
       Migration_039_AtualizaInstituicaoAdministracao(Conn);
       Migration_040_ConfigInstituicaoMidiasWhatsApp(Conn);
       Migration_041_PlataformaWhatsAppConfiguracao(Conn);
+      Migration_042_InstituicaoWhatsAppInstancia(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -1810,6 +1812,43 @@ begin
     AConn,
     'INSERT IGNORE INTO plataforma_whatsapp_configuracao ' +
     '(id, habilitado, api_url) VALUES (1, 0, '''')'
+  );
+
+  RegisterMigration(
+    AConn,
+    VERSION,
+    DESCRIPTION
+  );
+end;
+
+
+class procedure TCursosMigration.Migration_042_InstituicaoWhatsAppInstancia(
+  const AConn: TUniConnection);
+const
+  VERSION = '042';
+  DESCRIPTION = 'Instancia WhatsApp por instituicao';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS instituicao_whatsapp_instancia (' +
+    ' id_instituicao BIGINT UNSIGNED NOT NULL,' +
+    ' nome_instancia VARCHAR(160) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,' +
+    ' estado VARCHAR(30) NOT NULL DEFAULT ''CREATED'',' +
+    ' numero_conectado VARCHAR(80) NULL,' +
+    ' ultimo_status_em DATETIME(3) NULL,' +
+    ' ultimo_erro VARCHAR(1000) NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ' +
+    '   ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id_instituicao),' +
+    ' UNIQUE KEY uq_instituicao_whatsapp_nome (nome_instancia),' +
+    ' CONSTRAINT fk_instituicao_whatsapp_instancia_instituicao ' +
+    '   FOREIGN KEY (id_instituicao) REFERENCES instituicao(id) ' +
+    '   ON UPDATE RESTRICT ON DELETE CASCADE' +
+    ') ENGINE=InnoDB COMMENT=''Instancia Evolution API exclusiva por instituicao.'';'
   );
 
   RegisterMigration(
