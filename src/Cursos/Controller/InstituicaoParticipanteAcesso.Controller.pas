@@ -165,6 +165,54 @@ begin
     end
   );
 
+  THorse.Post(
+    '/v1/certifica/instituicao/participantes/:id/acesso/reenviar',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      IdParticipante: Int64;
+      Info: TParticipanteAcessoInfo;
+    begin
+      try
+        if not AutorizarInstituicao(
+          Req,
+          Res,
+          'participante.editar',
+          Claims
+        ) then
+          Exit;
+
+        IdParticipante :=
+          StrToInt64Def(
+            Req.Params.Items['id'],
+            0
+          );
+
+        Info :=
+          TInstituicaoParticipanteAcessoService.ReenviarConvite(
+            Claims.IdInstituicao,
+            IdParticipante
+          );
+
+        try
+          TAppResponse.Ok(
+            Res,
+            AcessoParaJson(Info),
+            'Convite de acesso reenviado com sucesso.'
+          );
+        finally
+          Info.Free;
+        end;
+      except
+        on E: Exception do
+          TAppErrors.HandleException(
+            Res,
+            E
+          );
+      end;
+    end
+  );
+
   THorse.Delete(
     '/v1/certifica/instituicao/participantes/:id/acesso',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
