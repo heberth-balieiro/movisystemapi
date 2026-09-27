@@ -3,6 +3,7 @@ unit InstituicaoUsuario.Service;
 interface
 
 uses
+  Uni,
   InstituicaoUsuario.Model;
 
 type
@@ -15,7 +16,7 @@ type
     class function GerarSenhaTemporaria: string; static;
 
     class function NormalizarPerfis(
-      const AConn: TObject;
+      const AConn: TUniConnection;
       const AIdInstituicao: Int64;
       const APerfis: TArray<Int64>
     ): TArray<Int64>; static;
@@ -82,7 +83,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  Uni,
   App.Config,
   APP.Errors,
   Auth.Passwords,
@@ -123,16 +123,14 @@ begin
 end;
 
 class function TInstituicaoUsuarioService.NormalizarPerfis(
-  const AConn: TObject;
+  const AConn: TUniConnection;
   const AIdInstituicao: Int64;
   const APerfis: TArray<Int64>
 ): TArray<Int64>;
 var
-  Conn: TUniConnection;
   Lista: TList<Int64>;
   IdPerfil: Int64;
 begin
-  Conn := TUniConnection(AConn);
   Lista := TList<Int64>.Create;
 
   try
@@ -152,7 +150,7 @@ begin
         Continue;
 
       if not TInstituicaoUsuarioDAO.PerfilAtivoPertenceInstituicao(
-        Conn,
+        AConn,
         AIdInstituicao,
         IdPerfil
       ) then
