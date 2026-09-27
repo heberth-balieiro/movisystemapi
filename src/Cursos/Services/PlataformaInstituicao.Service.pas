@@ -36,7 +36,8 @@ uses
   APP.Errors,
   Auth.Passwords,
   Database.Connection,
-  PlataformaInstituicao.DAO;
+  PlataformaInstituicao.DAO,
+  InstituicaoPermissao.DAO;
 
 class function TPlataformaInstituicaoService.SomenteNumeros(const AValue: string): string;
 var
@@ -217,6 +218,12 @@ begin
       AModel.Id := TPlataformaInstituicaoDAO.Inserir(Conn, AModel);
       TPlataformaInstituicaoDAO.SalvarConfiguracao(Conn, AModel);
       GarantirAdministrador(Conn, AModel, ASenhaTemporaria);
+
+      TInstituicaoPermissaoDAO.GarantirPerfilAdministrador(
+        Conn,
+        AModel.Id
+      );
+
       TPlataformaInstituicaoDAO.RegistrarAuditoria(Conn, AModel.Id, AIdUsuarioAcao,
         'INSTITUICAO_CRIADA', 'Instituição ' + AModel.NomeFantasia + ' cadastrada.', 'POST',
         '/v1/cursos/plataforma/instituicoes', AIP, AUserAgent);
@@ -271,6 +278,12 @@ begin
       TPlataformaInstituicaoDAO.Atualizar(Conn, AModel);
       TPlataformaInstituicaoDAO.SalvarConfiguracao(Conn, AModel);
       GarantirAdministrador(Conn, AModel, ASenhaTemporaria);
+
+      TInstituicaoPermissaoDAO.GarantirPerfilAdministrador(
+        Conn,
+        AIdInstituicao
+      );
+
       TPlataformaInstituicaoDAO.RegistrarAuditoria(Conn, AIdInstituicao, AIdUsuarioAcao,
         'INSTITUICAO_ALTERADA', 'Instituição ' + AModel.NomeFantasia + ' atualizada.', 'PUT',
         '/v1/cursos/plataforma/instituicoes/' + AIdInstituicao.ToString, AIP, AUserAgent);
