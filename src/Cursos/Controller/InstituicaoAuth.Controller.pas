@@ -15,10 +15,13 @@ uses
   System.SysUtils,
   System.JSON,
   App.Classes,
+  App.JWT,
+  App.Token,
   App.Response,
   APP.Errors,
   InstituicaoAuth.DAO,
-  InstituicaoAuth.Service;
+  InstituicaoAuth.Service,
+  InstituicaoPermissao.Service;
 
 class procedure TInstituicaoAuthController.Registry;
 begin
@@ -215,6 +218,68 @@ begin
       end;
     end
   );
+  THorse.Get(
+    '/v1/certifica/instituicao/auth/permissoes',
+
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Claims: TJWTClaims;
+      Lista: TArray<string>;
+      Permissoes: TJSONArray;
+      Permissao: string;
+    begin
+      try
+        if not TAppToken.ValidarToken(
+          Req,
+          Res,
+          Claims
+        ) then
+          Exit;
+
+        if (Claims.IdInstituicao <= 0) or
+           (Claims.IdUsuarioInstituicao <= 0) then
+        begin
+          TAppResponse.Forbidden(
+            Res,
+            'Token sem contexto de instituição.'
+          );
+          Exit;
+        end;
+
+        Lista :=
+          TInstituicaoPermissaoService.ListarDoUsuario(
+            Claims.IdInstituicao,
+            Claims.IdUsuarioInstituicao
+          );
+
+        Permissoes :=
+          TJSONArray.Create;
+
+        for Permissao in Lista do
+          Permissoes.Add(
+            Permissao
+          );
+
+        TAppResponse.Ok(
+          Res,
+          Permissoes,
+          'Permissões atualizadas com sucesso.'
+        );
+
+      except
+        on E: Exception do
+          TAppErrors.HandleException(
+            Res,
+            E
+          );
+      end;
+    end
+  );
+
 end;
 
 end.
