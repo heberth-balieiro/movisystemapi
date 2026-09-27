@@ -570,6 +570,108 @@ begin
 
   {$ENDREGION}
 
+
+  {$REGION 'Canais de Envio do Acesso'}
+
+  THorse.Get(
+    '/v1/certifica/configuracoes/envio-acesso',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Config: TInstituicaoAcessoEnvioConfig;
+    begin
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then
+          Exit;
+
+        if Claims.IdUsuarioInstituicao <= 0 then
+        begin
+          TAppResponse.Forbidden(
+            Res,
+            'Token sem vínculo de usuário com a instituição.'
+          );
+          Exit;
+        end;
+
+        Config :=
+          TInstituicaoConfiguracaoService.BuscarAcessoEnvio(
+            Claims.IdInstituicao,
+            Claims.IdUsuarioInstituicao
+          );
+
+        TAppResponse.Ok(
+          Res,
+          Config.ToJSON,
+          'Canais de envio do acesso carregados com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  THorse.Put(
+    '/v1/certifica/configuracoes/envio-acesso',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      JsonValue: TJSONValue;
+      Body: TJSONObject;
+      Dados: TInstituicaoAcessoEnvioInput;
+      Config: TInstituicaoAcessoEnvioConfig;
+    begin
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then
+          Exit;
+
+        if Claims.IdUsuarioInstituicao <= 0 then
+        begin
+          TAppResponse.Forbidden(
+            Res,
+            'Token sem vínculo de usuário com a instituição.'
+          );
+          Exit;
+        end;
+
+        JsonValue := TJSONObject.ParseJSONValue(Req.Body);
+
+        if not (JsonValue is TJSONObject) then
+        begin
+          JsonValue.Free;
+          TAppErrors.RaiseBadRequest('JSON inválido.');
+        end;
+
+        Body := JsonValue as TJSONObject;
+        try
+          Dados := Default(TInstituicaoAcessoEnvioInput);
+          Dados.EnviarEmail := JsonBoolean(Body, 'enviar_email', False);
+          Dados.EnviarWhatsApp := JsonBoolean(Body, 'enviar_whatsapp', False);
+        finally
+          Body.Free;
+        end;
+
+        Config :=
+          TInstituicaoConfiguracaoService.AtualizarAcessoEnvio(
+            Claims.IdInstituicao,
+            Claims.IdUsuarioInstituicao,
+            Dados
+          );
+
+        TAppResponse.Ok(
+          Res,
+          Config.ToJSON,
+          'Canais de envio do acesso atualizados com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  {$ENDREGION}
+
   {$REGION 'Buscar Configuração WhatsApp'}
 
   THorse.Get(
