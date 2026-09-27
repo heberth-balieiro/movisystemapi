@@ -28,6 +28,11 @@ type
             AIdParticipante: Int64
     ): TParticipanteAcessoInfo; static;
 
+    class function ReenviarConvite(
+      const AIdInstituicao,
+            AIdParticipante: Int64
+    ): TParticipanteAcessoInfo; static;
+
     class function Revogar(
       const AIdInstituicao,
             AIdParticipante: Int64
@@ -89,36 +94,53 @@ class function TInstituicaoParticipanteAcessoService.MontarMensagemAcesso(
   const AUsuarioJaTinhaSenha: Boolean;
   const ALink: string
 ): string;
+var
+  Ola: string;
+  Acesso: string;
+  UsuarioLabel: string;
+  Instrucao: string;
+  Seguranca: string;
 begin
-  Result :=
-    'Olá, ' +
-    AParticipante.Nome +
-    '.' + sLineBreak + sLineBreak +
-    'Seu acesso ao portal de capacitações da ' +
+  Ola :=
+    'Ol' + #$00E1 + ', ' +
+    AParticipante.Nome + '.';
+
+  Acesso :=
+    'Seu acesso ao portal de capacita' + #$00E7 + #$00F5 + 'es da ' +
     AParticipante.InstituicaoNome +
-    ' foi liberado.' + sLineBreak + sLineBreak +
-    'Usuário: ' +
-    AParticipante.Email +
-    sLineBreak;
+    ' foi liberado.';
+
+  UsuarioLabel :=
+    'Usu' + #$00E1 + 'rio: ' +
+    AParticipante.Email;
 
   if AUsuarioJaTinhaSenha then
-    Result :=
-      Result +
-      'Você já possui uma conta na plataforma. Utilize sua senha atual para acessar:' +
+    Instrucao :=
+      'Voc' + #$00EA +
+      ' j' + #$00E1 +
+      ' possui uma conta na plataforma. Utilize sua senha atual para acessar:' +
       sLineBreak +
       ALink
   else
-    Result :=
-      Result +
+    Instrucao :=
       'Para criar sua senha de acesso, utilize o link abaixo. ' +
-      'O link é pessoal, de uso único e válido por 24 horas:' +
+      'O link ' + #$00E9 +
+      ' pessoal, de uso ' + #$00FA + 'nico e v' + #$00E1 +
+      'lido por 24 horas:' +
       sLineBreak +
       ALink;
 
+  Seguranca :=
+    'Por seguran' + #$00E7 +
+    'a, n' + #$00E3 +
+    'o compartilhe este link com outras pessoas.';
+
   Result :=
-    Result +
-    sLineBreak + sLineBreak +
-    'Por segurança, não compartilhe este link com outras pessoas.';
+    Ola + sLineBreak + sLineBreak +
+    Acesso + sLineBreak + sLineBreak +
+    UsuarioLabel + sLineBreak +
+    Instrucao + sLineBreak + sLineBreak +
+    Seguranca;
 end;
 
 class function TInstituicaoParticipanteAcessoService.Consultar(
@@ -424,6 +446,171 @@ begin
           E.Message;
       end;
     end;
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TInstituicaoParticipanteAcessoService.ReenviarConvite(
+  const AIdInstituicao,
+        AIdParticipante: Int64
+): TParticipanteAcessoInfo;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  Participante: TParticipanteBaseAcesso;
+  Usuario: TUsuarioGlobalAcesso;
+  Token: string;
+  Link: string;
+  Mensagem: string;
+  PrimeiroAcessoNecessario: Boolean;
+begin
+  Result := nil;
+  Token := '';
+  Link := '';
+
+  if AIdInstituicao <= 0 then
+    TAppErrors.RaiseUnauthorized(
+      'Institui' + #$00E7 + #$00E3 + 'o n' + #$00E3 + 'o identificada.'
+    );
+
+  if AIdParticipante <= 0 then
+    TAppErrors.RaiseBadRequest(
+      'Participante inv' + #$00E1 + 'lido.'
+    );
+
+  Config :=
+    TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) +
+      'Config.ini'
+    );
+
+  Conn :=
+    TDatabaseConnection.NewConnection(
+      Config.Database
+    );
+  try
+    Participante :=
+      TInstituicaoParticipanteAcessoDAO.BuscarParticipante(
+        Conn,
+        AIdInstituicao,
+        AIdParticipante
+      );
+
+    if not Participante.Encontrado then
+      TAppErrors.RaiseBadRequest(
+        'Participante n' + #$00E3 + 'o encontrado.'
+      );
+
+    if not Participante.TemUsuarioInstituicao then
+      TAppErrors.RaiseBadRequest(
+        'O acesso do participante ainda n' + #$00E3 + 'o foi liberado.'
+      );
+
+    if Trim(Participante.Telefone).IsEmpty then
+      TAppErrors.RaiseBadRequest(
+        'Informe um telefone no cadastro do participante antes de reenviar o convite.'
+      );
+
+    Usuario :=
+      TInstituicaoParticipanteAcessoDAO.BuscarUsuarioVinculado(
+        Conn,
+        AIdInstituicao,
+        AIdParticipante
+      );
+
+    if not Usuario.Encontrado then
+      TAppErrors.RaiseBadRequest(
+        'Usu' + #$00E1 + 'rio vinculado ao participante n' + #$00E3 + 'o encontrado.'
+      );
+
+    if not SameText(
+      Usuario.Situacao,
+      'ATIVO'
+    ) then
+      TAppErrors.RaiseBadRequest(
+        'O usu' + #$00E1 + 'rio vinculado n' + #$00E3 + 'o est' + #$00E1 + ' ativo.'
+      );
+
+    PrimeiroAcessoNecessario :=
+      not Usuario.TemSenhaDefinida;
+
+    if PrimeiroAcessoNecessario then
+    begin
+      Token :=
+        GerarTokenSeguro;
+
+      Conn.StartTransaction;
+      try
+        TInstituicaoParticipanteAcessoDAO.RevogarTokensSenha(
+          Conn,
+          Usuario.IdUsuario
+        );
+
+        TInstituicaoParticipanteAcessoDAO.CriarTokenSenha(
+          Conn,
+          Usuario.IdUsuario,
+          Token,
+          24
+        );
+
+        Conn.Commit;
+      except
+        if Conn.InTransaction then
+          Conn.Rollback;
+        raise;
+      end;
+
+      Link :=
+        Config.Web.PublicURL +
+        '/' +
+        Participante.InstituicaoSlug +
+        '/primeiro-acesso#token=' +
+        Token;
+    end
+    else
+      Link :=
+        Config.Web.PublicURL +
+        '/' +
+        Participante.InstituicaoSlug +
+        '/login';
+
+    Mensagem :=
+      MontarMensagemAcesso(
+        Participante,
+        Usuario.TemSenhaDefinida,
+        Link
+      );
+
+    TInstituicaoWhatsAppService.EnviarMensagemSistema(
+      AIdInstituicao,
+      Participante.Telefone,
+      Mensagem
+    );
+
+    Result :=
+      TInstituicaoParticipanteAcessoDAO.BuscarInfo(
+        Conn,
+        AIdInstituicao,
+        AIdParticipante
+      );
+
+    if Result = nil then
+      TAppErrors.RaiseBadRequest(
+        'N' + #$00E3 + 'o foi poss' + #$00ED + 'vel carregar o acesso do participante.'
+      );
+
+    Result.PrimeiroAcessoNecessario :=
+      PrimeiroAcessoNecessario;
+    Result.ConviteWhatsAppEnviado := True;
+
+    if PrimeiroAcessoNecessario then
+      Result.ConviteMensagem :=
+        'Novo convite para cria' + #$00E7 + #$00E3 +
+        'o da senha enviado pelo WhatsApp.'
+    else
+      Result.ConviteMensagem :=
+        'Dados de acesso reenviados pelo WhatsApp.';
   finally
     Conn.Free;
   end;
