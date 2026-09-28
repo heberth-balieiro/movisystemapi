@@ -68,6 +68,8 @@ type
     class procedure Migration_046_RecuperacaoSenhaTenantTipo(const AConn: TUniConnection); static;
     class procedure Migration_047_CanaisEnvioAcesso(const AConn: TUniConnection); static;
 
+    class procedure Migration_048_EncontroCheckin(const AConn: TUniConnection); static;
+
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
 end;
@@ -211,6 +213,7 @@ begin
       Migration_045_PlataformaEmailConfiguracao(Conn);
       Migration_046_RecuperacaoSenhaTenantTipo(Conn);
       Migration_047_CanaisEnvioAcesso(Conn);
+      Migration_048_EncontroCheckin(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2041,6 +2044,37 @@ begin
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+
+class procedure TCursosMigration.Migration_048_EncontroCheckin(const AConn: TUniConnection);
+var Q: TUniQuery;
+begin
+  if MigrationExists(AConn, '048') then Exit;
+  ExecSQL(AConn,
+    'CREATE TABLE IF NOT EXISTS encontro_checkin (' +
+    'id_instituicao BIGINT UNSIGNED NOT NULL, id_turma BIGINT UNSIGNED NOT NULL, ' +
+    'id_encontro BIGINT UNSIGNED NOT NULL, ' +
+    'token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, ' +
+    'aberto_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), ' +
+    'expira_em DATETIME(3) NOT NULL, encerrado_em DATETIME(3) NULL, ' +
+    'aberto_por BIGINT UNSIGNED NOT NULL, ' +
+    'PRIMARY KEY(id_instituicao,id_encontro), UNIQUE KEY uq_checkin_token(token_hash), ' +
+    'CONSTRAINT fk_checkin_encontro FOREIGN KEY(id_instituicao,id_turma,id_encontro) ' +
+    'REFERENCES turma_encontro(id_instituicao,id_turma,id) ON DELETE CASCADE, ' +
+    'CONSTRAINT fk_checkin_usuario FOREIGN KEY(id_instituicao,aberto_por) ' +
+    'REFERENCES usuario_instituicao(id_instituicao,id)) ENGINE=InnoDB');
+  // DDL auto-commits in MySQL: allow retry after partial execution.
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+    Q.SQL.Text := 'SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() ' +
+      'AND table_name=''presenca'' AND column_name=''origem''';
+    Q.Open;
+    if Q.IsEmpty then
+      ExecSQL(AConn, 'ALTER TABLE presenca ADD COLUMN origem VARCHAR(20) NOT NULL DEFAULT ''LEGADO''');
+  finally Q.Free; end;
+  RegisterMigration(AConn, '048', 'QR de encontro e auto check-in autenticado');
 end;
 
 {$ENDREGION}

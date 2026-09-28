@@ -20,6 +20,7 @@ uses
   App.Token,
   App.Response,
   APP.Errors,
+  InstituicaoPermissao.Service,
   InstituicaoPresenca.Model,
   InstituicaoPresenca.Service;
 
@@ -488,6 +489,9 @@ begin
         ) then
           Exit;
 
+        TInstituicaoPermissaoService.Exigir(Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao, 'presenca.visualizar');
+
         IdTurma :=
           StrToInt64Def(
             Req.Params.Items['id_turma'],
@@ -880,6 +884,9 @@ begin
           Claims
         ) then
           Exit;
+
+        TInstituicaoPermissaoService.Exigir(Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao, 'presenca.visualizar');
 
         IdInscricao :=
           StrToInt64Def(

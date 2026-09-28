@@ -59,6 +59,7 @@ uses
   App.Config,
   APP.Errors,
   Database.Connection,
+  InstituicaoPermissao.Service,
   InstituicaoPresenca.DAO;
 
 class procedure TInstituicaoPresencaService.ValidarSituacao(
@@ -239,6 +240,7 @@ var
   Conn: TUniConnection;
   Dados: TInstituicaoPresencaRegistro;
 begin
+  TInstituicaoPermissaoService.Exigir(AIdInstituicao, ARegistradoPor, 'presenca.editar');
   Result := nil;
 
   if AIdInstituicao <= 0 then
@@ -363,6 +365,7 @@ var
   I: Integer;
   Item: TInstituicaoPresencaRegistro;
 begin
+  TInstituicaoPermissaoService.Exigir(AIdInstituicao, ARegistradoPor, 'presenca.editar');
   if AIdInstituicao <= 0 then
     TAppErrors.RaiseUnauthorized(
       'Instituição não identificada.'

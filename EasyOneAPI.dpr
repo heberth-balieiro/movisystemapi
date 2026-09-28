@@ -8,6 +8,10 @@
 {$R *.res}
 
 uses
+  EncontroCheckin.Controller in 'src\Cursos\Controller\EncontroCheckin.Controller.pas',
+  EncontroCheckin.DAO in 'src\Cursos\Dao\EncontroCheckin.DAO.pas',
+  EncontroCheckin.Model in 'src\Cursos\Model\EncontroCheckin.Model.pas',
+  EncontroCheckin.Service in 'src\Cursos\Services\EncontroCheckin.Service.pas',
   System.SysUtils,
   Horse,
   Horse.Jhonson,
