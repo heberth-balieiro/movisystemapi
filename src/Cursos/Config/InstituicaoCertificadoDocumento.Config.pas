@@ -103,6 +103,16 @@ begin
     raise Exception.Create(
       'Configure CERTIFICADO_DOCUMENTO.PublicValidationBaseUrl no Config.ini.'
     );
+
+  if not Result.PublicValidationBaseUrl.ToLower.StartsWith('https://') and
+     not Result.PublicValidationBaseUrl.ToLower.StartsWith('http://') then
+    raise Exception.Create(
+      'CERTIFICADO_DOCUMENTO.PublicValidationBaseUrl deve ser uma URL HTTP ou HTTPS.'
+    );
+
+  if Result.QrEncodeExecutable.IsEmpty or Result.ChromiumExecutable.IsEmpty then
+    raise Exception.Create('Configure os executáveis qrencode e Chromium.');
+
 end;
 
 end.

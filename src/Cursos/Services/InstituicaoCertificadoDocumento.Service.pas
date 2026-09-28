@@ -497,7 +497,11 @@ var
   Partes: TArray<string>;
   Parte: string;
   UrlArquivo: string;
+  PastaPerfil: string;
+  Stream: TFileStream;
+  Cabecalho: array[0..4] of AnsiChar;
 begin
+  PastaPerfil := GerarNomeTemporario('.profile');
   Args :=
     TList<string>.Create;
 
@@ -518,13 +522,15 @@ begin
         );
     end;
 
+    Args.Add('--user-data-dir=' + PastaPerfil);
+
     Args.Add(
       '--print-to-pdf=' +
       AArquivoPdf
     );
 
     UrlArquivo :=
-      'file:///' +
+      'file://' +
       StringReplace(
         AArquivoHtml,
         '\',
@@ -532,9 +538,14 @@ begin
         [rfReplaceAll]
       );
 
-    Args.Add(
-      UrlArquivo
-    );
+    {$IFDEF MSWINDOWS}
+    UrlArquivo := StringReplace(UrlArquivo, 'file://', 'file:///', []);
+    {$ENDIF}
+    UrlArquivo := StringReplace(UrlArquivo, '%', '%25', [rfReplaceAll]);
+    UrlArquivo := StringReplace(UrlArquivo, ' ', '%20', [rfReplaceAll]);
+    UrlArquivo := StringReplace(UrlArquivo, '#', '%23', [rfReplaceAll]);
+    UrlArquivo := StringReplace(UrlArquivo, '?', '%3F', [rfReplaceAll]);
+    Args.Add(UrlArquivo);
 
     TAppProcessRunner.Execute(
       AExecutable,
@@ -543,6 +554,8 @@ begin
 
   finally
     Args.Free;
+    if TDirectory.Exists(PastaPerfil) then
+      TDirectory.Delete(PastaPerfil, True);
   end;
 
   if not TFile.Exists(
@@ -551,6 +564,19 @@ begin
     raise Exception.Create(
       'O Chromium não gerou o arquivo PDF.'
     );
+
+  Stream := TFileStream.Create(AArquivoPdf, fmOpenRead or fmShareDenyWrite);
+  try
+    if Stream.Size < 5 then
+      raise Exception.Create('O PDF gerado está vazio ou incompleto.');
+    Stream.ReadBuffer(Cabecalho, SizeOf(Cabecalho));
+    if (Cabecalho[0] <> '%') or (Cabecalho[1] <> 'P') or
+       (Cabecalho[2] <> 'D') or (Cabecalho[3] <> 'F') or
+       (Cabecalho[4] <> '-') then
+      raise Exception.Create('O arquivo gerado não possui cabeçalho PDF válido.');
+  finally
+    Stream.Free;
+  end;
 end;
 
 class function TInstituicaoCertificadoDocumentoService.GerarPdf(
@@ -726,7 +752,7 @@ begin
       SanitizeFileName(
         Certificado.NumeroPublico
       ) +
-      '.pdf';
+      '-' + TPath.GetFileNameWithoutExtension(ArquivoPdfTemporario) + '.pdf';
 
     StorageKey :=
       'certificados/' +
@@ -766,14 +792,9 @@ begin
         NomeArquivo
       );
 
-    if TFile.Exists(
-      ArquivoPdfDestino
-    ) then
-      TFile.Delete(
-        ArquivoPdfDestino
-      );
-
-    TFile.Move(
+    // Cada tentativa tem arquivo próprio: nunca remover o PDF de outra geração.
+    // Copy também suporta storage em volume diferente do diretório temporário.
+    TFile.Copy(
       ArquivoPdfTemporario,
       ArquivoPdfDestino
     );

@@ -148,7 +148,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  APP.Errors;
 
 class function TInstituicaoCertificadoDAO.MontarWhere(
   const AFiltro: TCertificadoFiltro
@@ -1409,7 +1410,8 @@ begin
       'pdf_gerado_em = CURRENT_TIMESTAMP(3), ' +
       'emitido_por = :emitido_por ' +
       'WHERE id_instituicao = :id_instituicao ' +
-      'AND id = :id';
+      'AND id = :id ' +
+      'AND situacao IN (''PENDENTE'', ''ERRO'')';
 
     Qry.ParamByName(
       'pdf_storage_key'
@@ -1448,6 +1450,10 @@ begin
       AIdCertificado;
 
     Qry.ExecSQL;
+    if Qry.RowsAffected <> 1 then
+      TAppErrors.RaiseBadRequest(
+        'O certificado foi alterado durante a geração. Atualize a consulta.'
+      );
 
   finally
     Qry.Free;

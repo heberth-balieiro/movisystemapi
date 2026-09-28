@@ -36,6 +36,7 @@ Uses
   InstituicaoPresenca.Controller,
   InstituicaoConclusao.Controller,
   InstituicaoCertificado.Controller,
+  InstituicaoCertificadoDocumento.Controller,
   AlunoPortal.Controller,
   InstituicaoParticipanteAcesso.Controller,
   AlunoCursoDisponivel.Controller,
@@ -78,6 +79,7 @@ begin
   TInstituicaoPresencaController.Registry;
   TInstituicaoConclusaoController.Registry;
   TInstituicaoCertificadoController.Registry;
+  TInstituicaoCertificadoDocumentoController.Registry;
   TAlunoPortalController.Registry;
   TInstituicaoParticipanteAcessoController.Registry;
   TAlunoCursoDisponivelController.Registry;
