@@ -11,6 +11,7 @@ type
 implementation
 
 Uses
+  EncontroCheckin.Controller,
   PlataformaAuth.Controller,
   PlataformaInstituicao.Controller,
   PlataformaUsuario.Controller,
@@ -52,6 +53,7 @@ Uses
 
 class procedure TCursosRoutes.Registry;
 begin
+  TEncontroCheckinController.Registry;
   TPlataformaAuthController.Registry;
   TPlataformaInstituicaoController.Registry;
   TPlataformaUsuarioController.Registry;
