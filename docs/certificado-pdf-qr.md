@@ -97,3 +97,33 @@ protege contra substituição concorrente de arquivos por um usuário do servido
 - Inspecionar os três cabeçalhos e o nome do anexo na resposta real do Horse.
 
 Compilação Delphi e testes HTTP com banco e tokens reais permanecem pendentes.
+
+## Ciclo do certificado
+
+- Rotas administrativas exigem `certificado.visualizar`, `certificado.emitir`,
+  `certificado.cancelar` ou `certificado.configurar`, conforme a operação.
+- `pdf-finalizado` não aceita mais metadados enviados pelo cliente: retorna erro
+  orientando usar `gerar-pdf`. Nenhuma alteração de status ocorre nessa rota.
+- Emissão inicial, criação de reemissão e finalização serializam a operação pela
+  inscrição (bloqueio transacional no MySQL). Reemissão/finalização exigem a
+  versão mais recente. Uma nova versão PENDENTE impede outra reemissão.
+- Cancelamentos concorrentes não sobrescrevem o motivo nem duplicam o histórico.
+- O certificado válido anterior só é cancelado quando o novo PDF finaliza.
+  A busca considera a inscrição, inclusive quando houve versões intermediárias
+  canceladas antes da conclusão. Cada alteração fica no histórico transacional.
+
+### Homologação do ciclo (pendente)
+
+1. Emitir PENDENTE, gerar PDF, consultar como VALIDO e baixar.
+2. Cancelar com motivo: consulta pública CANCELADO e download recusado.
+3. Reemitir: novo número/código/versão PENDENTE; anterior ainda válido até gerar.
+4. Cancelar essa versão pendente, reemitir a partir dela e finalizar. Confirmar
+   cancelamento do certificado que permaneceu válido antes dessas tentativas.
+5. Duas emissões iniciais simultâneas: apenas uma criação. Duas reemissões:
+   apenas uma nova versão pendente. Duas finalizações: apenas uma emissão.
+6. Reemitir versão antiga: recusa. Cancelar simultaneamente: um único histórico.
+7. Perfil sem permissão e JWT de outra instituição: operações recusadas.
+8. Chamar pdf-finalizado com metadados falsos: recusa sem mudança no banco.
+
+Não há migração para este ajuste. Compilação e testes concorrentes exigem Delphi
+11 e MySQL no ambiente de homologação; não foram executados nesta revisão.

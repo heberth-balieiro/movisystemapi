@@ -25,6 +25,11 @@ type
     ): TCertificadoItem; static;
 
   public
+    class function BuscarValidoAnterior(const AConn: TUniConnection;
+      const AIdInstituicao, AIdInscricao, AIdAtual: Int64): TCertificadoItem; static;
+    class procedure BloquearCiclo(const AConn: TUniConnection;
+      const AIdInstituicao, AIdInscricao, AIdOrigem: Int64;
+      const AReemissao: Boolean); static;
     class function ObterConfiguracao(
       const AConn: TUniConnection;
       const AIdInstituicao: Int64
@@ -150,6 +155,72 @@ implementation
 uses
   System.SysUtils,
   APP.Errors;
+
+class function TInstituicaoCertificadoDAO.BuscarValidoAnterior(
+  const AConn: TUniConnection;
+  const AIdInstituicao, AIdInscricao, AIdAtual: Int64): TCertificadoItem;
+var
+  Qry: TUniQuery;
+begin
+  Result := nil;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text := 'SELECT id FROM certificado WHERE id_instituicao = :tenant ' +
+      'AND id_inscricao = :inscricao AND id <> :atual AND situacao = ''VALIDO'' ' +
+      'ORDER BY versao DESC LIMIT 1 FOR UPDATE';
+    Qry.ParamByName('tenant').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('inscricao').AsLargeInt := AIdInscricao;
+    Qry.ParamByName('atual').AsLargeInt := AIdAtual;
+    Qry.Open;
+    if not Qry.IsEmpty then
+      Result := BuscarPorId(AConn, AIdInstituicao, Qry.FieldByName('id').AsLargeInt);
+  finally
+    Qry.Free;
+  end;
+end;
+
+// Serializa a emissão por inscrição. Chamado sempre dentro da transação.
+class procedure TInstituicaoCertificadoDAO.BloquearCiclo(
+  const AConn: TUniConnection;
+  const AIdInstituicao, AIdInscricao, AIdOrigem: Int64;
+  const AReemissao: Boolean);
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text := 'SELECT id FROM inscricao WHERE id_instituicao = :tenant ' +
+      'AND id = :id FOR UPDATE';
+    Qry.ParamByName('tenant').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id').AsLargeInt := AIdInscricao;
+    Qry.Open;
+    if Qry.IsEmpty then
+      TAppErrors.RaiseBadRequest('Inscrição não encontrada.');
+    Qry.Close;
+    Qry.SQL.Text := 'SELECT id, situacao FROM certificado ' +
+      'WHERE id_instituicao = :tenant AND id_inscricao = :id ' +
+      'ORDER BY versao DESC, id DESC LIMIT 1 FOR UPDATE';
+    Qry.ParamByName('tenant').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id').AsLargeInt := AIdInscricao;
+    Qry.Open;
+    if AIdOrigem = 0 then
+    begin
+      if not Qry.IsEmpty then
+        TAppErrors.RaiseBadRequest('A inscrição já possui certificado. Atualize a consulta.');
+    end
+    else
+    begin
+      if Qry.IsEmpty or (Qry.FieldByName('id').AsLargeInt <> AIdOrigem) then
+        TAppErrors.RaiseBadRequest('Utilize a versão mais recente do certificado.');
+      if AReemissao and SameText(Qry.FieldByName('situacao').AsString, 'PENDENTE') then
+        TAppErrors.RaiseBadRequest('Finalize ou cancele a versão pendente antes de reemitir.');
+    end;
+  finally
+    Qry.Free;
+  end;
+end;
 
 class function TInstituicaoCertificadoDAO.MontarWhere(
   const AFiltro: TCertificadoFiltro
@@ -1481,7 +1552,7 @@ begin
       'cancelado_em = CURRENT_TIMESTAMP(3), ' +
       'motivo_cancelamento = :motivo ' +
       'WHERE id_instituicao = :id_instituicao ' +
-      'AND id = :id';
+      'AND id = :id AND situacao <> ''CANCELADO''';
 
     Qry.ParamByName(
       'motivo'
@@ -1501,6 +1572,8 @@ begin
       AIdCertificado;
 
     Qry.ExecSQL;
+    if Qry.RowsAffected <> 1 then
+      TAppErrors.RaiseBadRequest('O certificado já foi cancelado. Atualize a consulta.');
 
   finally
     Qry.Free;

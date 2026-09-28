@@ -18,12 +18,14 @@ uses
   App.Token,
   App.Response,
   APP.Errors,
+  InstituicaoPermissao.Service,
   InstituicaoCertificado.Model,
   InstituicaoCertificado.Service;
 
 function AutorizarInstituicao(
   const Req: THorseRequest;
   const Res: THorseResponse;
+  const APermissao: string;
   out AClaims: TJWTClaims
 ): Boolean;
 begin
@@ -46,6 +48,8 @@ begin
     Exit;
   end;
 
+  TInstituicaoPermissaoService.Exigir(AClaims.IdInstituicao,
+    AClaims.IdUsuarioInstituicao, APermissao);
   Result := True;
 end;
 
@@ -606,6 +610,7 @@ begin
         if not AutorizarInstituicao(
           Req,
           Res,
+          'certificado.configurar',
           Claims
         ) then
           Exit;
@@ -659,6 +664,7 @@ begin
         if not AutorizarInstituicao(
           Req,
           Res,
+          'certificado.configurar',
           Claims
         ) then
           Exit;
@@ -773,6 +779,7 @@ begin
         if not AutorizarInstituicao(
           Req,
           Res,
+          'certificado.visualizar',
           Claims
         ) then
           Exit;
@@ -928,6 +935,7 @@ begin
         if not AutorizarInstituicao(
           Req,
           Res,
+          'certificado.emitir',
           Claims
         ) then
           Exit;
@@ -989,6 +997,7 @@ begin
         if not AutorizarInstituicao(
           Req,
           Res,
+          'certificado.visualizar',
           Claims
         ) then
           Exit;
@@ -1032,116 +1041,20 @@ begin
   );
 
 
-  THorse.Post(
-    '/v1/certifica/instituicao/certificados/:id/pdf-finalizado',
-
-    procedure(
-      Req: THorseRequest;
-      Res: THorseResponse;
-      Next: TProc
-    )
+  // Compatibilidade explícita: metadados do cliente não podem emitir um PDF.
+  THorse.Post('/v1/certifica/instituicao/certificados/:id/pdf-finalizado',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     var
       Claims: TJWTClaims;
-      IdCertificado: Int64;
-      JsonValue: TJSONValue;
-      Body: TJSONObject;
-      Pdf: TCertificadoPdfFinalizacao;
-      Certificado: TCertificadoItem;
     begin
       try
-        if not AutorizarInstituicao(
-          Req,
-          Res,
-          Claims
-        ) then
-          Exit;
-
-        IdCertificado :=
-          StrToInt64Def(
-            Req.Params.Items[
-              'id'
-            ],
-            0
-          );
-
-        JsonValue :=
-          TJSONObject.ParseJSONValue(
-            Req.Body
-          );
-
-        if not (JsonValue is TJSONObject) then
-        begin
-          JsonValue.Free;
-
-          TAppErrors.RaiseBadRequest(
-            'JSON inválido.'
-          );
-        end;
-
-        Body :=
-          JsonValue as TJSONObject;
-
-        try
-          Pdf :=
-            Default(
-              TCertificadoPdfFinalizacao
-            );
-
-          Pdf.PdfStorageKey :=
-            JsonString(
-              Body,
-              'pdf_storage_key'
-            );
-
-          Pdf.PdfSha256 :=
-            JsonString(
-              Body,
-              'pdf_sha256'
-            );
-
-          Pdf.PdfTamanhoBytes :=
-            JsonInt64(
-              Body,
-              'pdf_tamanho_bytes',
-              0
-            );
-
-        finally
-          Body.Free;
-        end;
-
-        Certificado :=
-          TInstituicaoCertificadoService.FinalizarPdf(
-            Claims.IdInstituicao,
-            IdCertificado,
-            Claims.IdUsuarioInstituicao,
-            Pdf
-          );
-
-        try
-          TAppResponse.Ok(
-            Res,
-            CertificadoParaJson(
-              Certificado,
-              True
-            ),
-            'PDF registrado e certificado emitido com sucesso.'
-          );
-
-        finally
-          Certificado.Free;
-        end;
-
+        if not AutorizarInstituicao(Req, Res, 'certificado.emitir', Claims) then Exit;
+        TAppErrors.RaiseBadRequest(
+          'Finalização manual desabilitada. Utilize a operação gerar-pdf.');
       except
-        on E: Exception do
-          TAppErrors.HandleException(
-            Res,
-            E
-          );
+        on E: Exception do TAppErrors.HandleException(Res, E);
       end;
-    end
-  );
-
+    end);
 
   THorse.Patch(
     '/v1/certifica/instituicao/certificados/:id/cancelar',
@@ -1163,6 +1076,7 @@ begin
         if not AutorizarInstituicao(
           Req,
           Res,
+          'certificado.cancelar',
           Claims
         ) then
           Exit;
@@ -1256,6 +1170,7 @@ begin
         if not AutorizarInstituicao(
           Req,
           Res,
+          'certificado.emitir',
           Claims
         ) then
           Exit;
@@ -1349,6 +1264,7 @@ begin
         if not AutorizarInstituicao(
           Req,
           Res,
+          'certificado.visualizar',
           Claims
         ) then
           Exit;

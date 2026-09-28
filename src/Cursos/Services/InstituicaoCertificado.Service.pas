@@ -807,6 +807,9 @@ begin
         Conn.StartTransaction;
 
         try
+          TInstituicaoCertificadoDAO.BloquearCiclo(Conn, AIdInstituicao,
+            AIdInscricao, 0, False);
+
           if ConfigCert.UsarAno then
             AnoSequencia :=
               YearOf(
@@ -959,6 +962,9 @@ begin
       Conn.StartTransaction;
 
       try
+          TInstituicaoCertificadoDAO.BloquearCiclo(Conn, AIdInstituicao,
+            Atual.IdInscricao, AIdCertificado, False);
+
         TInstituicaoCertificadoDAO.FinalizarPdf(
           Conn,
           AIdInstituicao,
@@ -1003,10 +1009,11 @@ begin
         if Atual.TemIdCertificadoOrigem then
         begin
           Origem :=
-            TInstituicaoCertificadoDAO.BuscarPorId(
+            TInstituicaoCertificadoDAO.BuscarValidoAnterior(
               Conn,
               AIdInstituicao,
-              Atual.IdCertificadoOrigem
+              Atual.IdInscricao,
+              AIdCertificado
             );
 
           try
@@ -1368,6 +1375,9 @@ begin
           Conn.StartTransaction;
 
           try
+          TInstituicaoCertificadoDAO.BloquearCiclo(Conn, AIdInstituicao,
+            Origem.IdInscricao, AIdCertificado, True);
+
             if ConfigCert.UsarAno then
               AnoSequencia :=
                 YearOf(
