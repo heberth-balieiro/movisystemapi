@@ -18,6 +18,7 @@ uses
   App.Token,
   App.Response,
   APP.Errors,
+  InstituicaoPermissao.Service,
   InstituicaoCertificado.Model,
   InstituicaoCertificadoDocumento.Service;
 
@@ -220,6 +221,9 @@ begin
           Claims
         ) then
           Exit;
+
+        TInstituicaoPermissaoService.Exigir(Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao, 'certificado.emitir');
 
         IdCertificado :=
           StrToInt64Def(
