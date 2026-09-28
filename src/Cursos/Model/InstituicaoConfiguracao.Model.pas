@@ -42,6 +42,17 @@ type
     function ToJSON: TJSONObject;
   end;
 
+  TInstituicaoAcessoEnvioInput = record
+    EnviarEmail: Boolean;
+    EnviarWhatsApp: Boolean;
+  end;
+
+  TInstituicaoAcessoEnvioConfig = record
+    EnviarEmail: Boolean;
+    EnviarWhatsApp: Boolean;
+    function ToJSON: TJSONObject;
+  end;
+
   TInstituicaoWhatsAppInput = record
     Ativo: Boolean;
     Url: string;
@@ -76,6 +87,13 @@ begin
   Result.AddPair('remetente_nome', RemetenteNome);
   Result.AddPair('remetente_email', RemetenteEmail);
   Result.AddPair('responder_para', ResponderPara);
+end;
+
+function TInstituicaoAcessoEnvioConfig.ToJSON: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('enviar_email', TJSONBool.Create(EnviarEmail));
+  Result.AddPair('enviar_whatsapp', TJSONBool.Create(EnviarWhatsApp));
 end;
 
 function TInstituicaoWhatsAppConfig.ToJSON: TJSONObject;

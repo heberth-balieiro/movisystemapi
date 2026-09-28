@@ -18,6 +18,16 @@ type
             AHomeLink: string
     ): string; static;
 
+    class function HtmlEscape(
+      const AValue: string
+    ): string; static;
+
+    class function MontarEmailAcesso(
+      const AParticipante: TParticipanteBaseAcesso;
+      const AUsuarioJaTinhaSenha: Boolean;
+      const ALink: string
+    ): string; static;
+
   public
     class function Consultar(
       const AIdInstituicao,
@@ -49,7 +59,10 @@ uses
   APP.Errors,
   Auth.Passwords,
   Database.Connection,
-  InstituicaoWhatsApp.Service;
+  InstituicaoConfiguracao.Model,
+  InstituicaoConfiguracao.Service,
+  InstituicaoWhatsApp.Service,
+  PlataformaEmailEnvio.Service;
 
 class function TInstituicaoParticipanteAcessoService.GerarTokenSeguro: string;
 var
@@ -185,6 +198,66 @@ begin
     Seguranca;
 end;
 
+
+class function TInstituicaoParticipanteAcessoService.HtmlEscape(
+  const AValue: string
+): string;
+begin
+  Result := StringReplace(AValue, '&', '&amp;', [rfReplaceAll]);
+  Result := StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
+  Result := StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
+  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
+end;
+
+class function TInstituicaoParticipanteAcessoService.MontarEmailAcesso(
+  const AParticipante: TParticipanteBaseAcesso;
+  const AUsuarioJaTinhaSenha: Boolean;
+  const ALink: string
+): string;
+var
+  Titulo: string;
+  Instrucao: string;
+  Botao: string;
+begin
+  if AUsuarioJaTinhaSenha then
+  begin
+    Titulo := 'Acesso ao portal liberado';
+    Instrucao :=
+      'Seu acesso ao portal de capacita&ccedil;&otilde;es foi liberado. ' +
+      'Utilize sua senha atual para entrar.';
+    Botao := 'Acessar portal';
+  end
+  else
+  begin
+    Titulo := 'Crie sua senha de acesso';
+    Instrucao :=
+      'Seu acesso ao portal de capacita&ccedil;&otilde;es foi liberado. ' +
+      'Para concluir o primeiro acesso, crie sua senha pelo link abaixo. ' +
+      'O link &eacute; pessoal, de uso &uacute;nico e v&aacute;lido por 24 horas.';
+    Botao := 'Criar minha senha';
+  end;
+
+  Result :=
+    '<!doctype html><html><head><meta charset="UTF-8"></head>' +
+    '<body style="margin:0;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">' +
+    '<div style="max-width:620px;margin:0 auto;padding:32px 18px;">' +
+    '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:32px;">' +
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.14em;color:#2563eb;text-transform:uppercase;">MoviSystem Certifica</div>' +
+    '<h1 style="font-size:24px;margin:14px 0 8px;">' + Titulo + '</h1>' +
+    '<p style="font-size:15px;line-height:1.6;color:#475569;">Ol&aacute;, ' +
+    HtmlEscape(AParticipante.Nome) + '.</p>' +
+    '<p style="font-size:15px;line-height:1.6;color:#475569;">' + Instrucao + '</p>' +
+    '<p style="font-size:14px;line-height:1.6;color:#64748b;">Portal: ' +
+    HtmlEscape(AParticipante.InstituicaoNome) + '<br>Usu&aacute;rio: ' +
+    HtmlEscape(AParticipante.Email) + '</p>' +
+    '<p style="margin:28px 0;"><a href="' + HtmlEscape(ALink) +
+    '" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:9px;">' +
+    Botao + '</a></p>' +
+    '<p style="font-size:12px;line-height:1.5;color:#94a3b8;margin-top:28px;">' +
+    'Por seguran&ccedil;a, n&atilde;o compartilhe este link com outras pessoas.</p>' +
+    '</div></div></body></html>';
+end;
+
 class function TInstituicaoParticipanteAcessoService.Consultar(
   const AIdInstituicao,
         AIdParticipante: Int64
@@ -250,6 +323,9 @@ var
   PrimeiroAcessoNecessario: Boolean;
   VinculoJaExistia: Boolean;
   VinculoAdministrativo: Boolean;
+  Canais: TInstituicaoAcessoEnvioConfig;
+  FalhaEmail: string;
+  FalhaWhatsApp: string;
 begin
   Result := nil;
   Token := '';
@@ -259,6 +335,8 @@ begin
   PrimeiroAcessoNecessario := False;
   VinculoJaExistia := False;
   VinculoAdministrativo := False;
+  FalhaEmail := '';
+  FalhaWhatsApp := '';
 
   if AIdInstituicao <= 0 then
     TAppErrors.RaiseUnauthorized(
@@ -274,6 +352,11 @@ begin
     TAppConfig.Carregar(
       ExtractFilePath(ParamStr(0)) +
       'Config.ini'
+    );
+
+  Canais :=
+    TInstituicaoConfiguracaoService.ObterAcessoEnvio(
+      AIdInstituicao
     );
 
   Conn :=
@@ -480,38 +563,68 @@ begin
         HomeLink
       );
 
-    if Trim(Participante.Telefone).IsEmpty then
+    Result.ConviteEmailEnviado := False;
+    Result.ConviteWhatsAppEnviado := False;
+
+    if Canais.EnviarEmail then
     begin
-      Result.ConviteWhatsAppEnviado := False;
-      Result.ConviteMensagem :=
-        'Acesso liberado, mas a mensagem não foi enviada porque o participante não possui telefone cadastrado.';
-      Exit;
+      try
+        TPlataformaEmailEnvioService.Enviar(
+          Participante.Email,
+          'Acesso ao portal - ' + Participante.InstituicaoNome,
+          MontarEmailAcesso(
+            Participante,
+            not PrimeiroAcessoNecessario,
+            Link
+          )
+        );
+        Result.ConviteEmailEnviado := True;
+      except
+        FalhaEmail := 'E-mail não enviado.';
+      end;
     end;
 
-    try
-      TInstituicaoWhatsAppService.EnviarMensagemSistema(
-        AIdInstituicao,
-        Participante.Telefone,
-        Mensagem
-      );
-
-      Result.ConviteWhatsAppEnviado := True;
-
-      if PrimeiroAcessoNecessario then
-        Result.ConviteMensagem :=
-          'Acesso liberado e convite para cria' + #$00E7 + #$00E3 +
-          'o da senha enviado pelo WhatsApp.'
+    if Canais.EnviarWhatsApp then
+    begin
+      if Trim(Participante.Telefone).IsEmpty then
+        FalhaWhatsApp := 'WhatsApp não enviado: participante sem telefone cadastrado.'
       else
-        Result.ConviteMensagem :=
-          'Acesso liberado e dados de acesso enviados pelo WhatsApp.';
-    except
-      on E: Exception do
       begin
-        Result.ConviteWhatsAppEnviado := False;
-        Result.ConviteMensagem :=
-          'Acesso liberado, porém não foi possível enviar a mensagem pelo WhatsApp: ' +
-          E.Message;
+        try
+          TInstituicaoWhatsAppService.EnviarMensagemSistema(
+            AIdInstituicao,
+            Participante.Telefone,
+            Mensagem
+          );
+          Result.ConviteWhatsAppEnviado := True;
+        except
+          FalhaWhatsApp := 'WhatsApp não enviado.';
+        end;
       end;
+    end;
+
+    if Result.ConviteEmailEnviado and Result.ConviteWhatsAppEnviado then
+      Result.ConviteMensagem :=
+        'Acesso liberado e convite enviado por e-mail e WhatsApp.'
+    else if Result.ConviteEmailEnviado then
+    begin
+      Result.ConviteMensagem := 'Acesso liberado e convite enviado por e-mail.';
+      if FalhaWhatsApp <> '' then
+        Result.ConviteMensagem := Result.ConviteMensagem + ' ' + FalhaWhatsApp;
+    end
+    else if Result.ConviteWhatsAppEnviado then
+    begin
+      Result.ConviteMensagem := 'Acesso liberado e convite enviado pelo WhatsApp.';
+      if FalhaEmail <> '' then
+        Result.ConviteMensagem := Result.ConviteMensagem + ' ' + FalhaEmail;
+    end
+    else
+    begin
+      Result.ConviteMensagem := 'Acesso liberado, porém o convite não foi enviado.';
+      if FalhaEmail <> '' then
+        Result.ConviteMensagem := Result.ConviteMensagem + ' ' + FalhaEmail;
+      if FalhaWhatsApp <> '' then
+        Result.ConviteMensagem := Result.ConviteMensagem + ' ' + FalhaWhatsApp;
     end;
   finally
     Conn.Free;
@@ -532,11 +645,16 @@ var
   HomeLink: string;
   Mensagem: string;
   PrimeiroAcessoNecessario: Boolean;
+  Canais: TInstituicaoAcessoEnvioConfig;
+  FalhaEmail: string;
+  FalhaWhatsApp: string;
 begin
   Result := nil;
   Token := '';
   Link := '';
   HomeLink := '';
+  FalhaEmail := '';
+  FalhaWhatsApp := '';
 
   if AIdInstituicao <= 0 then
     TAppErrors.RaiseUnauthorized(
@@ -552,6 +670,11 @@ begin
     TAppConfig.Carregar(
       ExtractFilePath(ParamStr(0)) +
       'Config.ini'
+    );
+
+  Canais :=
+    TInstituicaoConfiguracaoService.ObterAcessoEnvio(
+      AIdInstituicao
     );
 
   Conn :=
@@ -574,11 +697,6 @@ begin
     if not Participante.TemUsuarioInstituicao then
       TAppErrors.RaiseBadRequest(
         'O acesso do participante ainda n' + #$00E3 + 'o foi liberado.'
-      );
-
-    if Trim(Participante.Telefone).IsEmpty then
-      TAppErrors.RaiseBadRequest(
-        'Informe um telefone no cadastro do participante antes de reenviar o convite.'
       );
 
     Usuario :=
@@ -661,12 +779,6 @@ begin
         HomeLink
       );
 
-    TInstituicaoWhatsAppService.EnviarMensagemSistema(
-      AIdInstituicao,
-      Participante.Telefone,
-      Mensagem
-    );
-
     Result :=
       TInstituicaoParticipanteAcessoDAO.BuscarInfo(
         Conn,
@@ -681,15 +793,68 @@ begin
 
     Result.PrimeiroAcessoNecessario :=
       PrimeiroAcessoNecessario;
-    Result.ConviteWhatsAppEnviado := True;
+    Result.ConviteEmailEnviado := False;
+    Result.ConviteWhatsAppEnviado := False;
 
-    if PrimeiroAcessoNecessario then
-      Result.ConviteMensagem :=
-        'Novo convite para cria' + #$00E7 + #$00E3 +
-        'o da senha enviado pelo WhatsApp.'
+    if Canais.EnviarEmail then
+    begin
+      try
+        TPlataformaEmailEnvioService.Enviar(
+          Participante.Email,
+          'Acesso ao portal - ' + Participante.InstituicaoNome,
+          MontarEmailAcesso(
+            Participante,
+            not PrimeiroAcessoNecessario,
+            Link
+          )
+        );
+        Result.ConviteEmailEnviado := True;
+      except
+        FalhaEmail := 'E-mail não enviado.';
+      end;
+    end;
+
+    if Canais.EnviarWhatsApp then
+    begin
+      if Trim(Participante.Telefone).IsEmpty then
+        FalhaWhatsApp := 'WhatsApp não enviado: participante sem telefone cadastrado.'
+      else
+      begin
+        try
+          TInstituicaoWhatsAppService.EnviarMensagemSistema(
+            AIdInstituicao,
+            Participante.Telefone,
+            Mensagem
+          );
+          Result.ConviteWhatsAppEnviado := True;
+        except
+          FalhaWhatsApp := 'WhatsApp não enviado.';
+        end;
+      end;
+    end;
+
+    if Result.ConviteEmailEnviado and Result.ConviteWhatsAppEnviado then
+      Result.ConviteMensagem := 'Convite reenviado por e-mail e WhatsApp.'
+    else if Result.ConviteEmailEnviado then
+    begin
+      Result.ConviteMensagem := 'Convite reenviado por e-mail.';
+      if FalhaWhatsApp <> '' then
+        Result.ConviteMensagem := Result.ConviteMensagem + ' ' + FalhaWhatsApp;
+    end
+    else if Result.ConviteWhatsAppEnviado then
+    begin
+      Result.ConviteMensagem := 'Convite reenviado pelo WhatsApp.';
+      if FalhaEmail <> '' then
+        Result.ConviteMensagem := Result.ConviteMensagem + ' ' + FalhaEmail;
+    end
     else
-      Result.ConviteMensagem :=
-        'Dados de acesso reenviados pelo WhatsApp.';
+    begin
+      Result.ConviteMensagem := 'O convite não pôde ser reenviado.';
+      if FalhaEmail <> '' then
+        Result.ConviteMensagem := Result.ConviteMensagem + ' ' + FalhaEmail;
+      if FalhaWhatsApp <> '' then
+        Result.ConviteMensagem := Result.ConviteMensagem + ' ' + FalhaWhatsApp;
+    end;
   finally
     Conn.Free;
   end;

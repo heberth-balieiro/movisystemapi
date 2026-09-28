@@ -75,6 +75,21 @@ type
       out ASenha: string
     ): Boolean; static;
 
+    class function BuscarAcessoEnvio(
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64
+    ): TInstituicaoAcessoEnvioConfig; static;
+
+    class function AtualizarAcessoEnvio(
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64;
+      const ADados: TInstituicaoAcessoEnvioInput
+    ): TInstituicaoAcessoEnvioConfig; static;
+
+    class function ObterAcessoEnvio(
+      const AIdInstituicao: Int64
+    ): TInstituicaoAcessoEnvioConfig; static;
+
     class function BuscarWhatsApp(
       const AIdInstituicao,
             AIdUsuarioInstituicao: Int64
@@ -900,6 +915,120 @@ begin
     );
 
     Result := not ASenha.IsEmpty;
+  finally
+    Conn.Free;
+  end;
+end;
+
+
+class function TInstituicaoConfiguracaoService.BuscarAcessoEnvio(
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64
+): TInstituicaoAcessoEnvioConfig;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  ValidarTenant(
+    AIdInstituicao,
+    AIdUsuarioInstituicao
+  );
+
+  Config := TAppConfig.Carregar(
+    ExtractFilePath(ParamStr(0)) +
+    'Config.ini'
+  );
+
+  Conn := TDatabaseConnection.NewConnection(
+    Config.Database
+  );
+  try
+    Result :=
+      TInstituicaoConfiguracaoDAO.BuscarAcessoEnvio(
+        Conn,
+        AIdInstituicao
+      );
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TInstituicaoConfiguracaoService.AtualizarAcessoEnvio(
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64;
+  const ADados: TInstituicaoAcessoEnvioInput
+): TInstituicaoAcessoEnvioConfig;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  ValidarTenant(
+    AIdInstituicao,
+    AIdUsuarioInstituicao
+  );
+
+  if not ADados.EnviarEmail and
+     not ADados.EnviarWhatsApp then
+    TAppErrors.RaiseBadRequest(
+      'Selecione ao menos um canal para enviar o acesso ao participante.'
+    );
+
+  Config := TAppConfig.Carregar(
+    ExtractFilePath(ParamStr(0)) +
+    'Config.ini'
+  );
+
+  Conn := TDatabaseConnection.NewConnection(
+    Config.Database
+  );
+  try
+    Conn.StartTransaction;
+    try
+      TInstituicaoConfiguracaoDAO.SalvarAcessoEnvio(
+        Conn,
+        AIdInstituicao,
+        AIdUsuarioInstituicao,
+        ADados
+      );
+
+      Result :=
+        TInstituicaoConfiguracaoDAO.BuscarAcessoEnvio(
+          Conn,
+          AIdInstituicao
+        );
+
+      Conn.Commit;
+    except
+      if Conn.InTransaction then
+        Conn.Rollback;
+      raise;
+    end;
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TInstituicaoConfiguracaoService.ObterAcessoEnvio(
+  const AIdInstituicao: Int64
+): TInstituicaoAcessoEnvioConfig;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  Config := TAppConfig.Carregar(
+    ExtractFilePath(ParamStr(0)) +
+    'Config.ini'
+  );
+
+  Conn := TDatabaseConnection.NewConnection(
+    Config.Database
+  );
+  try
+    Result :=
+      TInstituicaoConfiguracaoDAO.BuscarAcessoEnvio(
+        Conn,
+        AIdInstituicao
+      );
   finally
     Conn.Free;
   end;
