@@ -30,6 +30,7 @@ uses
   App.Config,
   APP.Errors,
   Database.Connection,
+  InstituicaoPermissao.Service,
   InstituicaoPresenca.DAO,
   InstituicaoPresencaQr.DAO;
 
@@ -84,6 +85,8 @@ begin
 
   if (AIdTurma <= 0) or (AIdEncontro <= 0) then
     TAppErrors.RaiseBadRequest('Turma/encontro inválido.');
+
+  TInstituicaoPermissaoService.Exigir(AIdInstituicao, ARegistradoPor, 'presenca.editar');
 
   Codigo := ExtrairCodigo(AConteudoQr);
 

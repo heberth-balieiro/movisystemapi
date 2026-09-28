@@ -178,12 +178,13 @@ begin
     Qry.SQL.Text :=
       'INSERT INTO presenca (' +
       'id_instituicao, id_turma, id_encontro, id_inscricao, ' +
-      'situacao, checkin_em, registrado_por' +
+      'situacao, checkin_em, registrado_por, origem' +
       ') VALUES (' +
       ':id_instituicao, :id_turma, :id_encontro, :id_inscricao, ' +
-      '''PRESENTE'', CURRENT_TIMESTAMP(3), :registrado_por' +
+      '''PRESENTE'', CURRENT_TIMESTAMP(3), :registrado_por, ''QR_EQUIPE''' +
       ') ' +
       'ON DUPLICATE KEY UPDATE ' +
+      'origem = ''QR_EQUIPE'', ' +
       'situacao = ''PRESENTE'', ' +
       'checkin_em = COALESCE(checkin_em, VALUES(checkin_em)), ' +
       'registrado_por = VALUES(registrado_por), ' +

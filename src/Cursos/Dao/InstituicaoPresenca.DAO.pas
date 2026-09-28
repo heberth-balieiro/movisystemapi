@@ -587,7 +587,7 @@ begin
       'checkout_em, ' +
       'minutos_presentes, ' +
       'justificativa, ' +
-      'registrado_por' +
+      'registrado_por, origem' +
       ') VALUES (' +
       ':id_instituicao, ' +
       ':id_turma, ' +
@@ -598,7 +598,7 @@ begin
       ':checkout_em, ' +
       ':minutos_presentes, ' +
       ':justificativa, ' +
-      ':registrado_por' +
+      ':registrado_por, ''MANUAL''' +
       ') ' +
       'ON DUPLICATE KEY UPDATE ' +
       'situacao = VALUES(situacao), ' +
@@ -606,7 +606,7 @@ begin
       'checkout_em = VALUES(checkout_em), ' +
       'minutos_presentes = VALUES(minutos_presentes), ' +
       'justificativa = VALUES(justificativa), ' +
-      'registrado_por = VALUES(registrado_por)';
+      'registrado_por = VALUES(registrado_por), origem = ''MANUAL''';
 
     Qry.ParamByName('id_instituicao').AsLargeInt :=
       AIdInstituicao;
