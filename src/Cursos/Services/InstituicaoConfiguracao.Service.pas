@@ -1,4 +1,4 @@
-unit InstituicaoConfiguracao.Service;
+﻿unit InstituicaoConfiguracao.Service;
 
 interface
 
@@ -41,6 +41,7 @@ type
     class function NormalizarUrl(
       const AUrl: string
     ): string; static;
+    class function EmailValido(const AEmail: string): Boolean; static;
 
   public
     class function AtualizarInstituicao(
@@ -739,7 +740,7 @@ begin
 end;
 
 
-class function EmailValido(const AEmail: string): Boolean;
+class function TInstituicaoConfiguracaoService.EmailValido(const AEmail: string): Boolean;
 var
   P: Integer;
 begin
