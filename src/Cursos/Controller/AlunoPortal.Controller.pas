@@ -452,6 +452,8 @@ begin
       Claims: TJWTClaims;
       Caminho: string;
     begin
+      Res.RawWebResponse.SetCustomHeader('Cache-Control', 'private, no-store');
+      Res.RawWebResponse.SetCustomHeader('X-Content-Type-Options', 'nosniff');
       try
         if not AutorizarAluno(Req, Res, Claims) then Exit;
 
@@ -461,6 +463,10 @@ begin
           StrToInt64Def(Req.Params.Items['id'], 0)
         );
 
+        Res.RawWebResponse.ContentType := 'application/pdf';
+        Res.RawWebResponse.SetCustomHeader('Content-Disposition',
+          'attachment; filename="certificado-' +
+          IntToStr(StrToInt64Def(Req.Params.Items['id'], 0)) + '.pdf"');
         Res.SendFile(Caminho);
       except
         on E: Exception do TAppErrors.HandleException(Res, E);

@@ -63,3 +63,37 @@ Este ambiente de revisão não possui Delphi, MySQL nem os executáveis de
 renderização. Compilação, concorrência real e PDF visual ainda não homologados.
 O executor de processos existente continua sem timeout; isolamento do renderer
 para templates não confiáveis deve ser tratado antes de produção.
+
+## Download autenticado
+
+Rotas GET (Authorization: Bearer):
+
+- `/v1/certifica/instituicao/certificados/:id/pdf`: exige usuário ativo com
+  `certificado.visualizar` e consulta o certificado dentro da instituição do JWT.
+- `/v1/certifica/aluno/certificados/:id/pdf`: resolve o participante associado ao
+  usuário e exige certificado desse participante e dessa instituição.
+
+Ambas entregam somente certificados VALIDOS com PDF disponível, como anexo,
+com `Content-Type: application/pdf`, `Cache-Control: private, no-store` e
+`X-Content-Type-Options: nosniff`. Não recebem caminho de arquivo do cliente.
+O download depende apenas de StoragePath; não exige configuração do gerador.
+
+O caminho armazenado deve começar com `certificados/{id_instituicao}/`, terminar
+em `.pdf` e não conter navegação de diretórios ou caminho absoluto. No Windows,
+junctions/reparse points são recusados. O storage e seus diretórios ancestrais
+precisam ser controlados exclusivamente pelo serviço/administrador; não permitir
+escrita de terceiros nem links simbólicos no Linux. A checagem de caminho não
+protege contra substituição concorrente de arquivos por um usuário do servidor.
+
+### Roteiro de homologação do download
+
+- Admin autorizado e aluno proprietário: PDF abre e corresponde ao certificado.
+- Sem JWT/expirado: recusa; usuário sem permissão: recusa na rota administrativa.
+- Outra instituição e outro participante: recusa, sem retornar arquivo.
+- PENDENTE, ERRO ou CANCELADO: recusa, mesmo havendo arquivo antigo no storage.
+- PDF ausente: mensagem controlada, sem caminho físico na resposta.
+- Em banco de teste, alterar a chave para `../`, caminho absoluto ou pasta de
+  outra instituição: recusa. Restaurar o valor após o teste.
+- Inspecionar os três cabeçalhos e o nome do anexo na resposta real do Horse.
+
+Compilação Delphi e testes HTTP com banco e tokens reais permanecem pendentes.

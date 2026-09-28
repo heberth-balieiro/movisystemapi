@@ -60,6 +60,10 @@ type
     ); static;
 
   public
+    class function ResolverCaminhoPdf(const AIdInstituicao: Int64;
+      const AStorageKey: string): string; static;
+    class function CaminhoPdf(const AIdInstituicao, AIdCertificado,
+      AIdUsuarioInstituicao: Int64): string; static;
     class function GerarPdf(
       const AIdInstituicao,
             AIdCertificado,
@@ -71,6 +75,9 @@ implementation
 
 uses
   System.SysUtils,
+  {$IFDEF MSWINDOWS}
+  Winapi.Windows,
+  {$ENDIF}
   System.Classes,
   System.IOUtils,
   System.Hash,
@@ -84,7 +91,79 @@ uses
   InstituicaoCertificadoDocumento.Config,
   InstituicaoCertificadoDocumento.Model,
   InstituicaoCertificadoDocumento.DAO,
-  InstituicaoCertificado.Service;
+  InstituicaoCertificado.Service,
+  InstituicaoPermissao.Service;
+
+class function TInstituicaoCertificadoDocumentoService.ResolverCaminhoPdf(
+  const AIdInstituicao: Int64; const AStorageKey: string): string;
+var
+  Config: TCertificadoDocumentoConfig;
+  Key, Base, Parte, Caminho: string;
+  Partes: TArray<string>;
+  {$IFDEF MSWINDOWS}
+  Attr: DWORD;
+  {$ENDIF}
+begin
+  Key := Trim(AStorageKey);
+  if (AIdInstituicao <= 0) or
+     not Key.StartsWith('certificados/' + IntToStr(AIdInstituicao) + '/') or
+     (Pos('\', Key) > 0) or (Pos(':', Key) > 0) or
+     not SameText(ExtractFileExt(Key), '.pdf') then
+    TAppErrors.RaiseForbidden('Referência de documento inválida.');
+
+  Partes := Key.Split(['/']);
+  for Parte in Partes do
+    if (Parte = '') or (Parte = '.') or (Parte = '..') or
+       (Trim(Parte) <> Parte) or Parte.EndsWith('.') or
+       (Pos(#0, Parte) > 0) then
+      TAppErrors.RaiseForbidden('Referência de documento inválida.');
+
+  Config := TInstituicaoCertificadoDocumentoConfig.Carregar(False);
+  Base := IncludeTrailingPathDelimiter(ExpandFileName(Config.StoragePath));
+  Result := ExpandFileName(TPath.Combine(Base,
+    StringReplace(Key, '/', PathDelim, [rfReplaceAll])));
+  {$IFDEF MSWINDOWS}
+  if not SameText(Copy(Result, 1, Length(Base)), Base) then
+  {$ELSE}
+  if Copy(Result, 1, Length(Base)) <> Base then
+  {$ENDIF}
+    TAppErrors.RaiseForbidden('Referência de documento inválida.');
+
+  // No Windows, recusar junctions e links em qualquer componente do caminho.
+  {$IFDEF MSWINDOWS}
+  Caminho := Result;
+  while Caminho <> '' do
+  begin
+    Attr := GetFileAttributes(PChar(Caminho));
+    if (Attr <> INVALID_FILE_ATTRIBUTES) and
+       ((Attr and FILE_ATTRIBUTE_REPARSE_POINT) <> 0) then
+      TAppErrors.RaiseForbidden('Links de arquivos não são permitidos no storage.');
+    Parte := ExtractFileDir(Caminho);
+    if Parte = Caminho then Break;
+    Caminho := Parte;
+  end;
+  {$ENDIF}
+
+  if not TFile.Exists(Result) then
+    TAppErrors.RaiseBadRequest('PDF do certificado não está disponível.');
+end;
+
+class function TInstituicaoCertificadoDocumentoService.CaminhoPdf(
+  const AIdInstituicao, AIdCertificado, AIdUsuarioInstituicao: Int64): string;
+var
+  Item: TCertificadoItem;
+begin
+  TInstituicaoPermissaoService.Exigir(AIdInstituicao, AIdUsuarioInstituicao,
+    'certificado.visualizar');
+  Item := TInstituicaoCertificadoService.BuscarPorId(AIdInstituicao, AIdCertificado);
+  try
+    if not SameText(Item.Situacao, 'VALIDO') or Trim(Item.PdfStorageKey).IsEmpty then
+      TAppErrors.RaiseBadRequest('PDF do certificado não está disponível.');
+    Result := ResolverCaminhoPdf(AIdInstituicao, Item.PdfStorageKey);
+  finally
+    Item.Free;
+  end;
+end;
 
 class function TInstituicaoCertificadoDocumentoService.HtmlEncode(
   const AValor: string
