@@ -13,7 +13,7 @@ type
 
   TInstituicaoCertificadoDocumentoConfig = class
   public
-    class function Carregar: TCertificadoDocumentoConfig; static;
+    class function Carregar(const AExigirGerador: Boolean = True): TCertificadoDocumentoConfig; static;
   end;
 
 implementation
@@ -22,7 +22,8 @@ uses
   System.SysUtils,
   System.IniFiles;
 
-class function TInstituicaoCertificadoDocumentoConfig.Carregar:
+class function TInstituicaoCertificadoDocumentoConfig.Carregar(
+  const AExigirGerador: Boolean):
   TCertificadoDocumentoConfig;
 var
   Ini: TIniFile;
@@ -98,6 +99,8 @@ begin
     raise Exception.Create(
       'Configure CERTIFICADO_DOCUMENTO.StoragePath no Config.ini.'
     );
+
+  if not AExigirGerador then Exit;
 
   if Result.PublicValidationBaseUrl.IsEmpty then
     raise Exception.Create(

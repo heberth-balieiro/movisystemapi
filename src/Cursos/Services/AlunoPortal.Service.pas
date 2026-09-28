@@ -87,7 +87,7 @@ uses
   APP.Errors,
   Database.Connection,
   AlunoPortal.DAO,
-  InstituicaoCertificadoDocumento.Config;
+  InstituicaoCertificadoDocumento.Service;
 
 class function TAlunoPortalService.NovaConexao: TUniConnection;
 var
@@ -382,10 +382,7 @@ var
   Conn: TUniConnection;
   Aluno: TAlunoContexto;
   StorageKey: string;
-  DocConfig: TCertificadoDocumentoConfig;
-  BasePath: string;
-  FullPath: string;
-  BaseComSeparador: string;
+
 begin
   if AIdCertificado <= 0 then
     TAppErrors.RaiseBadRequest('Certificado inválido.');
@@ -409,31 +406,9 @@ begin
     Conn.Free;
   end;
 
-  DocConfig := TInstituicaoCertificadoDocumentoConfig.Carregar;
+  Result := TInstituicaoCertificadoDocumentoService.ResolverCaminhoPdf(
+    AIdInstituicao, StorageKey);
 
-  BasePath := IncludeTrailingPathDelimiter(
-    ExpandFileName(DocConfig.StoragePath)
-  );
-
-  FullPath := ExpandFileName(
-    TPath.Combine(
-      BasePath,
-      StringReplace(StorageKey, '/', PathDelim, [rfReplaceAll])
-    )
-  );
-
-  BaseComSeparador := BasePath;
-
-  if not SameText(
-    Copy(FullPath, 1, Length(BaseComSeparador)),
-    BaseComSeparador
-  ) then
-    TAppErrors.RaiseForbidden('Caminho de arquivo inválido.');
-
-  if not TFile.Exists(FullPath) then
-    TAppErrors.RaiseBadRequest('Arquivo físico do certificado não foi encontrado.');
-
-  Result := FullPath;
 end;
 
 end.

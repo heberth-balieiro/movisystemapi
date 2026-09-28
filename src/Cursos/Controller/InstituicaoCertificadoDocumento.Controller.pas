@@ -177,6 +177,29 @@ end;
 
 class procedure TInstituicaoCertificadoDocumentoController.Registry;
 begin
+  THorse.Get('/v1/certifica/instituicao/certificados/:id/pdf',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Caminho: string;
+      Id: Int64;
+    begin
+      Res.RawWebResponse.SetCustomHeader('Cache-Control', 'private, no-store');
+      Res.RawWebResponse.SetCustomHeader('X-Content-Type-Options', 'nosniff');
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then Exit;
+        Id := StrToInt64Def(Req.Params.Items['id'], 0);
+        Caminho := TInstituicaoCertificadoDocumentoService.CaminhoPdf(
+          Claims.IdInstituicao, Id, Claims.IdUsuarioInstituicao);
+        Res.RawWebResponse.ContentType := 'application/pdf';
+        Res.RawWebResponse.SetCustomHeader('Content-Disposition',
+          'attachment; filename="certificado-' + IntToStr(Id) + '.pdf"');
+        Res.SendFile(Caminho);
+      except
+        on E: Exception do TAppErrors.HandleException(Res, E);
+      end;
+    end);
+
   THorse.Post(
     '/v1/certifica/instituicao/certificados/:id/gerar-pdf',
 
