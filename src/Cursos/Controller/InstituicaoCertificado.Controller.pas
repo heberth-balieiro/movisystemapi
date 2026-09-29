@@ -18,6 +18,8 @@ uses
   App.Token,
   App.Response,
   APP.Errors,
+  App.RequestInfo,
+  App.RateLimit,
   InstituicaoPermissao.Service,
   InstituicaoCertificado.Model,
   InstituicaoCertificado.Service;
@@ -1393,26 +1395,24 @@ begin
       Dados: TJSONObject;
     begin
       try
-        Codigo :=
-          Req.Params.Items[
-            'codigo'
-          ];
+        Res.RawWebResponse.SetCustomHeader('Cache-Control', 'no-store');
 
-        IP :=
-          Req.Headers.Items[
-            'X-Forwarded-For'
-          ];
+        if not TAppRateLimit.EnforceIP(
+          Req,
+          Res,
+          'publico-certificado-validar',
+          60,
+          60
+        ) then
+          Exit;
 
-        if Trim(IP).IsEmpty then
-          IP :=
-            Req.Headers.Items[
-              'CF-Connecting-IP'
-            ];
+        Codigo := Trim(Req.Params.Items['codigo']);
 
-        UserAgent :=
-          Req.Headers.Items[
-            'User-Agent'
-          ];
+        if Length(Codigo) <> 64 then
+          TAppErrors.RaiseBadRequest('Código de validação inválido.');
+
+        IP := TAppRequestInfo.GetIP(Req);
+        UserAgent := TAppRequestInfo.GetUserAgent(Req);
 
         Validacao :=
           TInstituicaoCertificadoService.ValidarPublicamente(
