@@ -398,6 +398,14 @@ begin
       'Configuração global da Evolution API indisponível.'
     );
 
+  if not (
+    Trim(Config.EstadoEmpresa).IsEmpty or
+    SameText(Config.EstadoEmpresa, 'NAO_CRIADA')
+  ) then
+    TAppErrors.RaiseBadRequest(
+      'A empresa já possui uma instância WhatsApp criada.'
+    );
+
   NomeInstancia := Trim(Config.NomeInstancia);
 
   if NomeInstancia.IsEmpty then
