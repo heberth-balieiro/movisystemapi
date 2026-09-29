@@ -8,6 +8,7 @@ uses
 type
   TPlataformaWhatsAppInput = record
     Habilitado: Boolean;
+    ModoInstancia: string;
     ApiUrl: string;
     NomeInstancia: string;
     ApiKey: string;
@@ -15,14 +16,20 @@ type
 
   TPlataformaWhatsAppConfig = record
     Habilitado: Boolean;
+    ModoInstancia: string;
     ApiUrl: string;
     NomeInstancia: string;
     ApiKeyConfigurada: String;
     ApiKeyMascarada: string;
+    EstadoEmpresa: string;
+    NumeroEmpresa: string;
     function ToJSON: TJSONObject;
   end;
 
 implementation
+
+uses
+  System.SysUtils;
 
 function TPlataformaWhatsAppConfig.ToJSON: TJSONObject;
 begin
@@ -34,6 +41,11 @@ begin
   );
 
   Result.AddPair(
+    'modo_instancia',
+    ModoInstancia
+  );
+
+  Result.AddPair(
     'api_url',
     ApiUrl
   );
@@ -42,6 +54,16 @@ begin
     'nome_instancia',
     NomeInstancia
   );
+
+  Result.AddPair(
+    'estado_empresa',
+    EstadoEmpresa
+  );
+
+  if Trim(NumeroEmpresa).IsEmpty then
+    Result.AddPair('numero_empresa', TJSONNull.Create)
+  else
+    Result.AddPair('numero_empresa', NumeroEmpresa);
 
   Result.AddPair(
     'api_key_configurada',ApiKeyConfigurada
