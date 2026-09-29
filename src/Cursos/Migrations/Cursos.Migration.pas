@@ -70,6 +70,7 @@ type
 
     class procedure Migration_048_EncontroCheckin(const AConn: TUniConnection); static;
     class procedure Migration_049_PlataformaCampanhas(const AConn: TUniConnection); static;
+    class procedure Migration_050_PlataformaWhatsAppPorUsuario(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -216,6 +217,7 @@ begin
       Migration_047_CanaisEnvioAcesso(Conn);
       Migration_048_EncontroCheckin(Conn);
       Migration_049_PlataformaCampanhas(Conn);
+      Migration_050_PlataformaWhatsAppPorUsuario(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2216,6 +2218,174 @@ begin
     ') ENGINE=InnoDB COMMENT=''Lista global de supressao de comunicacoes da plataforma.'';');
 
   RegisterMigration(AConn, '049', 'Campanhas de email e WhatsApp da plataforma SaaS');
+end;
+
+
+
+class procedure TCursosMigration.Migration_050_PlataformaWhatsAppPorUsuario(
+  const AConn: TUniConnection);
+var
+  Q: TUniQuery;
+
+  procedure AddColumnIfMissing(
+    const ATable,
+          AColumn,
+          ADefinition: string
+  );
+  begin
+    Q.Close;
+    Q.SQL.Text :=
+      'SELECT 1 FROM information_schema.columns ' +
+      'WHERE table_schema = DATABASE() ' +
+      'AND table_name = :tabela ' +
+      'AND column_name = :coluna';
+
+    Q.ParamByName('tabela').AsString := ATable;
+    Q.ParamByName('coluna').AsString := AColumn;
+    Q.Open;
+
+    if Q.IsEmpty then
+      ExecSQL(
+        AConn,
+        'ALTER TABLE ' + ATable +
+        ' ADD COLUMN ' + AColumn + ' ' + ADefinition
+      );
+  end;
+
+begin
+  if MigrationExists(AConn, '050') then
+    Exit;
+
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+
+    AddColumnIfMissing(
+      'plataforma_whatsapp_configuracao',
+      'modo_instancia',
+      'VARCHAR(10) NOT NULL DEFAULT ''EMPRESA'' AFTER habilitado'
+    );
+
+    AddColumnIfMissing(
+      'plataforma_whatsapp_configuracao',
+      'estado_empresa',
+      'VARCHAR(30) NOT NULL DEFAULT ''NAO_CRIADA'' AFTER nome_instancia'
+    );
+
+    AddColumnIfMissing(
+      'plataforma_whatsapp_configuracao',
+      'numero_empresa',
+      'VARCHAR(80) NULL AFTER estado_empresa'
+    );
+
+    AddColumnIfMissing(
+      'plataforma_whatsapp_configuracao',
+      'ultimo_status_empresa_em',
+      'DATETIME(3) NULL AFTER numero_empresa'
+    );
+
+    AddColumnIfMissing(
+      'plataforma_campanha',
+      'whatsapp_modo_remetente',
+      'VARCHAR(10) NULL AFTER mensagem_whatsapp'
+    );
+
+    AddColumnIfMissing(
+      'plataforma_campanha',
+      'id_whatsapp_usuario',
+      'BIGINT UNSIGNED NULL AFTER whatsapp_modo_remetente'
+    );
+
+    AddColumnIfMissing(
+      'plataforma_campanha',
+      'whatsapp_instancia',
+      'VARCHAR(160) NULL AFTER id_whatsapp_usuario'
+    );
+  finally
+    Q.Free;
+  end;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS plataforma_usuario_whatsapp_instancia (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_usuario BIGINT UNSIGNED NOT NULL,' +
+    ' nome_instancia VARCHAR(160) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,' +
+    ' estado VARCHAR(30) NOT NULL DEFAULT ''CREATED'',' +
+    ' numero_conectado VARCHAR(80) NULL,' +
+    ' ultimo_status_em DATETIME(3) NULL,' +
+    ' ultimo_erro VARCHAR(1000) NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ' +
+    '   ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' UNIQUE KEY uq_plataforma_usuario_whatsapp_usuario (id_usuario),' +
+    ' UNIQUE KEY uq_plataforma_usuario_whatsapp_nome (nome_instancia),' +
+    ' CONSTRAINT fk_plataforma_usuario_whatsapp_usuario ' +
+    '   FOREIGN KEY (id_usuario) REFERENCES usuario(id) ' +
+    '   ON UPDATE RESTRICT ON DELETE CASCADE' +
+    ') ENGINE=InnoDB COMMENT=''Instancia WhatsApp individual de usuario da plataforma SaaS.'';'
+  );
+
+  // As constraints sao adicionadas apenas se ainda nao existirem.
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+
+    Q.SQL.Text :=
+      'SELECT 1 FROM information_schema.table_constraints ' +
+      'WHERE constraint_schema = DATABASE() ' +
+      'AND table_name = ''plataforma_whatsapp_configuracao'' ' +
+      'AND constraint_name = ''ck_plataforma_whatsapp_modo''';
+    Q.Open;
+    if Q.IsEmpty then
+      ExecSQL(
+        AConn,
+        'ALTER TABLE plataforma_whatsapp_configuracao ' +
+        'ADD CONSTRAINT ck_plataforma_whatsapp_modo ' +
+        'CHECK (modo_instancia IN (''EMPRESA'',''USUARIO''))'
+      );
+
+    Q.Close;
+    Q.SQL.Text :=
+      'SELECT 1 FROM information_schema.table_constraints ' +
+      'WHERE constraint_schema = DATABASE() ' +
+      'AND table_name = ''plataforma_campanha'' ' +
+      'AND constraint_name = ''ck_campanha_whatsapp_modo''';
+    Q.Open;
+    if Q.IsEmpty then
+      ExecSQL(
+        AConn,
+        'ALTER TABLE plataforma_campanha ' +
+        'ADD CONSTRAINT ck_campanha_whatsapp_modo ' +
+        'CHECK (whatsapp_modo_remetente IS NULL OR ' +
+        'whatsapp_modo_remetente IN (''EMPRESA'',''USUARIO''))'
+      );
+
+    Q.Close;
+    Q.SQL.Text :=
+      'SELECT 1 FROM information_schema.table_constraints ' +
+      'WHERE constraint_schema = DATABASE() ' +
+      'AND table_name = ''plataforma_campanha'' ' +
+      'AND constraint_name = ''fk_campanha_whatsapp_usuario''';
+    Q.Open;
+    if Q.IsEmpty then
+      ExecSQL(
+        AConn,
+        'ALTER TABLE plataforma_campanha ' +
+        'ADD CONSTRAINT fk_campanha_whatsapp_usuario ' +
+        'FOREIGN KEY (id_whatsapp_usuario) REFERENCES usuario(id) ' +
+        'ON UPDATE RESTRICT ON DELETE RESTRICT'
+      );
+  finally
+    Q.Free;
+  end;
+
+  RegisterMigration(
+    AConn,
+    '050',
+    'Modo WhatsApp por empresa ou usuario na plataforma SaaS'
+  );
 end;
 
 {$ENDREGION}
