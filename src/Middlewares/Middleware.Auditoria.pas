@@ -155,6 +155,18 @@ begin
       Exit('CAMPANHA_ALTERADA');
   end;
 
+  if Contem(ACaminho, '/plataforma/usuarios/') and
+     Contem(ACaminho, '/whatsapp/instancia') then
+    Exit('PLATAFORMA_WHATSAPP_USUARIO_INSTANCIA_CRIADA');
+
+  if Contem(ACaminho, '/plataforma/usuarios/') and
+     Contem(ACaminho, '/whatsapp/logout') then
+    Exit('PLATAFORMA_WHATSAPP_USUARIO_DESCONECTADO');
+
+  if Contem(ACaminho, '/plataforma/usuarios/') and
+     Contem(ACaminho, '/whatsapp/qrcode') then
+    Exit('PLATAFORMA_WHATSAPP_USUARIO_QRCODE_GERADO');
+
   if Contem(ACaminho, '/auth/login') then
     Exit('LOGIN');
 
