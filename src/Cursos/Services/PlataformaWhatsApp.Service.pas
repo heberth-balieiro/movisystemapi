@@ -3,6 +3,7 @@ unit PlataformaWhatsApp.Service;
 interface
 
 uses
+  System.JSON,
   PlataformaWhatsApp.Model;
 
 type
@@ -599,7 +600,10 @@ begin
     );
 
   if Trim(Config.NomeInstancia).IsEmpty then
-    Exit(Config);
+  begin
+    Result := Config;
+    Exit;
+  end;
 
   if not ObterCredenciais(
     ApiUrl,
