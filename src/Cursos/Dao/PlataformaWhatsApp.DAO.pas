@@ -57,7 +57,7 @@ begin
     Qry.Connection := AConn;
 
     Qry.SQL.Text :=
-      'SELECT habilitado, api_url, ' +
+      'SELECT habilitado, api_url, nome_instancia, ' +
       '       api_key_criptografada IS NOT NULL AS api_key_configurada, ' +
       '       api_key_hint ' +
       'FROM plataforma_whatsapp_configuracao ' +
@@ -73,6 +73,9 @@ begin
 
     Result.ApiUrl :=
       Qry.FieldByName('api_url').AsString;
+
+    Result.NomeInstancia :=
+      Qry.FieldByName('nome_instancia').AsString;
 
     Result.ApiKeyConfigurada :=
       Qry.FieldByName('api_key_configurada').asstring;
@@ -172,12 +175,13 @@ begin
 
       Qry.SQL.Text :=
         'INSERT INTO plataforma_whatsapp_configuracao ' +
-        '(id, habilitado, api_url, api_key_criptografada, api_key_hint) ' +
+        '(id, habilitado, api_url, nome_instancia, api_key_criptografada, api_key_hint) ' +
         'VALUES ' +
-        '(1, :habilitado, :api_url, AES_ENCRYPT(:api_key, :secret), :hint) ' +
+        '(1, :habilitado, :api_url, :nome_instancia, AES_ENCRYPT(:api_key, :secret), :hint) ' +
         'ON DUPLICATE KEY UPDATE ' +
         'habilitado = VALUES(habilitado), ' +
         'api_url = VALUES(api_url), ' +
+        'nome_instancia = VALUES(nome_instancia), ' +
         'api_key_criptografada = VALUES(api_key_criptografada), ' +
         'api_key_hint = VALUES(api_key_hint)';
     end
@@ -185,12 +189,13 @@ begin
     begin
       Qry.SQL.Text :=
         'INSERT INTO plataforma_whatsapp_configuracao ' +
-        '(id, habilitado, api_url) ' +
+        '(id, habilitado, api_url, nome_instancia) ' +
         'VALUES ' +
-        '(1, :habilitado, :api_url) ' +
+        '(1, :habilitado, :api_url, :nome_instancia) ' +
         'ON DUPLICATE KEY UPDATE ' +
         'habilitado = VALUES(habilitado), ' +
-        'api_url = VALUES(api_url)';
+        'api_url = VALUES(api_url), ' +
+        'nome_instancia = VALUES(nome_instancia)';
     end;
 
     Qry.ParamByName('habilitado').AsInteger :=
@@ -198,6 +203,9 @@ begin
 
     Qry.ParamByName('api_url').AsString :=
       ADados.ApiUrl;
+
+    Qry.ParamByName('nome_instancia').AsString :=
+      Trim(ADados.NomeInstancia);
 
     if not Trim(ADados.ApiKey).IsEmpty then
     begin
