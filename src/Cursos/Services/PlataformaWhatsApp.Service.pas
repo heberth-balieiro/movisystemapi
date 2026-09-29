@@ -406,34 +406,29 @@ begin
       'A empresa já possui uma instância WhatsApp criada.'
     );
 
-  NomeInstancia := Trim(Config.NomeInstancia);
-
-  if NomeInstancia.IsEmpty then
-  begin
-    CreateGUID(G);
-    NomeInstancia :=
-      'movisystem-empresa-' +
-      Copy(
+  CreateGUID(G);
+  NomeInstancia :=
+    'movisystem-empresa-' +
+    Copy(
+      StringReplace(
         StringReplace(
           StringReplace(
-            StringReplace(
-              LowerCase(GUIDToString(G)),
-              '{',
-              '',
-              [rfReplaceAll]
-            ),
-            '}',
+            LowerCase(GUIDToString(G)),
+            '{',
             '',
             [rfReplaceAll]
           ),
-          '-',
+          '}',
           '',
           [rfReplaceAll]
         ),
-        1,
-        12
-      );
-  end;
+        '-',
+        '',
+        [rfReplaceAll]
+      ),
+      1,
+      12
+    );
 
   Retorno :=
     TEvolutionApiService.CriarInstancia(
