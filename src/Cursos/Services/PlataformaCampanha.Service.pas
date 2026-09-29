@@ -166,7 +166,7 @@ begin
  finally C.Free; end;
 end;
 
-class function SplitCsv(const S:string; Delim:Char):TArray<string>;
+function SplitCsv(const S:string; Delim:Char):TArray<string>;
 var L:TList<string>; I:Integer; C:Char; Buf:string; Quote:Boolean;
 begin
  L:=TList<string>.Create; try Buf:=''; Quote:=False; I:=1;
