@@ -1,4 +1,4 @@
-unit PlataformaUsuarioWhatsApp.Service;
+﻿unit PlataformaUsuarioWhatsApp.Service;
 
 interface
 
@@ -58,7 +58,6 @@ implementation
 
 uses
   System.SysUtils,
-  Uni,
   App.Config,
   APP.Errors,
   Database.Connection,
