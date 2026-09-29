@@ -583,6 +583,7 @@ begin
         Body := Raw as TJSONObject;
         try
           TPlataformaCampanhaService.EnviarWhatsAppTeste(
+            Claims.UserId,
             JsonString(Body, 'numero'),
             JsonString(Body, 'mensagem')
           );
