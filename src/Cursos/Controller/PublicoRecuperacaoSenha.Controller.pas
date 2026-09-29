@@ -16,6 +16,7 @@ uses
   System.JSON,
   App.Response,
   APP.Errors,
+  App.RateLimit,
   PublicoRecuperacaoSenha.DAO,
   PublicoRecuperacaoSenha.Service;
 
@@ -65,6 +66,9 @@ begin
       Retorno: TJSONObject;
     begin
       try
+        Res.RawWebResponse.SetCustomHeader('Cache-Control', 'no-store');
+        if not TAppRateLimit.EnforceIP(Req, Res, 'recuperacao-senha-solicitar', 5, 900) then Exit;
+        if Length(Req.Body) > 8192 then TAppErrors.RaiseBadRequest('Requisição inválida.');
         JsonValue := TJSONObject.ParseJSONValue(Req.Body);
 
         if not (JsonValue is TJSONObject) then
@@ -80,6 +84,8 @@ begin
         finally
           Body.Free;
         end;
+
+        if not TAppRateLimit.EnforceIdentity(Req, Res, 'recuperacao-senha-email', Slug + '|' + Email, 3, 1800) then Exit;
 
         TPublicoRecuperacaoSenhaService.Solicitar(
           Slug,
@@ -115,6 +121,9 @@ begin
       Dados: TRecuperacaoSenhaDados;
     begin
       try
+        Res.RawWebResponse.SetCustomHeader('Cache-Control', 'no-store');
+        if not TAppRateLimit.EnforceIP(Req, Res, 'recuperacao-senha-validar', 30, 300) then Exit;
+        if Length(Req.Body) > 8192 then TAppErrors.RaiseBadRequest('Requisição inválida.');
         JsonValue := TJSONObject.ParseJSONValue(Req.Body);
 
         if not (JsonValue is TJSONObject) then
@@ -130,6 +139,8 @@ begin
         finally
           Body.Free;
         end;
+
+        if not TAppRateLimit.EnforceIdentity(Req, Res, 'recuperacao-senha-token-validar', Token, 10, 300) then Exit;
 
         Dados :=
           TPublicoRecuperacaoSenhaService.Validar(
@@ -161,6 +172,9 @@ begin
       Dados: TRecuperacaoSenhaDados;
     begin
       try
+        Res.RawWebResponse.SetCustomHeader('Cache-Control', 'no-store');
+        if not TAppRateLimit.EnforceIP(Req, Res, 'recuperacao-senha-redefinir', 10, 600) then Exit;
+        if Length(Req.Body) > 8192 then TAppErrors.RaiseBadRequest('Requisição inválida.');
         JsonValue := TJSONObject.ParseJSONValue(Req.Body);
 
         if not (JsonValue is TJSONObject) then
@@ -177,6 +191,8 @@ begin
         finally
           Body.Free;
         end;
+
+        if not TAppRateLimit.EnforceIdentity(Req, Res, 'recuperacao-senha-token-redefinir', Token, 5, 600) then Exit;
 
         Dados :=
           TPublicoRecuperacaoSenhaService.Redefinir(
