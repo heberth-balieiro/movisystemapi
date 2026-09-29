@@ -33,6 +33,10 @@ uses
   InstituicaoAuditoria.DAO in 'src\Cursos\Dao\InstituicaoAuditoria.DAO.pas',
   InstituicaoAuditoria.Service in 'src\Cursos\Services\InstituicaoAuditoria.Service.pas',
   InstituicaoAuditoria.Controller in 'src\Cursos\Controller\InstituicaoAuditoria.Controller.pas',
+  PlataformaCampanha.DAO in 'src\Cursos\Dao\PlataformaCampanha.DAO.pas',
+  PlataformaCampanha.Service in 'src\Cursos\Services\PlataformaCampanha.Service.pas',
+  PlataformaCampanha.Worker in 'src\Cursos\Services\PlataformaCampanha.Worker.pas',
+  PlataformaCampanha.Controller in 'src\Cursos\Controller\PlataformaCampanha.Controller.pas',
   LgpdSolicitacao.Model in 'src\Cursos\Model\LgpdSolicitacao.Model.pas',
   LgpdSolicitacao.DAO in 'src\Cursos\Dao\LgpdSolicitacao.DAO.pas',
   LgpdSolicitacao.Service in 'src\Cursos\Services\LgpdSolicitacao.Service.pas',
@@ -451,6 +455,9 @@ begin
 
           TCursosDemoSeeds.Run;
           Writeln('Seeds de demo executadas com sucesso.');
+
+          TPlataformaCampanhaWorker.Start;
+          Writeln('Worker de campanhas iniciado com sucesso.');
 
 
         end;
