@@ -255,6 +255,127 @@ begin
     end
   );
 
+
+  {$REGION 'Conexao Empresa'}
+
+  THorse.Post(
+    '/v1/certifica/plataforma/configuracoes/whatsapp/empresa/instancia',
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Claims: TJWTClaims;
+    begin
+      try
+        if not AutorizarSuperAdmin(Req, Res, Claims) then
+          Exit;
+
+        TAppResponse.Created(
+          Res,
+          TPlataformaWhatsAppService.CriarInstanciaEmpresa(
+            Claims.UserId,
+            TAppRequestInfo.GetIP(Req),
+            TAppRequestInfo.GetUserAgent(Req)
+          ).ToJSON,
+          'Instância WhatsApp da empresa criada com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  THorse.Get(
+    '/v1/certifica/plataforma/configuracoes/whatsapp/empresa/qrcode',
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Claims: TJWTClaims;
+    begin
+      try
+        if not AutorizarSuperAdmin(Req, Res, Claims) then
+          Exit;
+
+        TAppResponse.Ok(
+          Res,
+          TPlataformaWhatsAppService.ObterQrCodeEmpresa(
+            Claims.UserId,
+            TAppRequestInfo.GetIP(Req),
+            TAppRequestInfo.GetUserAgent(Req)
+          ),
+          'QR Code carregado com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  THorse.Get(
+    '/v1/certifica/plataforma/configuracoes/whatsapp/empresa/status',
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Claims: TJWTClaims;
+    begin
+      try
+        if not AutorizarSuperAdmin(Req, Res, Claims) then
+          Exit;
+
+        TAppResponse.Ok(
+          Res,
+          TPlataformaWhatsAppService.AtualizarStatusEmpresa.ToJSON,
+          'Status do WhatsApp da empresa atualizado.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  THorse.Post(
+    '/v1/certifica/plataforma/configuracoes/whatsapp/empresa/logout',
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Claims: TJWTClaims;
+    begin
+      try
+        if not AutorizarSuperAdmin(Req, Res, Claims) then
+          Exit;
+
+        TAppResponse.Ok(
+          Res,
+          TPlataformaWhatsAppService.LogoutEmpresa(
+            Claims.UserId,
+            TAppRequestInfo.GetIP(Req),
+            TAppRequestInfo.GetUserAgent(Req)
+          ).ToJSON,
+          'WhatsApp da empresa desconectado com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  {$ENDREGION}
+
   {$ENDREGION}
 
 end;
