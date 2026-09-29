@@ -123,6 +123,7 @@ begin
       GarantirPermissao(Conn, 'perfil.inativar', 'PERFIL', 'Inativar perfis.');
 
       GarantirPermissao(Conn, 'relatorio.visualizar', 'RELATORIO', 'Visualizar relat' + #$00F3 + 'rios.');
+      GarantirPermissao(Conn, 'auditoria.visualizar', 'AUDITORIA', 'Visualizar auditoria da institui' + #$00E7 + #$00E3 + 'o.');
 
       GarantirPermissao(Conn, 'configuracao.visualizar', 'CONFIGURACAO', 'Visualizar configura' + #$00E7 + #$00F5 + 'es da institui' + #$00E7 + #$00E3 + 'o.');
       GarantirPermissao(Conn, 'configuracao.editar', 'CONFIGURACAO', 'Editar configura' + #$00E7 + #$00F5 + 'es da institui' + #$00E7 + #$00E3 + 'o.');
