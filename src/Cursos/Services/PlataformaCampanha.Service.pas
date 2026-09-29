@@ -290,9 +290,22 @@ var C:TUniConnection; E:TJSONObject; IdEnvio,IdCampanha:Int64; Canal,Dest,Nome,E
 begin
  C:=NovaConexao; E:=nil; Anexos:=nil;
  try
-  E:=TPlataformaCampanhaDAO.ProximoEnvio(C); if E=nil then Exit;
-  IdEnvio:=E.GetValue<Int64>('id',0); IdCampanha:=E.GetValue<Int64>('id_campanha',0);
-  TPlataformaCampanhaDAO.MarcarProcessando(C,IdEnvio);
+  C.StartTransaction;
+  try
+    E:=TPlataformaCampanhaDAO.ProximoEnvio(C);
+    if E=nil then
+    begin
+      C.Commit;
+      Exit;
+    end;
+    IdEnvio:=E.GetValue<Int64>('id',0);
+    IdCampanha:=E.GetValue<Int64>('id_campanha',0);
+    TPlataformaCampanhaDAO.MarcarProcessando(C,IdEnvio);
+    C.Commit;
+  except
+    if C.InTransaction then C.Rollback;
+    raise;
+  end;
   try
    Canal:=E.GetValue<string>('canal',''); Dest:=E.GetValue<string>('destinatario',''); Nome:=E.GetValue<string>('nome',''); Empresa:=E.GetValue<string>('empresa','');
    if Canal='EMAIL' then begin
