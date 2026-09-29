@@ -20,6 +20,7 @@ Uses
   PlataformaEmail.Controller,
   PlataformaAjuda.Controller,
   PlataformaCampanha.Controller,
+  PlataformaUsuarioWhatsApp.Controller,
   PublicoRecuperacaoSenha.Controller,
   InstituicaoAuth.Controller,
   InstituicaoDashboard.Controller,
@@ -66,6 +67,7 @@ begin
   TPlataformaEmailController.Registry;
   TPlataformaAjudaController.Registry;
   TPlataformaCampanhaController.Registry;
+  TPlataformaUsuarioWhatsAppController.Registry;
   TPublicoRecuperacaoSenhaController.Registry;
   TInstituicaoAuthController.Registry;
   TInstituicaoDashboardController.Registry;
