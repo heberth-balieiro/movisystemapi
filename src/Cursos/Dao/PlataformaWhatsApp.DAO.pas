@@ -28,10 +28,28 @@ type
       const ASecret: string
     ); static;
 
+    class procedure AtualizarEmpresa(
+      const AConn: TUniConnection;
+      const ANomeInstancia,
+            AEstado,
+            ANumero: string
+    ); static;
+
     class procedure RegistrarAuditoria(
       const AConn: TUniConnection;
       const AIdUsuario: Int64;
       const AIP,
+            AUserAgent: string
+    ); static;
+
+    class procedure RegistrarAuditoriaOperacao(
+      const AConn: TUniConnection;
+      const AIdUsuario: Int64;
+      const AAcao,
+            AMensagem,
+            AMetodo,
+            ARota,
+            AIP,
             AUserAgent: string
     ); static;
   end;
@@ -239,6 +257,39 @@ begin
   end;
 end;
 
+class procedure TPlataformaWhatsAppDAO.AtualizarEmpresa(
+  const AConn: TUniConnection;
+  const ANomeInstancia,
+        AEstado,
+        ANumero: string
+);
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'UPDATE plataforma_whatsapp_configuracao SET ' +
+      'nome_instancia = :nome_instancia, ' +
+      'estado_empresa = :estado, ' +
+      'numero_empresa = NULLIF(:numero, ''''), ' +
+      'ultimo_status_empresa_em = CURRENT_TIMESTAMP(3) ' +
+      'WHERE id = 1';
+
+    Qry.ParamByName('nome_instancia').AsString :=
+      Trim(ANomeInstancia);
+    Qry.ParamByName('estado').AsString :=
+      Copy(UpperCase(Trim(AEstado)), 1, 30);
+    Qry.ParamByName('numero').AsString :=
+      Copy(Trim(ANumero), 1, 80);
+
+    Qry.Execute;
+  finally
+    Qry.Free;
+  end;
+end;
+
 class procedure TPlataformaWhatsAppDAO.RegistrarAuditoria(
   const AConn: TUniConnection;
   const AIdUsuario: Int64;
@@ -287,5 +338,41 @@ begin
     Qry.Free;
   end;
 end;
+class procedure TPlataformaWhatsAppDAO.RegistrarAuditoriaOperacao(
+  const AConn: TUniConnection;
+  const AIdUsuario: Int64;
+  const AAcao,
+        AMensagem,
+        AMetodo,
+        ARota,
+        AIP,
+        AUserAgent: string
+);
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'INSERT INTO auditoria_log ' +
+      '(id_instituicao, id_usuario, id_usuario_instituicao, ' +
+      'acao, entidade, registro_id, metodo_http, rota, ip, user_agent, sucesso, mensagem) ' +
+      'VALUES (NULL, :id_usuario, NULL, :acao, ' +
+      '''plataforma_whatsapp_configuracao'', ''1'', :metodo, :rota, :ip, :user_agent, 1, :mensagem)';
+
+    Qry.ParamByName('id_usuario').AsLargeInt := AIdUsuario;
+    Qry.ParamByName('acao').AsString := Copy(UpperCase(Trim(AAcao)), 1, 80);
+    Qry.ParamByName('metodo').AsString := Copy(UpperCase(Trim(AMetodo)), 1, 10);
+    Qry.ParamByName('rota').AsString := Copy(Trim(ARota), 1, 500);
+    Qry.ParamByName('ip').AsString := Copy(Trim(AIP), 1, 45);
+    Qry.ParamByName('user_agent').AsString := Copy(Trim(AUserAgent), 1, 1000);
+    Qry.ParamByName('mensagem').AsString := Copy(Trim(AMensagem), 1, 1000);
+    Qry.Execute;
+  finally
+    Qry.Free;
+  end;
+end;
+
 
 end.
