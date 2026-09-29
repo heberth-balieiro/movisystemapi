@@ -15,6 +15,7 @@ uses
   App.RequestInfo,
   App.Response,
   APP.Errors,
+  App.RateLimit,
   PlataformaAuth.Service;
 
 class procedure TPlataformaAuthController.Registry;
@@ -33,12 +34,24 @@ begin
       Permissoes: TJSONArray;
     begin
       try
+        Res.RawWebResponse.SetCustomHeader('Cache-Control', 'no-store');
+
+        if not TAppRateLimit.EnforceIP(Req, Res, 'plataforma-auth-login', 10, 300) then
+          Exit;
+
+        if Length(Req.Body) > 4096 then
+          TAppErrors.RaiseBadRequest('Requisição inválida.');
+
         Body := Req.Body<TJSONObject>;
         if Body = nil then
-          TAppErrors.RaiseBadRequest('JSON inv�lido ou n�o informado.');
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
 
         Login     := Trim(TAppClasses.GetJsonString(Body, 'login'));
         Senha     := TAppClasses.GetJsonString(Body, 'senha');
+
+        if not TAppRateLimit.EnforceIdentity(Req, Res, 'plataforma-auth-identidade', Login, 5, 600) then
+          Exit;
+
         Resultado := TPlataformaAuthService.Login(Login,Senha,TAppRequestInfo.GetIP(Req),TAppRequestInfo.GetUserAgent(Req));
 
         Permissoes := TJSONArray.Create;
