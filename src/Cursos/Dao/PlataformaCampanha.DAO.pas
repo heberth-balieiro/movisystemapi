@@ -676,7 +676,7 @@ begin
   'JOIN plataforma_campanha_destinatario d ON d.id=e.id_destinatario '+
   'WHERE c.situacao=''PROCESSANDO'' AND e.situacao=''PENDENTE'' '+
   'AND (e.proxima_tentativa_em IS NULL OR e.proxima_tentativa_em<=CURRENT_TIMESTAMP(3)) '+
-  'ORDER BY e.id LIMIT 1';
+  'ORDER BY e.id LIMIT 1 FOR UPDATE SKIP LOCKED';
  Q.Open; if Q.IsEmpty then Exit;
  Result:=TJSONObject.Create;
  Result.AddPair('id',TJSONNumber.Create(Q.FieldByName('id').AsLargeInt));
