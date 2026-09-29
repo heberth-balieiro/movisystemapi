@@ -49,6 +49,7 @@ Uses
   InstituicaoUsuario.Controller,
   InstituicaoWhatsApp.Controller,
   InstituicaoAuditoria.Controller,
+  LgpdSolicitacao.Controller,
   PublicoPrimeiroAcesso.Controller;
 
 { TCursosRoutes }
@@ -93,6 +94,7 @@ begin
   TInstituicaoUsuarioController.Registry;
   TInstituicaoWhatsAppController.Registry;
   TInstituicaoAuditoriaController.Registry;
+  TLgpdSolicitacaoController.Registry;
   TPublicoPrimeiroAcessoController.Registry;
 end;
 
