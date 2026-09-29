@@ -53,6 +53,17 @@ type
             AMensagem: string
     ): TJSONValue; static;
 
+    class function EnviarMidia(
+      const AApiUrl,
+            AApiKey,
+            ANomeInstancia,
+            ANumero,
+            ACaminhoArquivo,
+            ANomeArquivo,
+            AMimeType,
+            ALegenda: string
+    ): TJSONValue; static;
+
     class function ExtrairEstado(
       const AJson: TJSONValue
     ): string; static;
@@ -79,6 +90,7 @@ uses
   System.Net.HttpClient,
   System.Net.URLClient,
   System.NetEncoding,
+  System.IOUtils,
   APP.Errors;
 
 class function TEvolutionApiService.Request(
@@ -332,6 +344,66 @@ begin
         'POST',
         AApiUrl +
         '/message/sendText/' +
+        TNetEncoding.URL.Encode(ANomeInstancia),
+        AApiKey,
+        Body
+      );
+  finally
+    Body.Free;
+  end;
+end;
+
+class function TEvolutionApiService.EnviarMidia(
+  const AApiUrl,
+        AApiKey,
+        ANomeInstancia,
+        ANumero,
+        ACaminhoArquivo,
+        ANomeArquivo,
+        AMimeType,
+        ALegenda: string
+): TJSONValue;
+var
+  Body: TJSONObject;
+  Bytes: TBytes;
+  MediaType: string;
+begin
+  if not TFile.Exists(ACaminhoArquivo) then
+    raise Exception.Create(
+      'Arquivo de mídia não localizado.'
+    );
+
+  Bytes :=
+    TFile.ReadAllBytes(
+      ACaminhoArquivo
+    );
+
+  if SameText(AMimeType, 'application/pdf') then
+    MediaType := 'document'
+  else if AMimeType.ToLower.StartsWith('image/') then
+    MediaType := 'image'
+  else
+    MediaType := 'document';
+
+  Body := TJSONObject.Create;
+  try
+    Body.AddPair('number', ANumero);
+    Body.AddPair('mediatype', MediaType);
+    Body.AddPair('mimetype', AMimeType);
+    Body.AddPair('caption', ALegenda);
+    Body.AddPair('fileName', ANomeArquivo);
+    Body.AddPair(
+      'media',
+      TNetEncoding.Base64.EncodeBytesToString(
+        Bytes
+      )
+    );
+
+    Result :=
+      Request(
+        'POST',
+        AApiUrl +
+        '/message/sendMedia/' +
         TNetEncoding.URL.Encode(ANomeInstancia),
         AApiKey,
         Body
