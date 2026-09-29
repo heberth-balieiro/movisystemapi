@@ -162,6 +162,10 @@
         <DCCReference Include="src\Cursos\Dao\InstituicaoAuditoria.DAO.pas"/>
         <DCCReference Include="src\Cursos\Services\InstituicaoAuditoria.Service.pas"/>
         <DCCReference Include="src\Cursos\Controller\InstituicaoAuditoria.Controller.pas"/>
+        <DCCReference Include="src\Cursos\Dao\PlataformaCampanha.DAO.pas"/>
+        <DCCReference Include="src\Cursos\Services\PlataformaCampanha.Service.pas"/>
+        <DCCReference Include="src\Cursos\Services\PlataformaCampanha.Worker.pas"/>
+        <DCCReference Include="src\Cursos\Controller\PlataformaCampanha.Controller.pas"/>
         <DCCReference Include="src\Cursos\Model\LgpdSolicitacao.Model.pas"/>
         <DCCReference Include="src\Cursos\Dao\LgpdSolicitacao.DAO.pas"/>
         <DCCReference Include="src\Cursos\Services\LgpdSolicitacao.Service.pas"/>
