@@ -267,18 +267,22 @@ begin
     )
     var
       Claims: TJWTClaims;
+      Config: TPlataformaWhatsAppConfig;
     begin
       try
         if not AutorizarSuperAdmin(Req, Res, Claims) then
           Exit;
 
-        TAppResponse.Created(
-          Res,
+        Config :=
           TPlataformaWhatsAppService.CriarInstanciaEmpresa(
             Claims.UserId,
             TAppRequestInfo.GetIP(Req),
             TAppRequestInfo.GetUserAgent(Req)
-          ).ToJSON,
+          );
+
+        TAppResponse.Created(
+          Res,
+          Config.ToJSON,
           'Instância WhatsApp da empresa criada com sucesso.'
         );
       except
@@ -327,14 +331,18 @@ begin
     )
     var
       Claims: TJWTClaims;
+      Config: TPlataformaWhatsAppConfig;
     begin
       try
         if not AutorizarSuperAdmin(Req, Res, Claims) then
           Exit;
 
+        Config :=
+          TPlataformaWhatsAppService.AtualizarStatusEmpresa;
+
         TAppResponse.Ok(
           Res,
-          TPlataformaWhatsAppService.AtualizarStatusEmpresa.ToJSON,
+          Config.ToJSON,
           'Status do WhatsApp da empresa atualizado.'
         );
       except
@@ -353,18 +361,22 @@ begin
     )
     var
       Claims: TJWTClaims;
+      Config: TPlataformaWhatsAppConfig;
     begin
       try
         if not AutorizarSuperAdmin(Req, Res, Claims) then
           Exit;
 
-        TAppResponse.Ok(
-          Res,
+        Config :=
           TPlataformaWhatsAppService.LogoutEmpresa(
             Claims.UserId,
             TAppRequestInfo.GetIP(Req),
             TAppRequestInfo.GetUserAgent(Req)
-          ).ToJSON,
+          );
+
+        TAppResponse.Ok(
+          Res,
+          Config.ToJSON,
           'WhatsApp da empresa desconectado com sucesso.'
         );
       except
