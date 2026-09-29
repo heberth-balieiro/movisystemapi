@@ -366,7 +366,8 @@ class function TEvolutionApiService.EnviarMidia(
 var
   Body: TJSONObject;
   Bytes: TBytes;
-  MediaType: string;
+  MediaType,
+  MediaBase64: string;
 begin
   if not TFile.Exists(ACaminhoArquivo) then
     raise Exception.Create(
@@ -392,11 +393,33 @@ begin
     Body.AddPair('mimetype', AMimeType);
     Body.AddPair('caption', ALegenda);
     Body.AddPair('fileName', ANomeArquivo);
-    Body.AddPair(
-      'media',
+    MediaBase64 :=
       TNetEncoding.Base64.EncodeBytesToString(
         Bytes
-      )
+      );
+
+    // TNetEncoding.Base64 segue o padrão MIME e insere CR/LF
+    // a cada 76 caracteres. A Evolution API valida o campo
+    // "media" como Base64 contínuo e rejeita essas quebras.
+    MediaBase64 :=
+      StringReplace(
+        MediaBase64,
+        #13,
+        '',
+        [rfReplaceAll]
+      );
+
+    MediaBase64 :=
+      StringReplace(
+        MediaBase64,
+        #10,
+        '',
+        [rfReplaceAll]
+      );
+
+    Body.AddPair(
+      'media',
+      MediaBase64
     );
 
     Result :=
