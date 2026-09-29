@@ -187,19 +187,18 @@ var
   Conn: TUniConnection;
   Seed: TDemoSeed;
   Executar: Boolean;
+  Iniexecutar:Integer;
   Slug: string;
   IdInstituicao: Int64;
+
 begin
-  Ini := TIniFile.Create(
-    ExtractFilePath(ParamStr(0)) + 'Config.ini'
-  );
+  Ini := TIniFile.Create(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   try
-    Executar :=
-      Ini.ReadBool(
-        'CERTIFICA_DEMO',
-        'Executar',
-        False
-      );
+    Iniexecutar    := Ini.ReadInteger('CERTIFICA_DEMO','Executar',1);
+    if Iniexecutar = 1 then
+    Executar:= true
+    else
+    Executar:= false;
 
     if not Executar then
       Exit;
@@ -219,9 +218,7 @@ begin
   end;
 
   if Slug.IsEmpty then
-    raise Exception.Create(
-      'CERTIFICA_DEMO.SlugInstituicao nao configurado.'
-    );
+    raise Exception.Create('CERTIFICA_DEMO.SlugInstituicao nao configurado.');
 
   Config :=
     TAppConfig.Carregar(

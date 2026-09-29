@@ -206,7 +206,6 @@ uses
   EasyOneIntegracao.Controller in 'src\EasyOneDescktop\Controller\EasyOneIntegracao.Controller.pas',
   Cursos.Migration in 'src\Cursos\Migrations\Cursos.Migration.pas',
   Cursos.Routes in 'src\Cursos\Routes\Cursos.Routes.pas',
-  Cursos.Seeds in 'src\Cursos\Seeds\Cursos.Seeds.pas',
   PlataformaAuth.Controller in 'src\Cursos\Controller\PlataformaAuth.Controller.pas',
   PlataformaAuth.Service in 'src\Cursos\Services\PlataformaAuth.Service.pas',
   Certifica.Seeds in 'src\Cursos\Seeds\Certifica.Seeds.pas',
@@ -357,7 +356,9 @@ uses
   PlataformaAjuda.Controller in 'src\Cursos\Controller\PlataformaAjuda.Controller.pas',
   PlataformaAjuda.DAO in 'src\Cursos\Dao\PlataformaAjuda.DAO.pas',
   PlataformaAjuda.Model in 'src\Cursos\Model\PlataformaAjuda.Model.pas',
-  PlataformaAjuda.Service in 'src\Cursos\Services\PlataformaAjuda.Service.pas';
+  PlataformaAjuda.Service in 'src\Cursos\Services\PlataformaAjuda.Service.pas',
+  Cursos.Seeds in 'src\Cursos\Seeds\Cursos.Seeds.pas',
+  Cursos.DemoSeeds in 'src\Cursos\Seeds\Cursos.DemoSeeds.pas';
 
 var
   LConfig       : TAppApiConfig;
@@ -434,6 +435,10 @@ begin
 
           TCursosSeeds.Run;
           Writeln('Seeds de permissoes e perfis executadas com sucesso.');
+
+          TCursosDemoSeeds.Run;
+          Writeln('Seeds de demo executadas com sucesso.');
+
 
         end;
       {$ENDREGION}

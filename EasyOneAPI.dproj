@@ -143,6 +143,10 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="src\Cursos\Controller\EncontroCheckin.Controller.pas"/>
+        <DCCReference Include="src\Cursos\Dao\EncontroCheckin.DAO.pas"/>
+        <DCCReference Include="src\Cursos\Model\EncontroCheckin.Model.pas"/>
+        <DCCReference Include="src\Cursos\Services\EncontroCheckin.Service.pas"/>
         <DCCReference Include="src\Middlewares\Middleware.JWT.pas"/>
         <DCCReference Include="src\Middlewares\Middleware.Roles.pas"/>
         <DCCReference Include="src\Core\App.Config.pas"/>
@@ -330,12 +334,7 @@
         <DCCReference Include="src\EasyOneDescktop\Service\EasyOneIntegracao.Service.pas"/>
         <DCCReference Include="src\EasyOneDescktop\Controller\EasyOneIntegracao.Controller.pas"/>
         <DCCReference Include="src\Cursos\Migrations\Cursos.Migration.pas"/>
-        <DCCReference Include="src\Cursos\Controller\EncontroCheckin.Controller.pas"/>
-        <DCCReference Include="src\Cursos\Dao\EncontroCheckin.DAO.pas"/>
-        <DCCReference Include="src\Cursos\Model\EncontroCheckin.Model.pas"/>
-        <DCCReference Include="src\Cursos\Services\EncontroCheckin.Service.pas"/>
         <DCCReference Include="src\Cursos\Routes\Cursos.Routes.pas"/>
-        <DCCReference Include="src\Cursos\Seeds\Cursos.Seeds.pas"/>
         <DCCReference Include="src\Cursos\Controller\PlataformaAuth.Controller.pas"/>
         <DCCReference Include="src\Cursos\Services\PlataformaAuth.Service.pas"/>
         <DCCReference Include="src\Cursos\Seeds\Certifica.Seeds.pas"/>
@@ -487,6 +486,8 @@
         <DCCReference Include="src\Cursos\Dao\PlataformaAjuda.DAO.pas"/>
         <DCCReference Include="src\Cursos\Model\PlataformaAjuda.Model.pas"/>
         <DCCReference Include="src\Cursos\Services\PlataformaAjuda.Service.pas"/>
+        <DCCReference Include="src\Cursos\Seeds\Cursos.Seeds.pas"/>
+        <DCCReference Include="src\Cursos\Seeds\Cursos.DemoSeeds.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
