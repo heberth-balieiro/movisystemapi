@@ -38,7 +38,7 @@ type
     class procedure AdicionarBloqueio(const AIdUsuario:Int64; const ACanal,AValor,AMotivo:string); static;
     class procedure ExcluirBloqueio(const AId:Int64); static;
     class procedure EnviarEmailTeste(const ADestinatario,AAssunto,AHtml:string); static;
-    class procedure EnviarWhatsAppTeste(const ANumero,AMensagem:string); static;
+    class procedure EnviarWhatsAppTeste(const AIdUsuario:Int64; const ANumero,AMensagem:string); static;
     class procedure ProcessarProximo; static;
   end;
 
@@ -54,7 +54,9 @@ uses
   Database.Connection,
   PlataformaCampanha.DAO,
   PlataformaEmailEnvio.Service,
+  PlataformaWhatsApp.Model,
   PlataformaWhatsApp.Service,
+  PlataformaUsuarioWhatsApp.Service,
   EvolutionApi.Service;
 
 class function TPlataformaCampanhaService.NovaConexao: TUniConnection;
@@ -237,25 +239,195 @@ class procedure TPlataformaCampanhaService.ExcluirAnexo(const AIdCampanha,AIdAne
 var C:TUniConnection; Caminho:string;
 begin C:=NovaConexao; try ExigirRascunho(C,AIdCampanha); Caminho:=TPlataformaCampanhaDAO.BuscarCaminhoAnexo(C,AIdCampanha,AIdAnexo); TPlataformaCampanhaDAO.ExcluirAnexo(C,AIdCampanha,AIdAnexo); if (not Caminho.IsEmpty) and TFile.Exists(Caminho) then TFile.Delete(Caminho); finally C.Free; end; end;
 
-class function TPlataformaCampanhaService.Iniciar(const AIdUsuario,AIdCampanha:Int64; const AIP,AUserAgent:string):TJSONObject;
-var C:TUniConnection; Camp:TJSONObject; Canal,U,K,N:string;
+class function TPlataformaCampanhaService.Iniciar(
+  const AIdUsuario,
+        AIdCampanha: Int64;
+  const AIP,
+        AUserAgent: string
+): TJSONObject;
+var
+  C: TUniConnection;
+  Camp: TJSONObject;
+  Canal,
+  U,
+  K,
+  N,
+  Modo,
+  Estado: string;
+  ConfigWhatsApp: TPlataformaWhatsAppConfig;
+  Retorno: TJSONValue;
 begin
- C:=NovaConexao; Camp:=nil;
- try ExigirRascunho(C,AIdCampanha); Camp:=TPlataformaCampanhaDAO.Buscar(C,AIdCampanha); if Camp=nil then TAppErrors.RaiseNotFound('Campanha não encontrada.');
-  if Camp.GetValue<Integer>('total_destinatarios',0)<=0 then TAppErrors.RaiseBadRequest('Adicione ao menos um destinatário.');
-  Canal:=Camp.GetValue<string>('canal','');
-  if (Canal<>'WHATSAPP') and (not TPlataformaEmailEnvioService.Configurado) then TAppErrors.RaiseBadRequest('Configure o e-mail global antes de iniciar a campanha.');
-  if Canal<>'EMAIL' then
-  begin
-    if not TPlataformaWhatsAppService.ObterCredenciais(U,K,N) then
-      TAppErrors.RaiseBadRequest('Configure a instância WhatsApp global antes de iniciar a campanha.');
+  C := NovaConexao;
+  Camp := nil;
+  try
+    ExigirRascunho(C, AIdCampanha);
 
-    if TPlataformaCampanhaDAO.ContarAnexos(C,AIdCampanha)>1 then
-      TAppErrors.RaiseBadRequest('No MVP, campanhas com WhatsApp aceitam no máximo um anexo.');
+    Camp :=
+      TPlataformaCampanhaDAO.Buscar(
+        C,
+        AIdCampanha
+      );
+
+    if Camp = nil then
+      TAppErrors.RaiseNotFound(
+        'Campanha não encontrada.'
+      );
+
+    if Camp.GetValue<Integer>(
+      'total_destinatarios',
+      0
+    ) <= 0 then
+      TAppErrors.RaiseBadRequest(
+        'Adicione ao menos um destinatário.'
+      );
+
+    Canal :=
+      Camp.GetValue<string>(
+        'canal',
+        ''
+      );
+
+    if (Canal <> 'WHATSAPP') and
+       (not TPlataformaEmailEnvioService.Configurado) then
+      TAppErrors.RaiseBadRequest(
+        'Configure o e-mail global antes de iniciar a campanha.'
+      );
+
+    Modo := '';
+    N := '';
+
+    if Canal <> 'EMAIL' then
+    begin
+      ConfigWhatsApp :=
+        TPlataformaWhatsAppService.Buscar;
+
+      Modo :=
+        UpperCase(
+          Trim(
+            ConfigWhatsApp.ModoInstancia
+          )
+        );
+
+      if Modo.IsEmpty then
+        Modo := 'EMPRESA';
+
+      if Modo = 'EMPRESA' then
+      begin
+        if not TPlataformaWhatsAppService.ObterCredenciais(
+          U,
+          K,
+          N
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'Configure a conexão WhatsApp da empresa antes de iniciar a campanha.'
+          );
+
+        Retorno :=
+          TEvolutionApiService.EstadoInstancia(
+            U,
+            K,
+            N
+          );
+        try
+          Estado :=
+            TEvolutionApiService.ExtrairEstado(
+              Retorno
+            );
+        finally
+          Retorno.Free;
+        end;
+
+        if not (
+          SameText(Estado, 'OPEN') or
+          SameText(Estado, 'CONNECTED')
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'O WhatsApp da empresa não está conectado.'
+          );
+      end
+      else if Modo = 'USUARIO' then
+      begin
+        if not TPlataformaUsuarioWhatsAppService.ObterInstanciaParaEnvio(
+          AIdUsuario,
+          U,
+          K,
+          N
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'Conecte o WhatsApp do seu usuário antes de iniciar a campanha.'
+          );
+      end
+      else
+        TAppErrors.RaiseBadRequest(
+          'Modo de conexão WhatsApp inválido.'
+        );
+
+      if TPlataformaCampanhaDAO.ContarAnexos(
+        C,
+        AIdCampanha
+      ) > 1 then
+        TAppErrors.RaiseBadRequest(
+          'No MVP, campanhas com WhatsApp aceitam no máximo um anexo.'
+        );
+    end;
+
+    C.StartTransaction;
+    try
+      if Canal <> 'EMAIL' then
+      begin
+        if Modo = 'USUARIO' then
+          TPlataformaCampanhaDAO.DefinirWhatsAppRemetente(
+            C,
+            AIdCampanha,
+            Modo,
+            AIdUsuario,
+            N
+          )
+        else
+          TPlataformaCampanhaDAO.DefinirWhatsAppRemetente(
+            C,
+            AIdCampanha,
+            Modo,
+            0,
+            N
+          );
+      end;
+
+      TPlataformaCampanhaDAO.Iniciar(
+        C,
+        AIdCampanha
+      );
+
+      TPlataformaCampanhaDAO.RegistrarAuditoria(
+        C,
+        AIdUsuario,
+        'CAMPANHA_INICIADA',
+        AIdCampanha,
+        'Campanha iniciada. Remetente WhatsApp congelado no início do processamento.',
+        AIP,
+        AUserAgent
+      );
+
+      C.Commit;
+    except
+      if C.InTransaction then
+        C.Rollback;
+      raise;
+    end;
+
+    Camp.Free;
+    Camp :=
+      TPlataformaCampanhaDAO.Buscar(
+        C,
+        AIdCampanha
+      );
+
+    Result := Camp;
+    Camp := nil;
+  finally
+    Camp.Free;
+    C.Free;
   end;
-  C.StartTransaction; try TPlataformaCampanhaDAO.Iniciar(C,AIdCampanha); TPlataformaCampanhaDAO.RegistrarAuditoria(C,AIdUsuario,'CAMPANHA_INICIADA',AIdCampanha,'Campanha iniciada.',AIP,AUserAgent); C.Commit; except if C.InTransaction then C.Rollback; raise; end;
-  Camp.Free; Camp:=TPlataformaCampanhaDAO.Buscar(C,AIdCampanha); Result:=Camp; Camp:=nil;
- finally Camp.Free; C.Free; end;
 end;
 
 class function TPlataformaCampanhaService.Cancelar(const AIdUsuario,AIdCampanha:Int64; const AIP,AUserAgent:string):TJSONObject;
@@ -283,11 +455,74 @@ var C:TUniConnection; begin C:=NovaConexao; try TPlataformaCampanhaDAO.ExcluirBl
 class procedure TPlataformaCampanhaService.EnviarEmailTeste(const ADestinatario,AAssunto,AHtml:string);
 begin if not EmailValido(ADestinatario) then TAppErrors.RaiseBadRequest('E-mail de teste inválido.'); TPlataformaEmailEnvioService.Enviar(ADestinatario,AAssunto,AHtml); end;
 
-class procedure TPlataformaCampanhaService.EnviarWhatsAppTeste(const ANumero,AMensagem:string);
-var U,K,N:string; J:TJSONValue; Num:string;
-begin Num:=NormalizarWhatsApp(ANumero); if (Length(Num)<12) or (Length(Num)>13) then TAppErrors.RaiseBadRequest('WhatsApp de teste inválido.');
- if not TPlataformaWhatsAppService.ObterCredenciais(U,K,N) then TAppErrors.RaiseBadRequest('Configuração global do WhatsApp indisponível.');
- J:=TEvolutionApiService.EnviarTexto(U,K,N,Num,AMensagem); J.Free;
+class procedure TPlataformaCampanhaService.EnviarWhatsAppTeste(
+  const AIdUsuario: Int64;
+  const ANumero,
+        AMensagem: string
+);
+var
+  U,
+  K,
+  N,
+  Num,
+  Modo: string;
+  ConfigWhatsApp: TPlataformaWhatsAppConfig;
+  J: TJSONValue;
+begin
+  Num := NormalizarWhatsApp(ANumero);
+
+  if (Length(Num) < 12) or
+     (Length(Num) > 13) then
+    TAppErrors.RaiseBadRequest(
+      'WhatsApp de teste inválido.'
+    );
+
+  ConfigWhatsApp :=
+    TPlataformaWhatsAppService.Buscar;
+
+  Modo :=
+    UpperCase(
+      Trim(
+        ConfigWhatsApp.ModoInstancia
+      )
+    );
+
+  if Modo.IsEmpty then
+    Modo := 'EMPRESA';
+
+  if Modo = 'USUARIO' then
+  begin
+    if not TPlataformaUsuarioWhatsAppService.ObterInstanciaParaEnvio(
+      AIdUsuario,
+      U,
+      K,
+      N
+    ) then
+      TAppErrors.RaiseBadRequest(
+        'Conecte o WhatsApp do seu usuário antes de enviar o teste.'
+      );
+  end
+  else
+  begin
+    if not TPlataformaWhatsAppService.ObterCredenciais(
+      U,
+      K,
+      N
+    ) then
+      TAppErrors.RaiseBadRequest(
+        'Configuração global do WhatsApp da empresa indisponível.'
+      );
+  end;
+
+  J :=
+    TEvolutionApiService.EnviarTexto(
+      U,
+      K,
+      N,
+      Num,
+      AMensagem
+    );
+  J.Free;
 end;
 
 class procedure TPlataformaCampanhaService.ProcessarProximo;
@@ -320,7 +555,12 @@ begin
     TPlataformaEmailEnvioService.EnviarComAnexos(Dest,Assunto,Corpo,Anexos);
    end else begin
     Msg:=AplicarVariaveis(E.GetValue<string>('mensagem_whatsapp',''),Nome,Empresa);
-    if not TPlataformaWhatsAppService.ObterCredenciais(U,K,N) then raise Exception.Create('Configuração global do WhatsApp indisponível.');
+    if not TPlataformaWhatsAppService.ObterCredenciais(U,K) then
+      raise Exception.Create('Configuração global do WhatsApp indisponível.');
+
+    N:=E.GetValue<string>('whatsapp_instancia','');
+    if Trim(N).IsEmpty then
+      raise Exception.Create('A campanha não possui uma instância WhatsApp vinculada.');
     Anexos:=TPlataformaCampanhaDAO.BuscarAnexos(C,IdCampanha);
 
     if Anexos.Count=0 then
