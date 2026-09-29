@@ -3,7 +3,8 @@ unit Middleware.SecurityHeaders;
 interface
 
 uses
-  Horse;
+  Horse,
+  System.SysUtils;
 
 type
   TMiddlewareSecurityHeaders = class
