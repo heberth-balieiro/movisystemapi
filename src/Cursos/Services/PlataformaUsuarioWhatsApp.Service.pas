@@ -409,12 +409,14 @@ begin
       );
 
     if NomeInstancia.IsEmpty then
-      Exit(
+    begin
+      Result :=
         TPlataformaUsuarioWhatsAppDAO.Buscar(
           Conn,
           AIdUsuarioAlvo
-        )
-      );
+        );
+      Exit;
+    end;
 
     Retorno :=
       TEvolutionApiService.EstadoInstancia(
