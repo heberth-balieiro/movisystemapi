@@ -246,8 +246,13 @@ begin
   Canal:=Camp.GetValue<string>('canal','');
   if (Canal<>'WHATSAPP') and (not TPlataformaEmailEnvioService.Configurado) then TAppErrors.RaiseBadRequest('Configure o e-mail global antes de iniciar a campanha.');
   if Canal<>'EMAIL' then
+  begin
     if not TPlataformaWhatsAppService.ObterCredenciais(U,K,N) then
-      TAppErrors.RaiseBadRequest('Configure e conecte o WhatsApp global antes de iniciar a campanha.');
+      TAppErrors.RaiseBadRequest('Configure a instância WhatsApp global antes de iniciar a campanha.');
+
+    if TPlataformaCampanhaDAO.ContarAnexos(C,AIdCampanha)>1 then
+      TAppErrors.RaiseBadRequest('No MVP, campanhas com WhatsApp aceitam no máximo um anexo.');
+  end;
   C.StartTransaction; try TPlataformaCampanhaDAO.Iniciar(C,AIdCampanha); TPlataformaCampanhaDAO.RegistrarAuditoria(C,AIdUsuario,'CAMPANHA_INICIADA',AIdCampanha,'Campanha iniciada.',AIP,AUserAgent); C.Commit; except if C.InTransaction then C.Rollback; raise; end;
   Camp.Free; Camp:=TPlataformaCampanhaDAO.Buscar(C,AIdCampanha); Result:=Camp; Camp:=nil;
  finally Camp.Free; C.Free; end;
@@ -316,7 +321,19 @@ begin
    end else begin
     Msg:=AplicarVariaveis(E.GetValue<string>('mensagem_whatsapp',''),Nome,Empresa);
     if not TPlataformaWhatsAppService.ObterCredenciais(U,K,N) then raise Exception.Create('Configuração global do WhatsApp indisponível.');
-    J:=TEvolutionApiService.EnviarTexto(U,K,N,Dest,Msg);
+    Anexos:=TPlataformaCampanhaDAO.BuscarAnexos(C,IdCampanha);
+
+    if Anexos.Count=0 then
+      J:=TEvolutionApiService.EnviarTexto(U,K,N,Dest,Msg)
+    else
+      J:=TEvolutionApiService.EnviarMidia(
+        U,K,N,Dest,
+        (Anexos.Items[0] as TJSONObject).GetValue<string>('caminho_storage',''),
+        (Anexos.Items[0] as TJSONObject).GetValue<string>('nome_original',''),
+        (Anexos.Items[0] as TJSONObject).GetValue<string>('mime_type',''),
+        Msg
+      );
+
     try
       Provider:='';
       if J<>nil then
@@ -325,15 +342,6 @@ begin
         if (V<>nil) and not (V is TJSONNull) then Provider:=V.Value;
       end;
     finally J.Free; end;
-    Anexos:=TPlataformaCampanhaDAO.BuscarAnexos(C,IdCampanha);
-    for I:=0 to Anexos.Count-1 do begin
-      J:=TEvolutionApiService.EnviarMidia(U,K,N,Dest,
-        (Anexos.Items[I] as TJSONObject).GetValue<string>('caminho_storage',''),
-        (Anexos.Items[I] as TJSONObject).GetValue<string>('nome_original',''),
-        (Anexos.Items[I] as TJSONObject).GetValue<string>('mime_type',''),
-        '');
-      J.Free;
-    end;
    end;
    TPlataformaCampanhaDAO.MarcarEnviado(C,IdEnvio,Provider);
   except on Ex:Exception do TPlataformaCampanhaDAO.MarcarFalha(C,IdEnvio,Ex.Message); end;
