@@ -57,7 +57,7 @@ begin
     Qry.Connection := AConn;
 
     Qry.SQL.Text :=
-      'SELECT habilitado, api_url, nome_instancia, ' +
+      'SELECT habilitado, modo_instancia, api_url, nome_instancia, estado_empresa, numero_empresa, ' +
       '       api_key_criptografada IS NOT NULL AS api_key_configurada, ' +
       '       api_key_hint ' +
       'FROM plataforma_whatsapp_configuracao ' +
@@ -71,11 +71,20 @@ begin
     Result.Habilitado :=
       Qry.FieldByName('habilitado').AsBoolean;
 
+    Result.ModoInstancia :=
+      Qry.FieldByName('modo_instancia').AsString;
+
     Result.ApiUrl :=
       Qry.FieldByName('api_url').AsString;
 
     Result.NomeInstancia :=
       Qry.FieldByName('nome_instancia').AsString;
+
+    Result.EstadoEmpresa :=
+      Qry.FieldByName('estado_empresa').AsString;
+
+    Result.NumeroEmpresa :=
+      Qry.FieldByName('numero_empresa').AsString;
 
     Result.ApiKeyConfigurada :=
       Qry.FieldByName('api_key_configurada').asstring;
@@ -175,11 +184,12 @@ begin
 
       Qry.SQL.Text :=
         'INSERT INTO plataforma_whatsapp_configuracao ' +
-        '(id, habilitado, api_url, nome_instancia, api_key_criptografada, api_key_hint) ' +
+        '(id, habilitado, modo_instancia, api_url, nome_instancia, api_key_criptografada, api_key_hint) ' +
         'VALUES ' +
-        '(1, :habilitado, :api_url, :nome_instancia, AES_ENCRYPT(:api_key, :secret), :hint) ' +
+        '(1, :habilitado, :modo_instancia, :api_url, :nome_instancia, AES_ENCRYPT(:api_key, :secret), :hint) ' +
         'ON DUPLICATE KEY UPDATE ' +
         'habilitado = VALUES(habilitado), ' +
+        'modo_instancia = VALUES(modo_instancia), ' +
         'api_url = VALUES(api_url), ' +
         'nome_instancia = VALUES(nome_instancia), ' +
         'api_key_criptografada = VALUES(api_key_criptografada), ' +
@@ -189,17 +199,21 @@ begin
     begin
       Qry.SQL.Text :=
         'INSERT INTO plataforma_whatsapp_configuracao ' +
-        '(id, habilitado, api_url, nome_instancia) ' +
+        '(id, habilitado, modo_instancia, api_url, nome_instancia) ' +
         'VALUES ' +
-        '(1, :habilitado, :api_url, :nome_instancia) ' +
+        '(1, :habilitado, :modo_instancia, :api_url, :nome_instancia) ' +
         'ON DUPLICATE KEY UPDATE ' +
         'habilitado = VALUES(habilitado), ' +
+        'modo_instancia = VALUES(modo_instancia), ' +
         'api_url = VALUES(api_url), ' +
         'nome_instancia = VALUES(nome_instancia)';
     end;
 
     Qry.ParamByName('habilitado').AsInteger :=
       Ord(ADados.Habilitado);
+
+    Qry.ParamByName('modo_instancia').AsString :=
+      UpperCase(Trim(ADados.ModoInstancia));
 
     Qry.ParamByName('api_url').AsString :=
       ADados.ApiUrl;
