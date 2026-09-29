@@ -603,7 +603,7 @@ begin
   );
 
   THorse.Get(
-    '/v1/certifica/plataforma/campanhas/bloqueios',
+    '/v1/certifica/plataforma/contatos-bloqueados',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     var
       Claims: TJWTClaims;
@@ -632,7 +632,7 @@ begin
   );
 
   THorse.Post(
-    '/v1/certifica/plataforma/campanhas/bloqueios',
+    '/v1/certifica/plataforma/contatos-bloqueados',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     var
       Claims: TJWTClaims;
@@ -675,7 +675,7 @@ begin
   );
 
   THorse.Delete(
-    '/v1/certifica/plataforma/campanhas/bloqueios/:id',
+    '/v1/certifica/plataforma/contatos-bloqueados/:id',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     var
       Claims: TJWTClaims;
