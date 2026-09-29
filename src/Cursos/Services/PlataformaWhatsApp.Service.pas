@@ -17,7 +17,8 @@ type
 
     class function ObterCredenciais(
       out AApiUrl,
-          AApiKey: string
+          AApiKey,
+          ANomeInstancia: string
     ): Boolean; static;
 
     class function Atualizar(
@@ -99,7 +100,8 @@ end;
 
 class function TPlataformaWhatsAppService.ObterCredenciais(
   out AApiUrl,
-      AApiKey: string
+      AApiKey,
+      ANomeInstancia: string
 ): Boolean;
 var
   Config: TAppApiConfig;
@@ -109,6 +111,7 @@ begin
   Result := False;
   AApiUrl := '';
   AApiKey := '';
+  ANomeInstancia := '';
 
   Config :=
     TAppConfig.Carregar(
@@ -142,8 +145,11 @@ begin
     if Trim(AApiKey).IsEmpty then
       Exit;
 
-    AApiUrl :=
-      WhatsAppConfig.ApiUrl;
+    if Trim(WhatsAppConfig.NomeInstancia).IsEmpty then
+      Exit;
+
+    AApiUrl := WhatsAppConfig.ApiUrl;
+    ANomeInstancia := WhatsAppConfig.NomeInstancia;
 
     Result := True;
   finally
@@ -184,6 +190,11 @@ begin
       Dados.ApiKey
     );
 
+  Dados.NomeInstancia :=
+    Trim(
+      Dados.NomeInstancia
+    );
+
   Config :=
     TAppConfig.Carregar(
       ExtractFilePath(ParamStr(0)) +
@@ -210,6 +221,11 @@ begin
       if Dados.ApiUrl.IsEmpty then
         TAppErrors.RaiseBadRequest(
           'Informe a URL da API WhatsApp antes de habilitar a integração.'
+        );
+
+      if Dados.NomeInstancia.IsEmpty then
+        TAppErrors.RaiseBadRequest(
+          'Informe a instância WhatsApp da plataforma antes de habilitar a integração.'
         );
 
       if not TemApiKey then
