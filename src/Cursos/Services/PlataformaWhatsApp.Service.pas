@@ -223,11 +223,6 @@ begin
           'Informe a URL da API WhatsApp antes de habilitar a integração.'
         );
 
-      if Dados.NomeInstancia.IsEmpty then
-        TAppErrors.RaiseBadRequest(
-          'Informe a instância WhatsApp da plataforma antes de habilitar a integração.'
-        );
-
       if not TemApiKey then
         TAppErrors.RaiseBadRequest(
           'Informe a Key da API WhatsApp antes de habilitar a integração.'
