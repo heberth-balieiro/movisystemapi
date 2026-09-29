@@ -32,6 +32,27 @@ type
       const AIP,
             AUserAgent: string
     ): TPlataformaWhatsAppConfig; static;
+
+    class function CriarInstanciaEmpresa(
+      const AIdUsuario: Int64;
+      const AIP,
+            AUserAgent: string
+    ): TPlataformaWhatsAppConfig; static;
+
+    class function ObterQrCodeEmpresa(
+      const AIdUsuario: Int64;
+      const AIP,
+            AUserAgent: string
+    ): TJSONObject; static;
+
+    class function AtualizarStatusEmpresa:
+      TPlataformaWhatsAppConfig; static;
+
+    class function LogoutEmpresa(
+      const AIdUsuario: Int64;
+      const AIP,
+            AUserAgent: string
+    ): TPlataformaWhatsAppConfig; static;
   end;
 
 implementation
@@ -43,7 +64,8 @@ uses
   APP.Errors,
   Database.Connection,
   Certifica.Secrets,
-  PlataformaWhatsApp.DAO;
+  PlataformaWhatsApp.DAO,
+  EvolutionApi.Service;
 
 class function TPlataformaWhatsAppService.NormalizarUrl(
   const AUrl: string
@@ -336,6 +358,369 @@ begin
   finally
     Conn.Free;
   end;
+end;
+
+
+class function TPlataformaWhatsAppService.CriarInstanciaEmpresa(
+  const AIdUsuario: Int64;
+  const AIP,
+        AUserAgent: string
+): TPlataformaWhatsAppConfig;
+var
+  Conn: TUniConnection;
+  Config: TPlataformaWhatsAppConfig;
+  ApiUrl,
+  ApiKey,
+  NomeInstancia,
+  Estado,
+  Numero: string;
+  Retorno: TJSONValue;
+  G: TGUID;
+begin
+  Config := Buscar;
+
+  if not Config.Habilitado then
+    TAppErrors.RaiseBadRequest(
+      'A integração WhatsApp da plataforma está desabilitada.'
+    );
+
+  if not SameText(Config.ModoInstancia, 'EMPRESA') then
+    TAppErrors.RaiseBadRequest(
+      'A configuração atual utiliza conexão WhatsApp por usuário.'
+    );
+
+  if not ObterCredenciais(
+    ApiUrl,
+    ApiKey
+  ) then
+    TAppErrors.RaiseBadRequest(
+      'Configuração global da Evolution API indisponível.'
+    );
+
+  NomeInstancia := Trim(Config.NomeInstancia);
+
+  if NomeInstancia.IsEmpty then
+  begin
+    CreateGUID(G);
+    NomeInstancia :=
+      'movisystem-empresa-' +
+      Copy(
+        StringReplace(
+          StringReplace(
+            StringReplace(
+              LowerCase(GUIDToString(G)),
+              '{',
+              '',
+              [rfReplaceAll]
+            ),
+            '}',
+            '',
+            [rfReplaceAll]
+          ),
+          '-',
+          '',
+          [rfReplaceAll]
+        ),
+        1,
+        12
+      );
+  end;
+
+  Retorno :=
+    TEvolutionApiService.CriarInstancia(
+      ApiUrl,
+      ApiKey,
+      NomeInstancia
+    );
+  try
+    Estado :=
+      TEvolutionApiService.ExtrairEstado(
+        Retorno
+      );
+
+    if Estado.IsEmpty then
+      Estado := 'CREATED';
+
+    Numero :=
+      TEvolutionApiService.ExtrairNumero(
+        Retorno
+      );
+  finally
+    Retorno.Free;
+  end;
+
+  Conn := TDatabaseConnection.NewConnection(
+    TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) + 'Config.ini'
+    ).Database
+  );
+  try
+    Conn.StartTransaction;
+    try
+      TPlataformaWhatsAppDAO.AtualizarEmpresa(
+        Conn,
+        NomeInstancia,
+        Estado,
+        Numero
+      );
+
+      TPlataformaWhatsAppDAO.RegistrarAuditoriaOperacao(
+        Conn,
+        AIdUsuario,
+        'PLATAFORMA_WHATSAPP_EMPRESA_INSTANCIA_CRIADA',
+        'Instância WhatsApp da empresa criada.',
+        'POST',
+        '/v1/certifica/plataforma/configuracoes/whatsapp/empresa/instancia',
+        AIP,
+        AUserAgent
+      );
+
+      Conn.Commit;
+    except
+      if Conn.InTransaction then
+        Conn.Rollback;
+      raise;
+    end;
+  finally
+    Conn.Free;
+  end;
+
+  Result := Buscar;
+end;
+
+class function TPlataformaWhatsAppService.ObterQrCodeEmpresa(
+  const AIdUsuario: Int64;
+  const AIP,
+        AUserAgent: string
+): TJSONObject;
+var
+  Conn: TUniConnection;
+  Config: TPlataformaWhatsAppConfig;
+  ApiUrl,
+  ApiKey,
+  Estado,
+  Numero,
+  QrBase64,
+  QrTexto: string;
+  Retorno: TJSONValue;
+begin
+  Config := Buscar;
+
+  if not SameText(Config.ModoInstancia, 'EMPRESA') then
+    TAppErrors.RaiseBadRequest(
+      'A configuração atual utiliza conexão WhatsApp por usuário.'
+    );
+
+  if not ObterCredenciais(
+    ApiUrl,
+    ApiKey,
+    Config.NomeInstancia
+  ) then
+    TAppErrors.RaiseBadRequest(
+      'Crie a instância WhatsApp da empresa antes de gerar o QR Code.'
+    );
+
+  Retorno :=
+    TEvolutionApiService.ConectarInstancia(
+      ApiUrl,
+      ApiKey,
+      Config.NomeInstancia
+    );
+  try
+    Estado := TEvolutionApiService.ExtrairEstado(Retorno);
+    if Estado.IsEmpty then
+      Estado := 'AGUARDANDO_QRCODE';
+
+    Numero := TEvolutionApiService.ExtrairNumero(Retorno);
+    QrBase64 := TEvolutionApiService.ExtrairQrBase64(Retorno);
+    QrTexto := TEvolutionApiService.ExtrairQrTexto(Retorno);
+  finally
+    Retorno.Free;
+  end;
+
+  Conn := TDatabaseConnection.NewConnection(
+    TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) + 'Config.ini'
+    ).Database
+  );
+  try
+    TPlataformaWhatsAppDAO.AtualizarEmpresa(
+      Conn,
+      Config.NomeInstancia,
+      Estado,
+      Numero
+    );
+
+    TPlataformaWhatsAppDAO.RegistrarAuditoriaOperacao(
+      Conn,
+      AIdUsuario,
+      'PLATAFORMA_WHATSAPP_EMPRESA_QRCODE_GERADO',
+      'QR Code solicitado para a instância WhatsApp da empresa.',
+      'GET',
+      '/v1/certifica/plataforma/configuracoes/whatsapp/empresa/qrcode',
+      AIP,
+      AUserAgent
+    );
+  finally
+    Conn.Free;
+  end;
+
+  Result := TJSONObject.Create;
+  Result.AddPair('nome_instancia', Config.NomeInstancia);
+  Result.AddPair('estado', Estado);
+
+  if QrBase64.IsEmpty then
+    Result.AddPair('qrcode_base64', TJSONNull.Create)
+  else
+    Result.AddPair('qrcode_base64', QrBase64);
+
+  if QrTexto.IsEmpty then
+    Result.AddPair('qrcode_texto', TJSONNull.Create)
+  else
+    Result.AddPair('qrcode_texto', QrTexto);
+end;
+
+class function TPlataformaWhatsAppService.AtualizarStatusEmpresa:
+  TPlataformaWhatsAppConfig;
+var
+  Conn: TUniConnection;
+  Config: TPlataformaWhatsAppConfig;
+  ApiUrl,
+  ApiKey,
+  Estado,
+  Numero: string;
+  Retorno: TJSONValue;
+begin
+  Config := Buscar;
+
+  if not SameText(Config.ModoInstancia, 'EMPRESA') then
+    TAppErrors.RaiseBadRequest(
+      'A configuração atual utiliza conexão WhatsApp por usuário.'
+    );
+
+  if Trim(Config.NomeInstancia).IsEmpty then
+    Exit(Config);
+
+  if not ObterCredenciais(
+    ApiUrl,
+    ApiKey
+  ) then
+    TAppErrors.RaiseBadRequest(
+      'Configuração global da Evolution API indisponível.'
+    );
+
+  Retorno :=
+    TEvolutionApiService.EstadoInstancia(
+      ApiUrl,
+      ApiKey,
+      Config.NomeInstancia
+    );
+  try
+    Estado := TEvolutionApiService.ExtrairEstado(Retorno);
+    Numero := TEvolutionApiService.ExtrairNumero(Retorno);
+  finally
+    Retorno.Free;
+  end;
+
+  if Estado.IsEmpty then
+    Estado := 'UNKNOWN';
+
+  Conn := TDatabaseConnection.NewConnection(
+    TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) + 'Config.ini'
+    ).Database
+  );
+  try
+    TPlataformaWhatsAppDAO.AtualizarEmpresa(
+      Conn,
+      Config.NomeInstancia,
+      Estado,
+      Numero
+    );
+  finally
+    Conn.Free;
+  end;
+
+  Result := Buscar;
+end;
+
+class function TPlataformaWhatsAppService.LogoutEmpresa(
+  const AIdUsuario: Int64;
+  const AIP,
+        AUserAgent: string
+): TPlataformaWhatsAppConfig;
+var
+  Conn: TUniConnection;
+  Config: TPlataformaWhatsAppConfig;
+  ApiUrl,
+  ApiKey: string;
+  Retorno: TJSONValue;
+begin
+  Config := Buscar;
+
+  if not SameText(Config.ModoInstancia, 'EMPRESA') then
+    TAppErrors.RaiseBadRequest(
+      'A configuração atual utiliza conexão WhatsApp por usuário.'
+    );
+
+  if Trim(Config.NomeInstancia).IsEmpty then
+    TAppErrors.RaiseBadRequest(
+      'A empresa ainda não possui uma instância WhatsApp.'
+    );
+
+  if not ObterCredenciais(
+    ApiUrl,
+    ApiKey
+  ) then
+    TAppErrors.RaiseBadRequest(
+      'Configuração global da Evolution API indisponível.'
+    );
+
+  Retorno :=
+    TEvolutionApiService.LogoutInstancia(
+      ApiUrl,
+      ApiKey,
+      Config.NomeInstancia
+    );
+  Retorno.Free;
+
+  Conn := TDatabaseConnection.NewConnection(
+    TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) + 'Config.ini'
+    ).Database
+  );
+  try
+    Conn.StartTransaction;
+    try
+      TPlataformaWhatsAppDAO.AtualizarEmpresa(
+        Conn,
+        Config.NomeInstancia,
+        'LOGGED_OUT',
+        ''
+      );
+
+      TPlataformaWhatsAppDAO.RegistrarAuditoriaOperacao(
+        Conn,
+        AIdUsuario,
+        'PLATAFORMA_WHATSAPP_EMPRESA_DESCONECTADO',
+        'Sessão WhatsApp da empresa desconectada.',
+        'POST',
+        '/v1/certifica/plataforma/configuracoes/whatsapp/empresa/logout',
+        AIP,
+        AUserAgent
+      );
+
+      Conn.Commit;
+    except
+      if Conn.InTransaction then
+        Conn.Rollback;
+      raise;
+    end;
+  finally
+    Conn.Free;
+  end;
+
+  Result := Buscar;
 end;
 
 end.
