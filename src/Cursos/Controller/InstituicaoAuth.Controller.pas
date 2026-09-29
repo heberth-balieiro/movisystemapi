@@ -19,6 +19,7 @@ uses
   App.Token,
   App.Response,
   APP.Errors,
+  App.RateLimit,
   InstituicaoAuth.DAO,
   InstituicaoAuth.Service,
   InstituicaoPermissao.Service;
@@ -45,6 +46,14 @@ begin
       Slug, Login, Senha: string;
     begin
       try
+        Res.RawWebResponse.SetCustomHeader('Cache-Control', 'no-store');
+
+        if not TAppRateLimit.EnforceIP(Req, Res, 'instituicao-auth-login', 15, 300) then
+          Exit;
+
+        if Length(Req.Body) > 4096 then
+          TAppErrors.RaiseBadRequest('Requisição inválida.');
+
         Body := Req.Body<TJSONObject>;
 
         if Body = nil then
@@ -68,6 +77,11 @@ begin
             Body,
             'senha'
           );
+
+        if not TAppRateLimit.EnforceIdentity(
+          Req, Res, 'instituicao-auth-identidade', Slug + '|' + Login, 8, 600
+        ) then
+          Exit;
 
         Resultado :=
           TInstituicaoAuthService.Login(
