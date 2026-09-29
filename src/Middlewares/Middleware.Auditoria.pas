@@ -1,0 +1,299 @@
+unit Middleware.Auditoria;
+
+interface
+
+uses
+  Horse;
+
+type
+  TMiddlewareAuditoria = class
+  public
+    class function Registrar: THorseCallback; static;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  App.JWT,
+  App.Config,
+  Auditoria.Service;
+
+function Contem(
+  const ATexto,
+        ATrecho: string
+): Boolean;
+begin
+  Result :=
+    Pos(
+      LowerCase(ATrecho),
+      LowerCase(ATexto)
+    ) > 0;
+end;
+
+function EhRotaCertifica(
+  const ACaminho: string
+): Boolean;
+begin
+  Result :=
+    Pos(
+      '/v1/certifica/',
+      LowerCase(ACaminho)
+    ) = 1;
+end;
+
+function EhLeituraSensivel(
+  const AMetodo,
+        ACaminho: string
+): Boolean;
+begin
+  Result := False;
+
+  if not SameText(AMetodo, 'GET') then
+    Exit;
+
+  Result :=
+    Contem(ACaminho, '/instituicao/participantes') or
+    Contem(ACaminho, '/instituicao/usuarios') or
+    (
+      Contem(ACaminho, '/certificados/') and
+      Contem(ACaminho, '/pdf')
+    );
+end;
+
+function EhAuditavel(
+  const AMetodo,
+        ACaminho: string
+): Boolean;
+begin
+  if not EhRotaCertifica(ACaminho) then
+    Exit(False);
+
+  Result :=
+    SameText(AMetodo, 'POST') or
+    SameText(AMetodo, 'PUT') or
+    SameText(AMetodo, 'PATCH') or
+    SameText(AMetodo, 'DELETE') or
+    EhLeituraSensivel(
+      AMetodo,
+      ACaminho
+    );
+end;
+
+function ResolverEntidade(
+  const ACaminho: string
+): string;
+begin
+  if Contem(ACaminho, '/participantes') then Exit('participante');
+  if Contem(ACaminho, '/usuarios') then Exit('usuario');
+  if Contem(ACaminho, '/certificados') then Exit('certificado');
+  if Contem(ACaminho, '/inscricoes') then Exit('inscricao');
+  if Contem(ACaminho, '/presencas') then Exit('presenca');
+  if Contem(ACaminho, '/conclusao') then Exit('conclusao');
+  if Contem(ACaminho, '/turmas') then Exit('turma');
+  if Contem(ACaminho, '/cursos') then Exit('curso');
+  if Contem(ACaminho, '/perfis') then Exit('perfil');
+  if Contem(ACaminho, '/configuracoes') then Exit('configuracao');
+  if Contem(ACaminho, '/whatsapp') then Exit('whatsapp');
+  Result := 'api';
+end;
+
+function ResolverAcao(
+  const AMetodo,
+        ACaminho: string
+): string;
+begin
+  if Contem(ACaminho, '/auth/login') then
+    Exit('LOGIN');
+
+  if Contem(ACaminho, '/recuperacao-senha/solicitar') then
+    Exit('RECUPERACAO_SENHA_SOLICITADA');
+
+  if Contem(ACaminho, '/recuperacao-senha/redefinir') then
+    Exit('RECUPERACAO_SENHA_REDEFINIDA');
+
+  if Contem(ACaminho, '/primeiro-acesso/definir-senha') then
+    Exit('PRIMEIRO_ACESSO_SENHA_DEFINIDA');
+
+  if Contem(ACaminho, '/certificados/') and
+     Contem(ACaminho, '/cancelar') then
+    Exit('CERTIFICADO_CANCELADO');
+
+  if Contem(ACaminho, '/certificados/') and
+     Contem(ACaminho, '/reemitir') then
+    Exit('CERTIFICADO_REEMITIDO');
+
+  if Contem(ACaminho, '/certificados/') and
+     Contem(ACaminho, '/gerar-pdf') then
+    Exit('CERTIFICADO_PDF_GERADO');
+
+  if SameText(AMetodo, 'POST') and
+     Contem(ACaminho, '/inscricoes/') and
+     Contem(ACaminho, '/certificados') then
+    Exit('CERTIFICADO_EMITIDO');
+
+  if Contem(ACaminho, '/participantes/') and
+     Contem(ACaminho, '/acesso/reenviar') then
+    Exit('PARTICIPANTE_ACESSO_REENVIADO');
+
+  if Contem(ACaminho, '/participantes/') and
+     Contem(ACaminho, '/acesso') and
+     SameText(AMetodo, 'DELETE') then
+    Exit('PARTICIPANTE_ACESSO_REVOGADO');
+
+  if Contem(ACaminho, '/participantes/') and
+     Contem(ACaminho, '/acesso') and
+     SameText(AMetodo, 'POST') then
+    Exit('PARTICIPANTE_ACESSO_LIBERADO');
+
+  if Contem(ACaminho, '/participantes') then
+  begin
+    if SameText(AMetodo, 'GET') then Exit('PARTICIPANTE_CONSULTADO');
+    if SameText(AMetodo, 'POST') then Exit('PARTICIPANTE_CADASTRADO');
+    if SameText(AMetodo, 'PUT') then Exit('PARTICIPANTE_ALTERADO');
+    if SameText(AMetodo, 'PATCH') then Exit('PARTICIPANTE_SITUACAO_ALTERADA');
+  end;
+
+  if Contem(ACaminho, '/usuarios') then
+  begin
+    if SameText(AMetodo, 'GET') then Exit('USUARIO_CONSULTADO');
+    if SameText(AMetodo, 'POST') then Exit('USUARIO_CADASTRADO');
+    if Contem(ACaminho, '/perfis') then Exit('USUARIO_PERFIS_ALTERADOS');
+    if SameText(AMetodo, 'PUT') then Exit('USUARIO_ALTERADO');
+    if SameText(AMetodo, 'PATCH') then Exit('USUARIO_SITUACAO_ALTERADA');
+  end;
+
+  if Contem(ACaminho, '/presencas') or
+     Contem(ACaminho, '/checkin') then
+    Exit('PRESENCA_ALTERADA');
+
+  if Contem(ACaminho, '/conclusao') then
+    Exit('CONCLUSAO_ALTERADA');
+
+  if Contem(ACaminho, '/configuracoes') then
+    Exit('CONFIGURACAO_ALTERADA');
+
+  if Contem(ACaminho, '/perfis') then
+    Exit('PERFIL_ALTERADO');
+
+  if Contem(ACaminho, '/inscricoes') then
+    Exit('INSCRICAO_ALTERADA');
+
+  Result :=
+    'HTTP_' +
+    UpperCase(
+      Trim(AMetodo)
+    );
+end;
+
+function ExtrairClaims(
+  const AReq: THorseRequest;
+  out AClaims: TJWTClaims
+): Boolean;
+var
+  Config: TAppApiConfig;
+  Token: string;
+begin
+  AClaims := Default(TJWTClaims);
+  Result := False;
+
+  Token :=
+    TAppJWT.ExtrairBearerToken(
+      AReq.Headers['Authorization']
+    );
+
+  if Trim(Token).IsEmpty then
+    Exit;
+
+  try
+    Config :=
+      TAppConfig.Carregar(
+        ExtractFilePath(ParamStr(0)) + 'Config.ini'
+      );
+
+    Result :=
+      TAppJWT.ValidarEExtrair(
+        Config.JWT,
+        Token,
+        AClaims
+      );
+  except
+    AClaims := Default(TJWTClaims);
+    Result := False;
+  end;
+end;
+
+class function TMiddlewareAuditoria.Registrar: THorseCallback;
+begin
+  Result :=
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Metodo: string;
+      Caminho: string;
+      Acao: string;
+      Entidade: string;
+      Mensagem: string;
+      Claims: TJWTClaims;
+      StatusCode: Integer;
+      Sucesso: Boolean;
+    begin
+      Metodo := UpperCase(Trim(Req.RawWebRequest.Method));
+      Caminho := Trim(Req.RawWebRequest.PathInfo);
+
+      if not EhAuditavel(Metodo, Caminho) then
+      begin
+        Next;
+        Exit;
+      end;
+
+      ExtrairClaims(
+        Req,
+        Claims
+      );
+
+      try
+        Next;
+      finally
+        StatusCode := Res.RawWebResponse.StatusCode;
+
+        if StatusCode <= 0 then
+          StatusCode := 200;
+
+        Sucesso :=
+          (StatusCode >= 200) and
+          (StatusCode < 400);
+
+        Acao :=
+          ResolverAcao(
+            Metodo,
+            Caminho
+          );
+
+        Entidade :=
+          ResolverEntidade(
+            Caminho
+          );
+
+        Mensagem :=
+          'HTTP ' +
+          IntToStr(StatusCode) +
+          ' - operação auditada sem persistir o corpo da requisição.';
+
+        TAuditoriaService.TryRegistrarRequest(
+          Req,
+          Claims,
+          Acao,
+          Entidade,
+          '',
+          Mensagem,
+          Sucesso
+        );
+      end;
+    end;
+end;
+
+end.
