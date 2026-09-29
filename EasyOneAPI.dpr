@@ -20,10 +20,12 @@ uses
   Uni,
   Middleware.JWT in 'src\Middlewares\Middleware.JWT.pas',
   Middleware.Roles in 'src\Middlewares\Middleware.Roles.pas',
+  Middleware.SecurityHeaders in 'src\Middlewares\Middleware.SecurityHeaders.pas',
   App.Config in 'src\Core\App.Config.pas',
   APP.Errors in 'src\Core\APP.Errors.pas',
   App.JWT in 'src\Core\App.JWT.pas',
   App.Response in 'src\Core\App.Response.pas',
+  App.RateLimit in 'src\Core\App.RateLimit.pas',
   Auth.Passwords in 'src\Core\Auth.Passwords.pas',
   Database.Connection in 'src\Core\Database.Connection.pas',
   Ajuda.Controller in 'src\Catalogo\Controller\Ajuda.Controller.pas',
@@ -445,6 +447,7 @@ begin
 
     end;
 
+    THorse.Use(TMiddlewareSecurityHeaders.Headers);
     THorse.Use(Jhonson);
     THorse.Use(CORS);
     THorse.Use(Horse.Upload.Upload);
