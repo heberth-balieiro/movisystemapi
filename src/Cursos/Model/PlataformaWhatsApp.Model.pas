@@ -9,12 +9,14 @@ type
   TPlataformaWhatsAppInput = record
     Habilitado: Boolean;
     ApiUrl: string;
+    NomeInstancia: string;
     ApiKey: string;
   end;
 
   TPlataformaWhatsAppConfig = record
     Habilitado: Boolean;
     ApiUrl: string;
+    NomeInstancia: string;
     ApiKeyConfigurada: String;
     ApiKeyMascarada: string;
     function ToJSON: TJSONObject;
@@ -34,6 +36,11 @@ begin
   Result.AddPair(
     'api_url',
     ApiUrl
+  );
+
+  Result.AddPair(
+    'nome_instancia',
+    NomeInstancia
   );
 
   Result.AddPair(
