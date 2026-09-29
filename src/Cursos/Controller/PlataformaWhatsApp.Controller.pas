@@ -203,6 +203,13 @@ begin
               False
             );
 
+          Dados.ModoInstancia :=
+            JsonString(
+              Body,
+              'modo_instancia',
+              'EMPRESA'
+            );
+
           Dados.ApiUrl :=
             JsonString(
               Body,
