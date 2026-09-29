@@ -69,6 +69,7 @@ type
     class procedure Migration_047_CanaisEnvioAcesso(const AConn: TUniConnection); static;
 
     class procedure Migration_048_EncontroCheckin(const AConn: TUniConnection); static;
+    class procedure Migration_049_PlataformaCampanhas(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -214,6 +215,7 @@ begin
       Migration_046_RecuperacaoSenhaTenantTipo(Conn);
       Migration_047_CanaisEnvioAcesso(Conn);
       Migration_048_EncontroCheckin(Conn);
+      Migration_049_PlataformaCampanhas(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2075,6 +2077,145 @@ begin
       ExecSQL(AConn, 'ALTER TABLE presenca ADD COLUMN origem VARCHAR(20) NOT NULL DEFAULT ''LEGADO''');
   finally Q.Free; end;
   RegisterMigration(AConn, '048', 'QR de encontro e auto check-in autenticado');
+end;
+
+
+class procedure TCursosMigration.Migration_049_PlataformaCampanhas(
+  const AConn: TUniConnection);
+var
+  Q: TUniQuery;
+begin
+  if MigrationExists(AConn, '049') then
+    Exit;
+
+  // A configuracao global passa a informar a instancia Evolution usada
+  // exclusivamente pelas campanhas do SaaS.
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+    Q.SQL.Text :=
+      'SELECT 1 FROM information_schema.columns ' +
+      'WHERE table_schema = DATABASE() ' +
+      'AND table_name = ''plataforma_whatsapp_configuracao'' ' +
+      'AND column_name = ''nome_instancia''';
+    Q.Open;
+    if Q.IsEmpty then
+      ExecSQL(AConn,
+        'ALTER TABLE plataforma_whatsapp_configuracao ' +
+        'ADD COLUMN nome_instancia VARCHAR(160) NOT NULL DEFAULT '''' AFTER api_url');
+  finally
+    Q.Free;
+  end;
+
+  ExecSQL(AConn,
+    'CREATE TABLE IF NOT EXISTS plataforma_campanha (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' nome VARCHAR(180) NOT NULL,' +
+    ' canal VARCHAR(20) NOT NULL,' +
+    ' assunto_email VARCHAR(255) NULL,' +
+    ' corpo_email LONGTEXT NULL,' +
+    ' mensagem_whatsapp LONGTEXT NULL,' +
+    ' situacao VARCHAR(20) NOT NULL DEFAULT ''RASCUNHO'',' +
+    ' total_destinatarios INT UNSIGNED NOT NULL DEFAULT 0,' +
+    ' total_envios INT UNSIGNED NOT NULL DEFAULT 0,' +
+    ' total_enviados INT UNSIGNED NOT NULL DEFAULT 0,' +
+    ' total_falhas INT UNSIGNED NOT NULL DEFAULT 0,' +
+    ' criado_por BIGINT UNSIGNED NOT NULL,' +
+    ' iniciado_em DATETIME(3) NULL,' +
+    ' concluido_em DATETIME(3) NULL,' +
+    ' cancelado_em DATETIME(3) NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' KEY ix_plataforma_campanha_situacao_data (situacao, criado_em),' +
+    ' CONSTRAINT fk_plataforma_campanha_usuario FOREIGN KEY (criado_por) REFERENCES usuario(id) ' +
+    '   ON UPDATE RESTRICT ON DELETE RESTRICT,' +
+    ' CONSTRAINT ck_plataforma_campanha_canal CHECK (canal IN (''EMAIL'',''WHATSAPP'',''AMBOS'')),' +
+    ' CONSTRAINT ck_plataforma_campanha_situacao CHECK (situacao IN ' +
+    '   (''RASCUNHO'',''PROCESSANDO'',''CONCLUIDA'',''CANCELADA''))' +
+    ') ENGINE=InnoDB COMMENT=''Campanhas de comunicacao do administrador SaaS.'';');
+
+  ExecSQL(AConn,
+    'CREATE TABLE IF NOT EXISTS plataforma_campanha_destinatario (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_campanha BIGINT UNSIGNED NOT NULL,' +
+    ' nome VARCHAR(180) NOT NULL,' +
+    ' email VARCHAR(254) NULL,' +
+    ' whatsapp VARCHAR(30) NULL,' +
+    ' empresa VARCHAR(180) NULL,' +
+    ' origem VARCHAR(10) NOT NULL DEFAULT ''MANUAL'',' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' KEY ix_campanha_dest_campanha (id_campanha, id),' +
+    ' KEY ix_campanha_dest_email (id_campanha, email),' +
+    ' KEY ix_campanha_dest_whatsapp (id_campanha, whatsapp),' +
+    ' CONSTRAINT fk_campanha_dest_campanha FOREIGN KEY (id_campanha) ' +
+    '   REFERENCES plataforma_campanha(id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT ck_campanha_dest_origem CHECK (origem IN (''MANUAL'',''CSV''))' +
+    ') ENGINE=InnoDB COMMENT=''Destinatarios importados ou adicionados manualmente.'';');
+
+  ExecSQL(AConn,
+    'CREATE TABLE IF NOT EXISTS plataforma_campanha_anexo (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_campanha BIGINT UNSIGNED NOT NULL,' +
+    ' nome_original VARCHAR(255) NOT NULL,' +
+    ' nome_storage VARCHAR(100) NOT NULL,' +
+    ' caminho_storage VARCHAR(1000) NOT NULL,' +
+    ' mime_type VARCHAR(120) NOT NULL,' +
+    ' tamanho_bytes BIGINT UNSIGNED NOT NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' KEY ix_campanha_anexo_campanha (id_campanha, id),' +
+    ' CONSTRAINT fk_campanha_anexo_campanha FOREIGN KEY (id_campanha) ' +
+    '   REFERENCES plataforma_campanha(id) ON UPDATE RESTRICT ON DELETE CASCADE' +
+    ') ENGINE=InnoDB COMMENT=''Anexos das campanhas SaaS.'';');
+
+  ExecSQL(AConn,
+    'CREATE TABLE IF NOT EXISTS plataforma_campanha_envio (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_campanha BIGINT UNSIGNED NOT NULL,' +
+    ' id_destinatario BIGINT UNSIGNED NOT NULL,' +
+    ' canal VARCHAR(20) NOT NULL,' +
+    ' destinatario VARCHAR(254) NOT NULL,' +
+    ' situacao VARCHAR(20) NOT NULL DEFAULT ''PENDENTE'',' +
+    ' tentativas INT UNSIGNED NOT NULL DEFAULT 0,' +
+    ' proxima_tentativa_em DATETIME(3) NULL,' +
+    ' processando_em DATETIME(3) NULL,' +
+    ' enviado_em DATETIME(3) NULL,' +
+    ' ultimo_erro VARCHAR(1000) NULL,' +
+    ' provider_id VARCHAR(255) NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' UNIQUE KEY uq_campanha_envio_dest_canal (id_campanha, id_destinatario, canal),' +
+    ' KEY ix_campanha_envio_fila (situacao, proxima_tentativa_em, id),' +
+    ' KEY ix_campanha_envio_campanha (id_campanha, situacao),' +
+    ' CONSTRAINT fk_campanha_envio_campanha FOREIGN KEY (id_campanha) ' +
+    '   REFERENCES plataforma_campanha(id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT fk_campanha_envio_dest FOREIGN KEY (id_destinatario) ' +
+    '   REFERENCES plataforma_campanha_destinatario(id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT ck_campanha_envio_canal CHECK (canal IN (''EMAIL'',''WHATSAPP'')),' +
+    ' CONSTRAINT ck_campanha_envio_situacao CHECK (situacao IN ' +
+    '   (''PENDENTE'',''PROCESSANDO'',''ENVIADO'',''FALHA'',''CANCELADO''))' +
+    ') ENGINE=InnoDB COMMENT=''Fila persistente de envios das campanhas SaaS.'';');
+
+  ExecSQL(AConn,
+    'CREATE TABLE IF NOT EXISTS plataforma_contato_bloqueio (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' canal VARCHAR(20) NOT NULL,' +
+    ' valor VARCHAR(254) NOT NULL,' +
+    ' valor_normalizado VARCHAR(254) NOT NULL,' +
+    ' motivo VARCHAR(500) NULL,' +
+    ' criado_por BIGINT UNSIGNED NOT NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' UNIQUE KEY uq_contato_bloqueio (canal, valor_normalizado),' +
+    ' CONSTRAINT fk_contato_bloqueio_usuario FOREIGN KEY (criado_por) REFERENCES usuario(id) ' +
+    '   ON UPDATE RESTRICT ON DELETE RESTRICT,' +
+    ' CONSTRAINT ck_contato_bloqueio_canal CHECK (canal IN (''EMAIL'',''WHATSAPP''))' +
+    ') ENGINE=InnoDB COMMENT=''Lista global de supressao de comunicacoes da plataforma.'';');
+
+  RegisterMigration(AConn, '049', 'Campanhas de email e WhatsApp da plataforma SaaS');
 end;
 
 {$ENDREGION}
