@@ -16,6 +16,7 @@ uses
   System.JSON,
   App.Response,
   APP.Errors,
+  App.RateLimit,
   PublicoInstituicao.Model,
   PublicoInstituicao.Service;
 
@@ -105,6 +106,9 @@ begin
       Item: TPublicoInstituicao;
     begin
       try
+        if not TAppRateLimit.EnforceIP(Req, Res, 'publico-instituicao', 120, 60) then
+          Exit;
+
         Item := TPublicoInstituicaoService.BuscarPorSlug(Req.Params.Items['slug']);
         try
           TAppResponse.Ok(Res, InstituicaoJson(Item), 'Instituição carregada com sucesso.');
@@ -129,6 +133,9 @@ begin
       TotalPaginas: Integer;
     begin
       try
+        if not TAppRateLimit.EnforceIP(Req, Res, 'publico-cursos-disponiveis', 120, 60) then
+          Exit;
+
         Lista := TPublicoInstituicaoService.ListarCursosDisponiveis(
           Req.Params.Items['slug'],
           StrToIntDef(Req.Query.Items['page'], 1),
