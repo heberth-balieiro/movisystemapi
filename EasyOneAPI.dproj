@@ -149,10 +149,12 @@
         <DCCReference Include="src\Cursos\Services\EncontroCheckin.Service.pas"/>
         <DCCReference Include="src\Middlewares\Middleware.JWT.pas"/>
         <DCCReference Include="src\Middlewares\Middleware.Roles.pas"/>
+        <DCCReference Include="src\Middlewares\Middleware.SecurityHeaders.pas"/>
         <DCCReference Include="src\Core\App.Config.pas"/>
         <DCCReference Include="src\Core\APP.Errors.pas"/>
         <DCCReference Include="src\Core\App.JWT.pas"/>
         <DCCReference Include="src\Core\App.Response.pas"/>
+        <DCCReference Include="src\Core\App.RateLimit.pas"/>
         <DCCReference Include="src\Core\Auth.Passwords.pas"/>
         <DCCReference Include="src\Core\Database.Connection.pas"/>
         <DCCReference Include="src\Catalogo\Controller\Ajuda.Controller.pas"/>
