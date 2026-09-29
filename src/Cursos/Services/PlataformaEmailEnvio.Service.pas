@@ -2,13 +2,25 @@ unit PlataformaEmailEnvio.Service;
 
 interface
 
+uses
+  System.JSON;
+
 type
   TPlataformaEmailEnvioService = class
   public
+    class function Configurado: Boolean; static;
+
     class procedure Enviar(
       const ADestinatario,
             AAssunto,
             AHtml: string
+    ); static;
+
+    class procedure EnviarComAnexos(
+      const ADestinatario,
+            AAssunto,
+            AHtml: string;
+      const AAnexos: TJSONArray
     ); static;
   end;
 
@@ -19,16 +31,44 @@ uses
   IdSMTP,
   IdMessage,
   IdText,
+  IdAttachmentFile,
   IdSSL,
   IdSSLOpenSSL,
   IdExplicitTLSClientServerBase,
   PlataformaEmail.Model,
   PlataformaEmail.Service;
 
+class function TPlataformaEmailEnvioService.Configurado: Boolean;
+var
+  Config: TPlataformaEmailConfig;
+  Senha: string;
+begin
+  Result :=
+    TPlataformaEmailService.ObterConfiguracao(
+      Config,
+      Senha
+    );
+end;
+
 class procedure TPlataformaEmailEnvioService.Enviar(
   const ADestinatario,
         AAssunto,
         AHtml: string
+);
+begin
+  EnviarComAnexos(
+    ADestinatario,
+    AAssunto,
+    AHtml,
+    nil
+  );
+end;
+
+class procedure TPlataformaEmailEnvioService.EnviarComAnexos(
+  const ADestinatario,
+        AAssunto,
+        AHtml: string;
+  const AAnexos: TJSONArray
 );
 var
   Config: TPlataformaEmailConfig;
@@ -37,6 +77,11 @@ var
   SSL: TIdSSLIOHandlerSocketOpenSSL;
   Mensagem: TIdMessage;
   HtmlPart: TIdText;
+  I: Integer;
+  Obj: TJSONObject;
+  Caminho,
+  NomeOriginal: string;
+  Anexo: TIdAttachmentFile;
 begin
   if not TPlataformaEmailService.ObterConfiguracao(Config, Senha) then
     raise Exception.Create(
@@ -77,6 +122,7 @@ begin
 
     Mensagem.CharSet := 'UTF-8';
     Mensagem.Encoding := meMIME;
+    Mensagem.ContentType := 'multipart/mixed';
     Mensagem.From.Name := Config.RemetenteNome;
     Mensagem.From.Address := Config.RemetenteEmail;
     Mensagem.Recipients.Add.Address := LowerCase(Trim(ADestinatario));
@@ -90,11 +136,36 @@ begin
       Mensagem.MessageParts,
       nil
     );
-
     HtmlPart.ContentType := 'text/html';
     HtmlPart.CharSet := 'UTF-8';
     HtmlPart.ContentTransfer := 'quoted-printable';
     HtmlPart.Body.Text := AHtml;
+
+    if AAnexos <> nil then
+      for I := 0 to AAnexos.Count - 1 do
+      begin
+        if not (AAnexos.Items[I] is TJSONObject) then
+          Continue;
+
+        Obj := AAnexos.Items[I] as TJSONObject;
+        Caminho := Obj.GetValue<string>('caminho_storage', '');
+        NomeOriginal := Obj.GetValue<string>('nome_original', '');
+
+        if Trim(Caminho).IsEmpty or
+           not FileExists(Caminho) then
+          raise Exception.Create(
+            'Anexo da campanha não localizado: ' +
+            NomeOriginal
+          );
+
+        Anexo := TIdAttachmentFile.Create(
+          Mensagem.MessageParts,
+          Caminho
+        );
+
+        if not Trim(NomeOriginal).IsEmpty then
+          Anexo.FileName := NomeOriginal;
+      end;
 
     SMTP.Connect;
     try
