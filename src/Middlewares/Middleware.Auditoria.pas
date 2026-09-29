@@ -103,6 +103,58 @@ function ResolverAcao(
         ACaminho: string
 ): string;
 begin
+  if Contem(ACaminho, '/plataforma/campanhas/') and
+     Contem(ACaminho, '/importar-csv') then
+    Exit('CAMPANHA_CSV_IMPORTADO');
+
+  if Contem(ACaminho, '/plataforma/campanhas/') and
+     Contem(ACaminho, '/anexos') then
+  begin
+    if SameText(AMetodo, 'DELETE') then
+      Exit('CAMPANHA_ANEXO_EXCLUIDO')
+    else
+      Exit('CAMPANHA_ANEXO_ADICIONADO');
+  end;
+
+  if Contem(ACaminho, '/plataforma/campanhas/testar-email') then
+    Exit('CAMPANHA_TESTE_EMAIL_ENVIADO');
+
+  if Contem(ACaminho, '/plataforma/campanhas/testar-whatsapp') then
+    Exit('CAMPANHA_TESTE_WHATSAPP_ENVIADO');
+
+  if Contem(ACaminho, '/plataforma/campanhas/') and
+     Contem(ACaminho, '/iniciar') then
+    Exit('CAMPANHA_INICIADA');
+
+  if Contem(ACaminho, '/plataforma/campanhas/') and
+     Contem(ACaminho, '/cancelar') then
+    Exit('CAMPANHA_CANCELADA');
+
+  if Contem(ACaminho, '/plataforma/campanhas/') and
+     Contem(ACaminho, '/reprocessar-falhas') then
+    Exit('CAMPANHA_FALHAS_REPROCESSADAS');
+
+  if Contem(ACaminho, '/plataforma/campanhas/') and
+     Contem(ACaminho, '/destinatarios') then
+  begin
+    if SameText(AMetodo, 'DELETE') then
+      Exit('CAMPANHA_DESTINATARIO_EXCLUIDO')
+    else
+      Exit('CAMPANHA_DESTINATARIO_ADICIONADO');
+  end;
+
+  if Contem(ACaminho, '/plataforma/contatos-bloqueados') then
+    Exit('CAMPANHA_SUPRESSAO_ALTERADA');
+
+  if Contem(ACaminho, '/plataforma/campanhas') then
+  begin
+    if SameText(AMetodo, 'POST') then
+      Exit('CAMPANHA_CRIADA');
+
+    if SameText(AMetodo, 'PUT') then
+      Exit('CAMPANHA_ALTERADA');
+  end;
+
   if Contem(ACaminho, '/auth/login') then
     Exit('LOGIN');
 
