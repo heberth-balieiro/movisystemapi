@@ -204,6 +204,9 @@ begin
     if Trim(AApiKey).IsEmpty then
       Exit;
 
+    if not SameText(WhatsAppConfig.ModoInstancia, 'EMPRESA') then
+      Exit;
+
     if Trim(WhatsAppConfig.NomeInstancia).IsEmpty then
       Exit;
 
@@ -242,6 +245,22 @@ begin
   Dados.ApiUrl :=
     NormalizarUrl(
       Dados.ApiUrl
+    );
+
+  Dados.ModoInstancia :=
+    UpperCase(
+      Trim(
+        Dados.ModoInstancia
+      )
+    );
+
+  if Dados.ModoInstancia.IsEmpty then
+    Dados.ModoInstancia := 'EMPRESA';
+
+  if (Dados.ModoInstancia <> 'EMPRESA') and
+     (Dados.ModoInstancia <> 'USUARIO') then
+    TAppErrors.RaiseBadRequest(
+      'Modo de conexão WhatsApp inválido.'
     );
 
   Dados.ApiKey :=
