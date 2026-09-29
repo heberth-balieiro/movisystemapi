@@ -101,6 +101,14 @@ type
       const AConn: TUniConnection
     ): TJSONArray; static;
 
+    class procedure DefinirWhatsAppRemetente(
+      const AConn: TUniConnection;
+      const AIdCampanha: Int64;
+      const AModo: string;
+      const AIdUsuario: Int64;
+      const ANomeInstancia: string
+    ); static;
+
     class procedure Iniciar(
       const AConn: TUniConnection;
       const AIdCampanha: Int64
@@ -272,6 +280,12 @@ begin
     Result.AddPair('assunto_email', Q.FieldByName('assunto_email').AsString);
     Result.AddPair('corpo_email', Q.FieldByName('corpo_email').AsString);
     Result.AddPair('mensagem_whatsapp', Q.FieldByName('mensagem_whatsapp').AsString);
+    Result.AddPair('whatsapp_modo_remetente', Q.FieldByName('whatsapp_modo_remetente').AsString);
+    if Q.FieldByName('id_whatsapp_usuario').IsNull then
+      Result.AddPair('id_whatsapp_usuario', TJSONNull.Create)
+    else
+      Result.AddPair('id_whatsapp_usuario', TJSONNumber.Create(Q.FieldByName('id_whatsapp_usuario').AsLargeInt));
+    Result.AddPair('whatsapp_instancia', Q.FieldByName('whatsapp_instancia').AsString);
     Result.AddPair('situacao', Q.FieldByName('situacao').AsString);
     Result.AddPair('total_destinatarios', TJSONNumber.Create(Q.FieldByName('total_destinatarios').AsInteger));
     Result.AddPair('total_envios', TJSONNumber.Create(Q.FieldByName('total_envios').AsInteger));
@@ -608,6 +622,41 @@ begin
  Result.AddElement(J); Q.Next; end; finally Q.Free; end;
 end;
 
+class procedure TPlataformaCampanhaDAO.DefinirWhatsAppRemetente(
+  const AConn: TUniConnection;
+  const AIdCampanha: Int64;
+  const AModo: string;
+  const AIdUsuario: Int64;
+  const ANomeInstancia: string
+);
+var
+  Q: TUniQuery;
+begin
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+    Q.SQL.Text :=
+      'UPDATE plataforma_campanha SET ' +
+      'whatsapp_modo_remetente = :modo, ' +
+      'id_whatsapp_usuario = :id_usuario, ' +
+      'whatsapp_instancia = :instancia ' +
+      'WHERE id = :id AND situacao = ''RASCUNHO''';
+
+    Q.ParamByName('modo').AsString := UpperCase(Trim(AModo));
+
+    if AIdUsuario > 0 then
+      Q.ParamByName('id_usuario').AsLargeInt := AIdUsuario
+    else
+      Q.ParamByName('id_usuario').Clear;
+
+    Q.ParamByName('instancia').AsString := Trim(ANomeInstancia);
+    Q.ParamByName('id').AsLargeInt := AIdCampanha;
+    Q.Execute;
+  finally
+    Q.Free;
+  end;
+end;
+
 class procedure TPlataformaCampanhaDAO.Iniciar(
   const AConn:TUniConnection; const AIdCampanha:Int64);
 var Q:TUniQuery;
@@ -671,7 +720,8 @@ begin
  Result:=nil; Q:=TUniQuery.Create(nil);
  try Q.Connection:=AConn;
  Q.SQL.Text:=
-  'SELECT e.id,e.id_campanha,e.canal,e.destinatario,d.nome,d.empresa,c.assunto_email,c.corpo_email,c.mensagem_whatsapp '+
+  'SELECT e.id,e.id_campanha,e.canal,e.destinatario,d.nome,d.empresa,c.assunto_email,c.corpo_email,c.mensagem_whatsapp, '+
+  'c.whatsapp_modo_remetente,c.id_whatsapp_usuario,c.whatsapp_instancia '+
   'FROM plataforma_campanha_envio e JOIN plataforma_campanha c ON c.id=e.id_campanha '+
   'JOIN plataforma_campanha_destinatario d ON d.id=e.id_destinatario '+
   'WHERE c.situacao=''PROCESSANDO'' AND e.situacao=''PENDENTE'' '+
@@ -685,6 +735,10 @@ begin
  Result.AddPair('nome',Q.FieldByName('nome').AsString); Result.AddPair('empresa',Q.FieldByName('empresa').AsString);
  Result.AddPair('assunto_email',Q.FieldByName('assunto_email').AsString); Result.AddPair('corpo_email',Q.FieldByName('corpo_email').AsString);
  Result.AddPair('mensagem_whatsapp',Q.FieldByName('mensagem_whatsapp').AsString);
+ Result.AddPair('whatsapp_modo_remetente',Q.FieldByName('whatsapp_modo_remetente').AsString);
+ if Q.FieldByName('id_whatsapp_usuario').IsNull then Result.AddPair('id_whatsapp_usuario',TJSONNull.Create)
+ else Result.AddPair('id_whatsapp_usuario',TJSONNumber.Create(Q.FieldByName('id_whatsapp_usuario').AsLargeInt));
+ Result.AddPair('whatsapp_instancia',Q.FieldByName('whatsapp_instancia').AsString);
  finally Q.Free; end;
 end;
 
