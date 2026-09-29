@@ -8,9 +8,9 @@ uses
 type
   TPlataformaUsuarioWhatsAppService = class
   private
-    class function NovaConexao: TObject; static;
+    class function NovaConexao: TUniConnection; static;
     class function NovaInstancia(
-      const AConn: TObject;
+      const AConn: TUniConnection;
       const AIdUsuario: Int64
     ): string; static;
     class procedure ExigirModoUsuario; static;
@@ -66,7 +66,7 @@ uses
   PlataformaUsuarioWhatsApp.DAO,
   EvolutionApi.Service;
 
-class function TPlataformaUsuarioWhatsAppService.NovaConexao: TObject;
+class function TPlataformaUsuarioWhatsAppService.NovaConexao: TUniConnection;
 var
   Config: TAppApiConfig;
 begin
@@ -99,7 +99,7 @@ begin
 end;
 
 class function TPlataformaUsuarioWhatsAppService.NovaInstancia(
-  const AConn: TObject;
+  const AConn: TUniConnection;
   const AIdUsuario: Int64
 ): string;
 var
@@ -122,7 +122,7 @@ begin
       Copy(S, 1, 10);
 
     if not TPlataformaUsuarioWhatsAppDAO.NomeInstanciaExiste(
-      TUniConnection(AConn),
+      AConn,
       Result
     ) then
       Exit;
@@ -141,7 +141,7 @@ var
 begin
   ExigirModoUsuario;
 
-  Conn := TUniConnection(NovaConexao);
+  Conn := NovaConexao;
   try
     if not TPlataformaUsuarioWhatsAppDAO.UsuarioPlataformaExiste(
       Conn,
@@ -184,7 +184,7 @@ begin
       'Configuração global da Evolution API indisponível.'
     );
 
-  Conn := TUniConnection(NovaConexao);
+  Conn := NovaConexao;
   try
     if not TPlataformaUsuarioWhatsAppDAO.UsuarioPlataformaExiste(
       Conn,
@@ -284,7 +284,7 @@ begin
       'Configuração global da Evolution API indisponível.'
     );
 
-  Conn := TUniConnection(NovaConexao);
+  Conn := NovaConexao;
   try
     NomeInstancia :=
       TPlataformaUsuarioWhatsAppDAO.BuscarNomeInstancia(
@@ -400,7 +400,7 @@ begin
       'Configuração global da Evolution API indisponível.'
     );
 
-  Conn := TUniConnection(NovaConexao);
+  Conn := NovaConexao;
   try
     NomeInstancia :=
       TPlataformaUsuarioWhatsAppDAO.BuscarNomeInstancia(
@@ -479,7 +479,7 @@ begin
       'Configuração global da Evolution API indisponível.'
     );
 
-  Conn := TUniConnection(NovaConexao);
+  Conn := NovaConexao;
   try
     NomeInstancia :=
       TPlataformaUsuarioWhatsAppDAO.BuscarNomeInstancia(
