@@ -16,6 +16,7 @@ uses
   System.JSON,
   App.Response,
   APP.Errors,
+  App.RateLimit,
   PublicoPrimeiroAcesso.DAO,
   PublicoPrimeiroAcesso.Service;
 
@@ -87,6 +88,14 @@ begin
       Dados: TPrimeiroAcessoDados;
     begin
       try
+        Res.RawWebResponse.SetCustomHeader('Cache-Control', 'no-store');
+
+        if not TAppRateLimit.EnforceIP(Req, Res, 'primeiro-acesso-validar', 30, 300) then
+          Exit;
+
+        if Length(Req.Body) > 8192 then
+          TAppErrors.RaiseBadRequest('Requisição inválida.');
+
         JsonValue :=
           TJSONObject.ParseJSONValue(
             Req.Body
@@ -119,6 +128,9 @@ begin
         finally
           Body.Free;
         end;
+
+        if not TAppRateLimit.EnforceIdentity(Req, Res, 'primeiro-acesso-token-validar', Token, 10, 300) then
+          Exit;
 
         Dados :=
           TPublicoPrimeiroAcessoService.Validar(
@@ -160,6 +172,14 @@ begin
       Dados: TPrimeiroAcessoDados;
     begin
       try
+        Res.RawWebResponse.SetCustomHeader('Cache-Control', 'no-store');
+
+        if not TAppRateLimit.EnforceIP(Req, Res, 'primeiro-acesso-definir-senha', 10, 600) then
+          Exit;
+
+        if Length(Req.Body) > 8192 then
+          TAppErrors.RaiseBadRequest('Requisição inválida.');
+
         JsonValue :=
           TJSONObject.ParseJSONValue(
             Req.Body
@@ -198,6 +218,9 @@ begin
         finally
           Body.Free;
         end;
+
+        if not TAppRateLimit.EnforceIdentity(Req, Res, 'primeiro-acesso-token-definir', Token, 5, 600) then
+          Exit;
 
         Dados :=
           TPublicoPrimeiroAcessoService.DefinirSenha(
