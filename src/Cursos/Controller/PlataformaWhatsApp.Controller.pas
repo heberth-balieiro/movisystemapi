@@ -209,6 +209,12 @@ begin
               'api_url'
             );
 
+          Dados.NomeInstancia :=
+            JsonString(
+              Body,
+              'nome_instancia'
+            );
+
           Dados.ApiKey :=
             JsonString(
               Body,
