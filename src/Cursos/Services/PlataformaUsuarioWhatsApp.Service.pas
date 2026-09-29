@@ -3,7 +3,8 @@ unit PlataformaUsuarioWhatsApp.Service;
 interface
 
 uses
-  System.JSON;
+  System.JSON,
+  Uni;
 
 type
   TPlataformaUsuarioWhatsAppService = class
