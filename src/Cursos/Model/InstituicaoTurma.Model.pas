@@ -31,6 +31,11 @@ type
     FCargaHorariaMinutos: Integer;
     FTemCargaHorariaMinutos: Boolean;
     FPermitirInscricaoPublica: Boolean;
+    FAprovacaoInscricao: string;
+    FControlePresenca: string;
+    FExigirPresencaConclusao: Boolean;
+    FConclusaoAutomatica: Boolean;
+    FCertificadoAutomatico: Boolean;
     FSituacao: string;
     FCriadoEm: TDateTime;
     FAtualizadoEm: TDateTime;
@@ -67,6 +72,11 @@ type
     property TemCargaHorariaMinutos: Boolean read FTemCargaHorariaMinutos write FTemCargaHorariaMinutos;
 
     property PermitirInscricaoPublica: Boolean read FPermitirInscricaoPublica write FPermitirInscricaoPublica;
+    property AprovacaoInscricao: string read FAprovacaoInscricao write FAprovacaoInscricao;
+    property ControlePresenca: string read FControlePresenca write FControlePresenca;
+    property ExigirPresencaConclusao: Boolean read FExigirPresencaConclusao write FExigirPresencaConclusao;
+    property ConclusaoAutomatica: Boolean read FConclusaoAutomatica write FConclusaoAutomatica;
+    property CertificadoAutomatico: Boolean read FCertificadoAutomatico write FCertificadoAutomatico;
     property Situacao: string read FSituacao write FSituacao;
 
     property CriadoEm: TDateTime read FCriadoEm write FCriadoEm;
@@ -100,6 +110,11 @@ type
     TemCargaHorariaMinutos: Boolean;
 
     PermitirInscricaoPublica: Boolean;
+    AprovacaoInscricao: string;
+    ControlePresenca: string;
+    ExigirPresencaConclusao: Boolean;
+    ConclusaoAutomatica: Boolean;
+    CertificadoAutomatico: Boolean;
     Situacao: string;
     CriadoPor: Int64;
   end;
@@ -130,6 +145,11 @@ type
     TemCargaHorariaMinutos: Boolean;
 
     PermitirInscricaoPublica: Boolean;
+    AprovacaoInscricao: string;
+    ControlePresenca: string;
+    ExigirPresencaConclusao: Boolean;
+    ConclusaoAutomatica: Boolean;
+    CertificadoAutomatico: Boolean;
     Situacao: string;
   end;
 
