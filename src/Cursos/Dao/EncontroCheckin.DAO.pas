@@ -52,6 +52,7 @@ class function TEncontroCheckinDAO.Administrar(C: TUniConnection;
 var Q: TUniQuery;
 begin
   Result := Default(TEncontroCheckinInfo);
+  Result.Tipo := 'ENCONTRO';
   Q := TUniQuery.Create(nil);
   try
     Q.Connection := C;
@@ -125,6 +126,7 @@ class function TEncontroCheckinDAO.Consultar(C: TUniConnection;
 var Q: TUniQuery;
 begin
   Result := Default(TEncontroCheckinInfo);
+  Result.Tipo := 'ENCONTRO';
   Q := TUniQuery.Create(nil);
   try
     Q.Connection := C;
