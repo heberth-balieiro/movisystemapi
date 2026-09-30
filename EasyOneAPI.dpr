@@ -396,8 +396,22 @@ var
   LDatabaseCfg  : TAppDatabaseConfig;
 begin
   try
-    // Carrega o arquivo Config.ini na mesma pasta do executável
-    LConfig := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+    // Carrega sempre o Config.ini da mesma pasta do executável.
+    Writeln('Config.ini: ' + ExtractFilePath(ParamStr(0)) + 'Config.ini');
+
+    LConfig := TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) + 'Config.ini'
+    );
+
+    case LConfig.Produto of
+      apCatalogo:  Writeln('Produto configurado: CATALOGO');
+      apEasyOne:   Writeln('Produto configurado: EASYONE');
+      apMoviSystem: Writeln('Produto configurado: MOVISYSTEM');
+    end;
+
+    Writeln('Banco configurado: ' + LConfig.Database.Database);
+    Writeln('Servidor configurado: ' + LConfig.Database.Server);
+    Writeln('--------------------------------------------');
 
     case LConfig.Produto of
 
