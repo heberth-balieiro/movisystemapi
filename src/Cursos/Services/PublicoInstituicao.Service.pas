@@ -89,6 +89,7 @@ begin
   finally
     Conn.Free;
   end;
+end;
 
 class function TPublicoInstituicaoService.BuscarCursoDisponivel(
   const ASlug,
