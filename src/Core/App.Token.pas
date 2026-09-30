@@ -10,7 +10,8 @@ uses
   App.Config,
   App.JWT,
   App.Response,
-  APP.Errors;
+  APP.Errors,
+  App.ModuloAccess;
 
 Type
 TAppToken = class
@@ -49,8 +50,33 @@ begin
 
   if not TAppJWT.ValidarEExtrair(Config.JWT, Token, AClaims) then
   begin
-    TAppResponse.Unauthorized(Res, 'Token inv�lido ou expirado.');
+    TAppResponse.Unauthorized(Res, 'Token inválido ou expirado.');
     Exit;
+  end;
+
+  if AClaims.IdInstituicao > 0 then
+  begin
+    var Modulo :=
+      TAppModuloAccess.ResolverModuloRota(
+        Req.RawWebRequest.PathInfo
+      );
+
+    if (not Trim(Modulo).IsEmpty) and
+       (not TAppModuloAccess.RotaDispensadaDaValidacao(
+         Req.RawWebRequest.PathInfo
+       )) and
+       (not TAppModuloAccess.InstituicaoPossuiModulo(
+         AClaims.IdInstituicao,
+         Modulo
+       )) then
+    begin
+      TAppResponse.Forbidden(
+        Res,
+        'O módulo ' + Modulo +
+        ' não está liberado para esta instituição.'
+      );
+      Exit;
+    end;
   end;
 
   Result := True;
