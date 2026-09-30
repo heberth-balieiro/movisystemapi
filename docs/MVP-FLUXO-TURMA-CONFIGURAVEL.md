@@ -463,3 +463,160 @@ Na turma agora ficam disponíveis:
 - Criar certificado automaticamente.
 
 No detalhe da turma são exibidos os estados das automações configuradas.
+
+
+## Complemento - Processamento automático de PDF + QR
+
+A geração automática do certificado foi desacoplada do encerramento da presença.
+
+### Migration 054
+
+Nova tabela:
+
+`certificado_processamento`
+
+Responsabilidades:
+- fila persistente;
+- vínculo com instituição e certificado;
+- usuário que originou a emissão;
+- situação do job;
+- tentativas;
+- próxima tentativa;
+- horário de processamento;
+- conclusão;
+- último erro.
+
+Situações:
+- `PENDENTE`;
+- `PROCESSANDO`;
+- `CONCLUIDO`;
+- `ERRO`.
+
+### Fluxo
+
+Quando a turma possui:
+
+```
+controle_presenca = TURMA
+conclusao_automatica = 1
+certificado_automatico = 1
+```
+
+ao encerrar a presença:
+
+```
+avaliar participante
+  -> CONCLUIDO
+  -> criar certificado PENDENTE
+  -> inserir na certificado_processamento
+  -> encerrar request administrativo
+  -> worker processa em background
+  -> gerar QR
+  -> renderizar HTML
+  -> gerar PDF
+  -> calcular SHA-256
+  -> finalizar certificado
+  -> certificado VALIDO
+  -> fila CONCLUIDO
+```
+
+O encerramento da turma não aguarda Chromium/qrencode.
+
+### Worker
+
+Novo worker:
+
+`CertificadoProcessamento.Worker.pas`
+
+É iniciado automaticamente no bloco `apMoviSystem` junto com o worker de campanhas.
+
+Comportamento:
+- processa um certificado por vez por worker;
+- quando há trabalho, intervalo curto de 250ms entre itens;
+- sem trabalho, aguarda 2 segundos;
+- exceção do worker nunca derruba a API.
+
+### Concorrência
+
+A reserva usa:
+
+`FOR UPDATE SKIP LOCKED`
+
+Assim, mais de uma instância da API pode executar workers sem reservar simultaneamente o mesmo job.
+
+### Retentativas
+
+Cada job possui no máximo 3 tentativas automáticas.
+
+Após falha:
+- situação da fila = `ERRO`;
+- mensagem salva em `ultimo_erro`;
+- nova tentativa programada para 5 minutos.
+
+Após a terceira falha:
+- certificado passa de `PENDENTE` para `ERRO`;
+- job não é selecionado novamente automaticamente;
+- o fluxo manual existente de geração de PDF continua podendo trabalhar com certificado `ERRO`.
+
+### Recuperação de reinício
+
+Jobs que permanecerem em `PROCESSANDO` por mais de 15 minutos são liberados como `ERRO` e ficam disponíveis para nova tentativa.
+
+Se o PDF tiver sido finalizado e o certificado já estiver `VALIDO`, mas a API cair antes de atualizar a fila, o próximo processamento identifica o certificado válido e marca a fila como `CONCLUIDO` sem gerar outro PDF.
+
+### Auditoria
+
+Histórico do certificado:
+- `PROCESSAMENTO_AGENDADO`;
+- `PDF_GERADO`;
+- `EMITIDO`;
+- `PROCESSAMENTO_ERRO` após falha definitiva.
+
+### Frontend
+
+A configuração da turma agora informa:
+
+**Gerar certificado automaticamente**
+
+Descrição:
+> Após a conclusão, o certificado entra na fila e o PDF + QR Code são gerados em segundo plano.
+
+No detalhe da turma:
+- `PDF + QR em segundo plano` quando ativo.
+
+### Dependências de produção
+
+O worker utiliza o gerador de documentos já existente.
+
+O ambiente da API precisa manter configurado:
+
+```ini
+[CERTIFICADO_DOCUMENTO]
+StoragePath=...
+PublicValidationBaseUrl=...
+QrEncodeExecutable=...
+ChromiumExecutable=...
+ChromiumArgs=...
+```
+
+Também são necessários no servidor:
+- Chromium;
+- qrencode;
+- permissão de escrita no StoragePath.
+
+### Teste posterior
+
+1. Aplicar migration 054.
+2. Confirmar mensagem de inicialização:
+   `Worker de certificados iniciado com sucesso.`
+3. Criar turma com QR + conclusão automática + certificado automático.
+4. Registrar presença.
+5. Encerrar presença.
+6. Confirmar inscrição `CONCLUIDO`.
+7. Confirmar certificado inicialmente `PENDENTE`.
+8. Confirmar registro em `certificado_processamento`.
+9. Aguardar worker.
+10. Confirmar fila `CONCLUIDO`.
+11. Confirmar certificado `VALIDO`.
+12. Baixar PDF e validar QR público.
+13. Simular erro de Chromium e validar retentativas.
