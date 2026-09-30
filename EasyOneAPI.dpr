@@ -15,12 +15,12 @@ uses
   System.SysUtils,
   Horse,
   Horse.Jhonson,
+  Horse.CORS,
   Horse.Upload,
   Uni,
   Middleware.JWT in 'src\Middlewares\Middleware.JWT.pas',
   Middleware.Roles in 'src\Middlewares\Middleware.Roles.pas',
   Middleware.SecurityHeaders in 'src\Middlewares\Middleware.SecurityHeaders.pas',
-  Middleware.CorsSecure in 'src\Middlewares\Middleware.CorsSecure.pas',
   Middleware.Auditoria in 'src\Middlewares\Middleware.Auditoria.pas',
   App.Config in 'src\Core\App.Config.pas',
   APP.Errors in 'src\Core\APP.Errors.pas',
@@ -519,8 +519,15 @@ begin
 
     end;
 
+    HorseCORS
+      .AllowedOrigin(LConfig.CorsAllowedOrigin)
+      .AllowedCredentials('false')
+      .AllowedHeaders('Authorization, Content-Type, Accept')
+      .AllowedMethods('GET, POST, PUT, PATCH, DELETE, OPTIONS')
+      .ExposedHeaders('');
+
     THorse.Use(TMiddlewareSecurityHeaders.Headers);
-    THorse.Use(TMiddlewareCorsSecure.Headers);
+    THorse.Use(CORS);
     THorse.Use(TMiddlewareAuditoria.Registrar);
     THorse.Use(Jhonson);
     THorse.Use(Horse.Upload.Upload);
