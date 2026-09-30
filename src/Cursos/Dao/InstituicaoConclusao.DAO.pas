@@ -10,6 +10,12 @@ uses
 type
   TInstituicaoConclusaoDAO = class
   public
+    class function BuscarFluxoTurma(
+      const AConn: TUniConnection;
+      const AIdInstituicao,
+            AIdTurma: Int64
+    ): TConclusaoFluxoTurma; static;
+
     class function BuscarContexto(
       const AConn: TUniConnection;
       const AIdInstituicao,
@@ -77,6 +83,38 @@ implementation
 
 uses
   System.SysUtils;
+
+class function TInstituicaoConclusaoDAO.BuscarFluxoTurma(
+  const AConn: TUniConnection;
+  const AIdInstituicao,
+        AIdTurma: Int64
+): TConclusaoFluxoTurma;
+var
+  Qry: TUniQuery;
+begin
+  Result := Default(TConclusaoFluxoTurma);
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT controle_presenca,exigir_presenca_conclusao,conclusao_automatica,certificado_automatico ' +
+      'FROM turma WHERE id_instituicao=:id_instituicao AND id=:id_turma LIMIT 1';
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id_turma').AsLargeInt := AIdTurma;
+    Qry.Open;
+
+    if Qry.IsEmpty then
+      Exit;
+
+    Result.ControlePresenca := Qry.FieldByName('controle_presenca').AsString;
+    Result.ExigirPresencaConclusao := Qry.FieldByName('exigir_presenca_conclusao').AsBoolean;
+    Result.ConclusaoAutomatica := Qry.FieldByName('conclusao_automatica').AsBoolean;
+    Result.CertificadoAutomatico := Qry.FieldByName('certificado_automatico').AsBoolean;
+  finally
+    Qry.Free;
+  end;
+end;
 
 class function TInstituicaoConclusaoDAO.BuscarContexto(
   const AConn: TUniConnection;
