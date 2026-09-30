@@ -263,6 +263,16 @@ begin
         raise Exception.Create(
           'SECURITY.CorsAllowedOrigin deve utilizar HTTPS em PRODUCAO.'
         );
+
+      if Result.RunDemoSeeds then
+        raise Exception.Create(
+          'APP.RunDemoSeeds deve permanecer desabilitado em PRODUCAO.'
+        );
+
+      if Ini.ReadInteger('SECURITY', 'RateLimitEnabled', 1) = 0 then
+        raise Exception.Create(
+          'SECURITY.RateLimitEnabled deve permanecer habilitado em PRODUCAO.'
+        );
     end;
   finally
     Ini.Free;
