@@ -35,6 +35,7 @@ class function TAppToken.ValidarToken(const Req: THorseRequest;const Res: THorse
 var
   Config: TAppApiConfig;
   Token: string;
+  Modulo: string;
 begin
   Result := False;
 
@@ -56,7 +57,7 @@ begin
 
   if AClaims.IdInstituicao > 0 then
   begin
-    var Modulo :=
+    Modulo :=
       TAppModuloAccess.ResolverModuloRota(
         Req.RawWebRequest.PathInfo
       );
