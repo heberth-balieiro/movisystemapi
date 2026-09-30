@@ -195,79 +195,81 @@ begin
       '/' + Contexto.InstituicaoSlug +
       '/aluno/certificados/' + IntToStr(Contexto.IdCertificado);
 
-    if SameText(Item.Canal, 'EMAIL') then
-    begin
-      Assunto := 'Seu certificado está disponível - ' + Contexto.CursoNome;
-      Html :=
-        '<h2>Seu certificado está disponível</h2>' +
-        '<p>Olá, ' + HtmlEncode(Contexto.ParticipanteNome) + '.</p>' +
-        '<p>O certificado do curso <strong>' + HtmlEncode(Contexto.CursoNome) +
-        '</strong> já está disponível na sua área do participante.</p>' +
-        '<p><strong>Número:</strong> ' + HtmlEncode(Contexto.NumeroPublico) + '</p>' +
-        '<p><a href="' + HtmlEncode(LinkAluno) + '">Acessar meu certificado</a></p>' +
-        '<p>' + HtmlEncode(Contexto.InstituicaoNome) + '</p>';
-
-      TInstituicaoEmailService.Enviar(
-        Item.IdInstituicao,
-        Item.Destinatario,
-        Assunto,
-        Html
-      );
-    end
-    else if SameText(Item.Canal, 'WHATSAPP') then
-    begin
-      Mensagem :=
-        '🎓 Seu certificado está disponível!' + sLineBreak + sLineBreak +
-        'Olá, ' + Contexto.ParticipanteNome + '.' + sLineBreak +
-        'O certificado do curso ' + Contexto.CursoNome + ' já foi emitido.' + sLineBreak +
-        'Número: ' + Contexto.NumeroPublico + sLineBreak + sLineBreak +
-        'Acesse sua área do participante:' + sLineBreak +
-        LinkAluno;
-
-      TInstituicaoWhatsAppService.EnviarMensagemSistema(
-        Item.IdInstituicao,
-        Item.Destinatario,
-        Mensagem
-      );
-    end
-    else
-      raise Exception.Create('Canal de notificação inválido.');
-
-    C := NovaConexao;
     try
-      TCertificadoNotificacaoDAO.MarcarEnviado(C, Item.Id);
-    finally
-      C.Free;
-    end;
+      if SameText(Item.Canal, 'EMAIL') then
+      begin
+        Assunto := 'Seu certificado está disponível - ' + Contexto.CursoNome;
+        Html :=
+          '<h2>Seu certificado está disponível</h2>' +
+          '<p>Olá, ' + HtmlEncode(Contexto.ParticipanteNome) + '.</p>' +
+          '<p>O certificado do curso <strong>' + HtmlEncode(Contexto.CursoNome) +
+          '</strong> já está disponível na sua área do participante.</p>' +
+          '<p><strong>Número:</strong> ' + HtmlEncode(Contexto.NumeroPublico) + '</p>' +
+          '<p><a href="' + HtmlEncode(LinkAluno) + '">Acessar meu certificado</a></p>' +
+          '<p>' + HtmlEncode(Contexto.InstituicaoNome) + '</p>';
 
-    RegistrarHistorico(
-      Item.IdInstituicao,
-      Item.IdCertificado,
-      'NOTIFICACAO_' + UpperCase(Item.Canal) + '_ENVIADA',
-      'Notificação de certificado disponível enviada por ' + LowerCase(Item.Canal) + '.'
-    );
-  except
-    on E: Exception do
-    begin
+        TInstituicaoEmailService.Enviar(
+          Item.IdInstituicao,
+          Item.Destinatario,
+          Assunto,
+          Html
+        );
+      end
+      else if SameText(Item.Canal, 'WHATSAPP') then
+      begin
+        Mensagem :=
+          '🎓 Seu certificado está disponível!' + sLineBreak + sLineBreak +
+          'Olá, ' + Contexto.ParticipanteNome + '.' + sLineBreak +
+          'O certificado do curso ' + Contexto.CursoNome + ' já foi emitido.' + sLineBreak +
+          'Número: ' + Contexto.NumeroPublico + sLineBreak + sLineBreak +
+          'Acesse sua área do participante:' + sLineBreak +
+          LinkAluno;
+
+        TInstituicaoWhatsAppService.EnviarMensagemSistema(
+          Item.IdInstituicao,
+          Item.Destinatario,
+          Mensagem
+        );
+      end
+      else
+        raise Exception.Create('Canal de notificação inválido.');
+
       C := NovaConexao;
       try
-        TCertificadoNotificacaoDAO.MarcarErro(C, Item.Id, E.Message);
+        TCertificadoNotificacaoDAO.MarcarEnviado(C, Item.Id);
       finally
         C.Free;
       end;
 
-      if Item.Tentativas >= 3 then
-        RegistrarHistorico(
-          Item.IdInstituicao,
-          Item.IdCertificado,
-          'NOTIFICACAO_' + UpperCase(Item.Canal) + '_ERRO',
-          'Falha definitiva após 3 tentativas de envio: ' + Copy(E.Message, 1, 500)
-        );
-    end;
-  end;
+      RegistrarHistorico(
+        Item.IdInstituicao,
+        Item.IdCertificado,
+        'NOTIFICACAO_' + UpperCase(Item.Canal) + '_ENVIADA',
+        'Notificação de certificado disponível enviada por ' + LowerCase(Item.Canal) + '.'
+      );
+    except
+      on E: Exception do
+      begin
+        C := NovaConexao;
+        try
+          TCertificadoNotificacaoDAO.MarcarErro(C, Item.Id, E.Message);
+        finally
+          C.Free;
+        end;
 
-  Contexto.Free;
-  Item.Free;
+        if Item.Tentativas >= 3 then
+          RegistrarHistorico(
+            Item.IdInstituicao,
+            Item.IdCertificado,
+            'NOTIFICACAO_' + UpperCase(Item.Canal) + '_ERRO',
+            'Falha definitiva após 3 tentativas de envio: ' + Copy(E.Message, 1, 500)
+          );
+      end;
+    end;
+  finally
+    Contexto.Free;
+    Item.Free;
+  end;
 end;
 
 end.
