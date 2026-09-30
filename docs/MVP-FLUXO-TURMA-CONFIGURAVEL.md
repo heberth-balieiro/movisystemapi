@@ -744,3 +744,109 @@ Além de:
 10. Confirmar job CONCLUIDO e certificado VALIDO.
 11. Conferir evento PROCESSAMENTO_REENFILEIRADO no histórico.
 12. Validar isolamento entre duas instituições.
+
+
+## Complemento - Download seguro e certificados na área do participante
+
+A área do participante foi endurecida para disponibilizar somente certificados válidos e atuais.
+
+### Regras da API
+
+Endpoints existentes reaproveitados:
+
+```
+GET /v1/certifica/aluno/certificados
+GET /v1/certifica/aluno/certificados/:id
+GET /v1/certifica/aluno/certificados/:id/pdf
+```
+
+Não foi criado fluxo paralelo.
+
+A API valida:
+- instituição do token;
+- usuário da instituição;
+- participante ativo vinculado ao usuário;
+- certificado pertencente ao mesmo participante;
+- certificado pertencente ao mesmo `id_instituicao`;
+- situação `VALIDO`;
+- existência de PDF;
+- versão válida mais recente da inscrição.
+
+Certificados cancelados e versões válidas antigas não aparecem mais na área do participante.
+
+O dashboard também contabiliza somente a versão válida atual de cada inscrição.
+
+### Download
+
+O download continua autenticado e usa o storage interno do certificado.
+
+Antes de disponibilizar o arquivo:
+1. resolve o participante autenticado;
+2. valida tenant e propriedade do certificado;
+3. valida situação `VALIDO`;
+4. valida se é a versão válida mais recente;
+5. valida `pdf_storage_key`;
+6. resolve o caminho físico com proteção contra path traversal;
+7. somente então libera o PDF.
+
+Headers:
+- `Cache-Control: private, no-store`;
+- `X-Content-Type-Options: nosniff`;
+- download como `application/pdf`.
+
+### Auditoria
+
+Após localizar o arquivo físico, é registrado no histórico:
+
+```
+DOWNLOAD_ALUNO
+```
+
+Descrição:
+> Download do certificado solicitado pelo participante autenticado.
+
+Não é registrado download quando o arquivo não existe no storage.
+
+### Frontend
+
+Página:
+
+```
+/[slug]/aluno/certificados
+```
+
+Agora:
+- mostra somente certificados válidos atuais;
+- informa **Versão atual**;
+- possui botão **Ver detalhes**;
+- possui botão **Baixar certificado** diretamente no card;
+- layout responsivo para desktop e mobile.
+
+Página de detalhes mantém:
+- dados do certificado;
+- situação;
+- carga horária;
+- emissão;
+- botão de download;
+- informação sobre validação pública via QR Code.
+
+### Segurança
+
+A validação pública continua separada do download autenticado.
+
+O código de validação não é exposto na listagem autenticada do aluno.
+
+### Teste posterior
+
+1. Emitir certificado versão 1.
+2. Confirmar exibição na área do aluno.
+3. Baixar PDF.
+4. Confirmar evento DOWNLOAD_ALUNO.
+5. Reemitir versão 2.
+6. Confirmar que somente a versão válida mais recente aparece.
+7. Cancelar certificado atual.
+8. Confirmar que certificado cancelado não aparece para download.
+9. Tentar acessar manualmente ID de certificado de outro participante.
+10. Tentar acessar certificado de outra instituição.
+11. Confirmar bloqueio.
+12. Validar em desktop e mobile.
