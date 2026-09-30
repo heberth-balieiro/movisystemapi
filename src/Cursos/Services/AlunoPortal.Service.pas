@@ -87,6 +87,7 @@ uses
   APP.Errors,
   Database.Connection,
   AlunoPortal.DAO,
+  InstituicaoCertificado.DAO,
   InstituicaoCertificadoDocumento.Service;
 
 class function TAlunoPortalService.NovaConexao: TUniConnection;
@@ -399,6 +400,16 @@ begin
 
       if Trim(StorageKey).IsEmpty then
         TAppErrors.RaiseBadRequest('PDF do certificado não está disponível.');
+
+      TInstituicaoCertificadoDAO.InserirHistorico(
+        Conn,
+        AIdInstituicao,
+        AIdCertificado,
+        AIdUsuarioInstituicao,
+        'DOWNLOAD_ALUNO',
+        'Download do certificado realizado pelo participante autenticado.',
+        ''
+      );
     finally
       Aluno.Free;
     end;
