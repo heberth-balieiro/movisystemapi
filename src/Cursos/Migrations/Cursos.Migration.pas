@@ -71,6 +71,7 @@ type
     class procedure Migration_048_EncontroCheckin(const AConn: TUniConnection); static;
     class procedure Migration_049_PlataformaCampanhas(const AConn: TUniConnection); static;
     class procedure Migration_050_PlataformaWhatsAppPorUsuario(const AConn: TUniConnection); static;
+    class procedure Migration_051_MovisystemHubModulos(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -218,6 +219,7 @@ begin
       Migration_048_EncontroCheckin(Conn);
       Migration_049_PlataformaCampanhas(Conn);
       Migration_050_PlataformaWhatsAppPorUsuario(Conn);
+      Migration_051_MovisystemHubModulos(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2385,6 +2387,83 @@ begin
     AConn,
     '050',
     'Modo WhatsApp por empresa ou usuario na plataforma SaaS'
+  );
+end;
+
+
+
+class procedure TCursosMigration.Migration_051_MovisystemHubModulos(
+  const AConn: TUniConnection);
+begin
+  if MigrationExists(AConn, '051') then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS plataforma_modulo (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' codigo VARCHAR(40) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL,' +
+    ' nome VARCHAR(120) NOT NULL,' +
+    ' descricao VARCHAR(500) NULL,' +
+    ' situacao VARCHAR(20) NOT NULL DEFAULT ''ATIVO'',' +
+    ' ordem INT NOT NULL DEFAULT 0,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ' +
+    '   ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' UNIQUE KEY uq_plataforma_modulo_codigo (codigo),' +
+    ' KEY ix_plataforma_modulo_situacao_ordem (situacao, ordem),' +
+    ' CONSTRAINT ck_plataforma_modulo_situacao CHECK (situacao IN (''ATIVO'',''INATIVO''))' +
+    ') ENGINE=InnoDB COMMENT=''Catalogo de modulos do MoviSystem Hub.'';'
+  );
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS instituicao_modulo (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_instituicao BIGINT UNSIGNED NOT NULL,' +
+    ' id_modulo BIGINT UNSIGNED NOT NULL,' +
+    ' ativo TINYINT(1) NOT NULL DEFAULT 1,' +
+    ' liberado_por BIGINT UNSIGNED NULL,' +
+    ' liberado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ' +
+    '   ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' UNIQUE KEY uq_instituicao_modulo (id_instituicao, id_modulo),' +
+    ' KEY ix_instituicao_modulo_ativo (id_instituicao, ativo),' +
+    ' CONSTRAINT fk_instituicao_modulo_instituicao FOREIGN KEY (id_instituicao) ' +
+    '   REFERENCES instituicao(id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT fk_instituicao_modulo_modulo FOREIGN KEY (id_modulo) ' +
+    '   REFERENCES plataforma_modulo(id) ON UPDATE RESTRICT ON DELETE RESTRICT,' +
+    ' CONSTRAINT fk_instituicao_modulo_usuario FOREIGN KEY (liberado_por) ' +
+    '   REFERENCES usuario(id) ON UPDATE RESTRICT ON DELETE SET NULL' +
+    ') ENGINE=InnoDB COMMENT=''Modulos liberados para cada instituicao do Hub.'';'
+  );
+
+  ExecSQL(
+    AConn,
+    'INSERT INTO plataforma_modulo (codigo,nome,descricao,situacao,ordem) VALUES ' +
+    '(''CERTIFICA'',''MoviSystem Certifica'',''Cursos, capacitacoes, participantes e certificados digitais.'',''ATIVO'',10),' +
+    '(''CONTRATOS'',''MoviSystem Contratos'',''Gestao e acompanhamento de contratos.'',''ATIVO'',20),' +
+    '(''RH'',''MoviSystem RH'',''Gestao de pessoas e recursos humanos.'',''ATIVO'',30),' +
+    '(''PARTICIPA'',''MoviSystem Participa'',''Participacao, consultas e processos colaborativos.'',''ATIVO'',40) ' +
+    'ON DUPLICATE KEY UPDATE nome=VALUES(nome), descricao=VALUES(descricao), situacao=''ATIVO'', ordem=VALUES(ordem)'
+  );
+
+  // Compatibilidade: todos os tenants existentes vieram do Certifica.
+  ExecSQL(
+    AConn,
+    'INSERT INTO instituicao_modulo (id_instituicao,id_modulo,ativo,liberado_por,liberado_em) ' +
+    'SELECT i.id,m.id,1,NULL,CURRENT_TIMESTAMP(3) ' +
+    'FROM instituicao i ' +
+    'JOIN plataforma_modulo m ON m.codigo=''CERTIFICA'' ' +
+    'ON DUPLICATE KEY UPDATE ativo=1, atualizado_em=CURRENT_TIMESTAMP(3)'
+  );
+
+  RegisterMigration(
+    AConn,
+    '051',
+    'MoviSystem Hub: catalogo de modulos e liberacao por instituicao'
   );
 end;
 
