@@ -166,6 +166,10 @@
         <DCCReference Include="src\Cursos\Services\PlataformaCampanha.Service.pas"/>
         <DCCReference Include="src\Cursos\Services\PlataformaCampanha.Worker.pas"/>
         <DCCReference Include="src\Cursos\Controller\PlataformaCampanha.Controller.pas"/>
+        <DCCReference Include="src\Cursos\Model\PlataformaModulo.Model.pas"/>
+        <DCCReference Include="src\Cursos\Dao\PlataformaModulo.DAO.pas"/>
+        <DCCReference Include="src\Cursos\Services\PlataformaModulo.Service.pas"/>
+        <DCCReference Include="src\Cursos\Controller\PlataformaModulo.Controller.pas"/>
         <DCCReference Include="src\Cursos\Dao\PlataformaUsuarioWhatsApp.DAO.pas"/>
         <DCCReference Include="src\Cursos\Services\PlataformaUsuarioWhatsApp.Service.pas"/>
         <DCCReference Include="src\Cursos\Controller\PlataformaUsuarioWhatsApp.Controller.pas"/>
