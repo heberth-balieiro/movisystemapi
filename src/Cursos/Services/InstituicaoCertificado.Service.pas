@@ -102,6 +102,13 @@ type
             AIP,
             AUserAgent: string
     ): TCertificadoValidacaoPublica; static;
+
+    class function ValidarPublicamenteInstituicao(
+      const ASlug,
+            ACodigoValidacao,
+            AIP,
+            AUserAgent: string
+    ): TCertificadoValidacaoPublica; static;
   end;
 
 implementation
@@ -1667,6 +1674,102 @@ begin
     Result.Certificado := Certificado;
     Certificado := nil;
 
+  finally
+    Certificado.Free;
+    Conn.Free;
+  end;
+end;
+
+
+class function TInstituicaoCertificadoService.ValidarPublicamenteInstituicao(
+  const ASlug,
+        ACodigoValidacao,
+        AIP,
+        AUserAgent: string
+): TCertificadoValidacaoPublica;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  Certificado: TCertificadoItem;
+  ResultadoValidacao: string;
+  CodigoHash: string;
+begin
+  Result := TCertificadoValidacaoPublica.Create;
+
+  if Trim(ASlug).IsEmpty or Trim(ACodigoValidacao).IsEmpty then
+  begin
+    Result.Encontrado := False;
+    Result.Resultado := 'NAO_ENCONTRADO';
+    Exit;
+  end;
+
+  CodigoHash :=
+    LowerCase(
+      THashSHA2.GetHashString(
+        Trim(ACodigoValidacao)
+      )
+    );
+
+  Config :=
+    TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) + 'Config.ini'
+    );
+
+  Conn :=
+    TDatabaseConnection.NewConnection(
+      Config.Database
+    );
+
+  try
+    Certificado :=
+      TInstituicaoCertificadoDAO.BuscarPublicoPorCodigoInstituicao(
+        Conn,
+        Trim(ASlug),
+        Trim(ACodigoValidacao)
+      );
+
+    if Certificado = nil then
+    begin
+      ResultadoValidacao := 'NAO_ENCONTRADO';
+
+      TInstituicaoCertificadoDAO.RegistrarValidacao(
+        Conn,
+        0,
+        0,
+        False,
+        CodigoHash,
+        ResultadoValidacao,
+        AIP,
+        AUserAgent
+      );
+
+      Result.Encontrado := False;
+      Result.Resultado := ResultadoValidacao;
+      Exit;
+    end;
+
+    if SameText(Certificado.Situacao, 'VALIDO') then
+      ResultadoValidacao := 'VALIDO'
+    else if SameText(Certificado.Situacao, 'CANCELADO') then
+      ResultadoValidacao := 'CANCELADO'
+    else
+      ResultadoValidacao := 'ERRO';
+
+    TInstituicaoCertificadoDAO.RegistrarValidacao(
+      Conn,
+      Certificado.IdInstituicao,
+      Certificado.Id,
+      True,
+      CodigoHash,
+      ResultadoValidacao,
+      AIP,
+      AUserAgent
+    );
+
+    Result.Encontrado := True;
+    Result.Resultado := ResultadoValidacao;
+    Result.Certificado := Certificado;
+    Certificado := nil;
   finally
     Certificado.Free;
     Conn.Free;
