@@ -172,6 +172,7 @@ class function TPlataformaInstituicaoService.Buscar(const AIdInstituicao: Int64)
 var
   Config: TAppApiConfig;
   Conn: TUniConnection;
+  Modulos: TList<string>;
 begin
   if AIdInstituicao <= 0 then
     TAppErrors.RaiseBadRequest('Instituição inválida.');
@@ -183,12 +184,18 @@ begin
     if Result = nil then
       TAppErrors.RaiseNotFound('Instituição não encontrada.');
 
-    Result.Modulos.AddRange(
+    Modulos :=
       TPlataformaModuloDAO.ListarCodigosInstituicao(
         Conn,
         AIdInstituicao
-      ).ToArray
-    );
+      );
+    try
+      Result.Modulos.AddRange(
+        Modulos.ToArray
+      );
+    finally
+      Modulos.Free;
+    end;
   finally
     Conn.Free;
   end;
@@ -200,6 +207,7 @@ class function TPlataformaInstituicaoService.Criar(const AModel: TPlataformaInst
 var
   Config: TAppApiConfig;
   Conn: TUniConnection;
+  CodigoModulo: string;
 begin
   Result := nil;
   ASenhaTemporaria := '';
@@ -220,6 +228,16 @@ begin
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(Config.Database);
   try
+    for CodigoModulo in AModel.Modulos do
+      if not TPlataformaModuloDAO.CodigoAtivoExiste(
+        Conn,
+        CodigoModulo
+      ) then
+        TAppErrors.RaiseBadRequest(
+          'Módulo inválido ou inativo: ' +
+          UpperCase(Trim(CodigoModulo))
+        );
+
     if TPlataformaInstituicaoDAO.ExisteSlug(Conn, AModel.Slug) then
       TAppErrors.RaiseBadRequest('Este slug já está sendo utilizado por outra instituição.');
     if TPlataformaInstituicaoDAO.ExisteDocumento(Conn, AModel.Documento) then
@@ -271,6 +289,7 @@ var
   Config: TAppApiConfig;
   Conn: TUniConnection;
   Existente: TPlataformaInstituicaoModel;
+  Modulos: TList<string>;
 begin
   Result := nil;
   ASenhaTemporaria := '';
@@ -319,6 +338,21 @@ begin
     end;
 
     Result := TPlataformaInstituicaoDAO.BuscarPorId(Conn, AIdInstituicao);
+    if Result <> nil then
+    begin
+      Modulos :=
+        TPlataformaModuloDAO.ListarCodigosInstituicao(
+          Conn,
+          AIdInstituicao
+        );
+      try
+        Result.Modulos.AddRange(
+          Modulos.ToArray
+        );
+      finally
+        Modulos.Free;
+      end;
+    end;
   finally
     Conn.Free;
   end;
