@@ -22,7 +22,8 @@ uses System.SysUtils, System.Classes, System.Hash, System.Generics.Collections, 
   Database.Connection, APP.Errors, InstituicaoPermissao.Service,
   AlunoPortal.DAO, AlunoPortal.Model, EncontroCheckin.DAO,
   InstituicaoConclusao.Service, InstituicaoConclusao.Model,
-  InstituicaoCertificado.Service, InstituicaoCertificado.Model;
+  InstituicaoCertificado.Service, InstituicaoCertificado.Model,
+  CertificadoProcessamento.Service;
 
 {$IFDEF MSWINDOWS}
 function BCryptGenRandom(Algorithm: Pointer; Buffer: PByte; Size, Flags: Cardinal): LongInt;
@@ -155,6 +156,12 @@ begin
               Certificado := TInstituicaoCertificadoService.EmitirPendente(
                 Tenant,
                 IdInscricao,
+                Usuario
+              );
+
+              TCertificadoProcessamentoService.Enfileirar(
+                Tenant,
+                Certificado.Id,
                 Usuario
               );
             except
