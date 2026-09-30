@@ -29,6 +29,9 @@ type
 
 implementation
 
+uses
+  System.SysUtils;
+
 class function TPublicoInstituicaoDAO.BuscarPorSlug(
   const AConn: TUniConnection;
   const ASlug: string
