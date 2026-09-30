@@ -3,7 +3,8 @@ unit PlataformaInstituicao.Model;
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.Generics.Collections;
 
 type
   // Representa a identidade visual da instituição usada pelo frontend.
@@ -39,6 +40,7 @@ type
     AdministradorNome: string;
     AdministradorEmail: string;
     Tema: TPlataformaInstituicaoTema;
+    Modulos: TList<string>;
 
     // Métricas ficam zeradas nesta etapa. Serão alimentadas quando as tabelas
     // de cursos, turmas, participantes e certificados entrarem no Run.
@@ -70,10 +72,12 @@ begin
   Tipo := 'PRIVADA';
   Situacao := 'IMPLANTACAO';
   Tema := TPlataformaInstituicaoTema.Create;
+  Modulos := TList<string>.Create;
 end;
 
 destructor TPlataformaInstituicaoModel.Destroy;
 begin
+  Modulos.Free;
   Tema.Free;
   inherited;
 end;
