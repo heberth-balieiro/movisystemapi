@@ -75,6 +75,7 @@ type
     class procedure Migration_052_TurmaFluxoConfiguravel(const AConn: TUniConnection); static;
     class procedure Migration_053_TurmaCheckin(const AConn: TUniConnection); static;
     class procedure Migration_054_CertificadoProcessamento(const AConn: TUniConnection); static;
+    class procedure Migration_055_CertificadoNotificacao(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -226,6 +227,7 @@ begin
       Migration_052_TurmaFluxoConfiguravel(Conn);
       Migration_053_TurmaCheckin(Conn);
       Migration_054_CertificadoProcessamento(Conn);
+      Migration_055_CertificadoNotificacao(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2640,6 +2642,50 @@ begin
     AConn,
     '054',
     'Fila persistente de processamento automatico de certificados'
+  );
+end;
+
+
+class procedure TCursosMigration.Migration_055_CertificadoNotificacao(
+  const AConn: TUniConnection);
+begin
+  if MigrationExists(AConn, '055') then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS certificado_notificacao (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_instituicao BIGINT UNSIGNED NOT NULL,' +
+    ' id_certificado BIGINT UNSIGNED NOT NULL,' +
+    ' canal VARCHAR(20) NOT NULL,' +
+    ' destinatario VARCHAR(254) NOT NULL,' +
+    ' situacao VARCHAR(20) NOT NULL DEFAULT ''PENDENTE'',' +
+    ' tentativas INT NOT NULL DEFAULT 0,' +
+    ' proxima_tentativa_em DATETIME(3) NULL,' +
+    ' processando_em DATETIME(3) NULL,' +
+    ' enviado_em DATETIME(3) NULL,' +
+    ' ultimo_erro VARCHAR(2000) NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ' +
+    '   ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' UNIQUE KEY uq_certificado_notificacao_canal (id_instituicao,id_certificado,canal),' +
+    ' KEY ix_certificado_notificacao_fila (situacao,proxima_tentativa_em,id),' +
+    ' CONSTRAINT fk_certificado_notificacao_instituicao FOREIGN KEY (id_instituicao) ' +
+    '   REFERENCES instituicao(id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT fk_certificado_notificacao_certificado FOREIGN KEY (id_certificado) ' +
+    '   REFERENCES certificado(id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT ck_certificado_notificacao_canal CHECK (canal IN (''EMAIL'',''WHATSAPP'')),' +
+    ' CONSTRAINT ck_certificado_notificacao_situacao CHECK (situacao IN ' +
+    '   (''PENDENTE'',''PROCESSANDO'',''ENVIADO'',''ERRO''))' +
+    ') ENGINE=InnoDB COMMENT=''Fila persistente de notificacoes de certificado disponivel.'';'
+  );
+
+  RegisterMigration(
+    AConn,
+    '055',
+    'Fila de notificacao de certificado disponivel por email e WhatsApp'
   );
 end;
 
