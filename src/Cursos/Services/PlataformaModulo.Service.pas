@@ -3,6 +3,7 @@ unit PlataformaModulo.Service;
 interface
 
 uses
+  Uni,
   System.Generics.Collections,
   PlataformaModulo.Model;
 
@@ -10,7 +11,7 @@ type
   TPlataformaModuloService = class
   private
     class procedure ValidarCodigos(
-      const AConn: TObject;
+      const AConn: TUniConnection;
       const ACodigos: TList<string>
     ); static;
 
@@ -40,7 +41,6 @@ implementation
 
 uses
   System.SysUtils,
-  Uni,
   App.Config,
   APP.Errors,
   Database.Connection,
@@ -48,8 +48,28 @@ uses
   PlataformaInstituicao.DAO,
   PlataformaInstituicao.Model;
 
+function JoinStrings(
+  const ALista: TList<string>
+): string;
+var
+  Item: string;
+begin
+  Result := '';
+
+  if ALista = nil then
+    Exit;
+
+  for Item in ALista do
+  begin
+    if not Result.IsEmpty then
+      Result := Result + ',';
+
+    Result := Result + Item;
+  end;
+end;
+
 class procedure TPlataformaModuloService.ValidarCodigos(
-  const AConn: TObject;
+  const AConn: TUniConnection;
   const ACodigos: TList<string>
 );
 var
@@ -74,7 +94,7 @@ begin
         Continue;
 
       if not TPlataformaModuloDAO.CodigoAtivoExiste(
-        TUniConnection(AConn),
+        AConn,
         Codigo
       ) then
         TAppErrors.RaiseBadRequest(
@@ -247,9 +267,9 @@ begin
             AIdUsuarioAcao,
             'INSTITUICAO_MODULOS_ALTERADOS',
             'Módulos alterados. Antes: ' +
-              string.Join(',', Antes.ToArray) +
+              JoinStrings(Antes) +
               '. Depois: ' +
-              string.Join(',', Depois.ToArray) +
+              JoinStrings(Depois) +
               '.',
             'PUT',
             '/v1/certifica/plataforma/instituicoes/' +
