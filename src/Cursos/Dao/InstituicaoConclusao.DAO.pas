@@ -197,6 +197,42 @@ begin
     Qry.Connection := AConn;
 
     Qry.SQL.Text :=
+      'SELECT controle_presenca FROM turma ' +
+      'WHERE id_instituicao=:id_instituicao AND id=:id_turma LIMIT 1';
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id_turma').AsLargeInt := AIdTurma;
+    Qry.Open;
+
+    if not Qry.IsEmpty then
+    begin
+      if SameText(Qry.FieldByName('controle_presenca').AsString, 'SEM_CONTROLE') then
+        Exit;
+
+      if SameText(Qry.FieldByName('controle_presenca').AsString, 'TURMA') then
+      begin
+        Qry.Close;
+        Qry.SQL.Text :=
+          'SELECT COUNT(*) AS total FROM turma_presenca ' +
+          'WHERE id_instituicao=:id_instituicao AND id_turma=:id_turma ' +
+          'AND id_inscricao=:id_inscricao AND situacao=''PRESENTE''';
+        Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+        Qry.ParamByName('id_turma').AsLargeInt := AIdTurma;
+        Qry.ParamByName('id_inscricao').AsLargeInt := AIdInscricao;
+        Qry.Open;
+
+        Result.MinutosPrevistos := 1;
+        Result.MinutosComputados := Ord(Qry.FieldByName('total').AsInteger > 0);
+        Result.TemBaseCalculo := True;
+        if Result.MinutosComputados > 0 then
+          Result.Percentual := 100
+        else
+          Result.Percentual := 0;
+        Exit;
+      end;
+    end;
+
+    Qry.Close;
+    Qry.SQL.Text :=
       'SELECT ' +
       'COALESCE(SUM(' +
       '  CASE ' +
