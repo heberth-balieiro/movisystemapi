@@ -96,72 +96,107 @@ var
   Resumo: TConclusaoResumo;
   Certificado: TCertificadoItem;
 begin
-  C := NovaConexao;
   Ids := TList<Int64>.Create;
   try
-    Q := TUniQuery.Create(nil);
+    C := NovaConexao;
     try
-      Q.Connection := C;
-      Q.SQL.Text :=
-        'SELECT conclusao_automatica,certificado_automatico FROM turma ' +
-        'WHERE id_instituicao=:t AND id=:turma LIMIT 1';
-      Q.ParamByName('t').AsLargeInt := Tenant;
-      Q.ParamByName('turma').AsLargeInt := Turma;
-      Q.Open;
-      if Q.IsEmpty then Exit;
-
-      ConclusaoAutomatica := Q.FieldByName('conclusao_automatica').AsBoolean;
-      CertificadoAutomatico := Q.FieldByName('certificado_automatico').AsBoolean;
-
-      if not ConclusaoAutomatica then Exit;
-
-      Q.Close;
-      Q.SQL.Text :=
-        'SELECT id FROM inscricao WHERE id_instituicao=:t AND id_turma=:turma ' +
-        'AND situacao IN (''CONFIRMADO'',''EM_ANDAMENTO'') ORDER BY id';
-      Q.ParamByName('t').AsLargeInt := Tenant;
-      Q.ParamByName('turma').AsLargeInt := Turma;
-      Q.Open;
-      while not Q.Eof do
-      begin
-        Ids.Add(Q.FieldByName('id').AsLargeInt);
-        Q.Next;
-      end;
-    finally
-      Q.Free;
-    end;
-  finally
-    C.Free;
-  end;
-
-  try
-    for IdInscricao in Ids do
-    begin
-      Resumo := TInstituicaoConclusaoService.Avaliar(
-        Tenant,
-        IdInscricao,
-        Usuario
-      );
+      Q := TUniQuery.Create(nil);
       try
-        if CertificadoAutomatico and
-           Resumo.ElegivelCertificado and
-           SameText(Resumo.SituacaoInscricao, 'CONCLUIDO') then
+        Q.Connection := C;
+        Q.SQL.Text :=
+          'SELECT conclusao_automatica,certificado_automatico FROM turma ' +
+          'WHERE id_instituicao=:t AND id=:turma LIMIT 1';
+        Q.ParamByName('t').AsLargeInt := Tenant;
+        Q.ParamByName('turma').AsLargeInt := Turma;
+        Q.Open;
+        if Q.IsEmpty then Exit;
+
+        ConclusaoAutomatica := Q.FieldByName('conclusao_automatica').AsBoolean;
+        CertificadoAutomatico := Q.FieldByName('certificado_automatico').AsBoolean;
+
+        if not ConclusaoAutomatica then Exit;
+
+        Q.Close;
+        Q.SQL.Text :=
+          'SELECT id FROM inscricao WHERE id_instituicao=:t AND id_turma=:turma ' +
+          'AND situacao IN (''CONFIRMADO'',''EM_ANDAMENTO'') ORDER BY id';
+        Q.ParamByName('t').AsLargeInt := Tenant;
+        Q.ParamByName('turma').AsLargeInt := Turma;
+        Q.Open;
+        while not Q.Eof do
         begin
-          Certificado := nil;
-          try
-            Certificado := TInstituicaoCertificadoService.EmitirPendente(
-              Tenant,
-              IdInscricao,
-              Usuario
-            );
-          except
-            on E: Exception do
-              if Pos('já possui certificado', LowerCase(E.Message)) = 0 then
-                raise;
-          end;
-          Certificado.Free;
+          Ids.Add(Q.FieldByName('id').AsLargeInt);
+          Q.Next;
         end;
       finally
+        Q.Free;
+      end;
+    finally
+      C.Free;
+    end;
+
+    for IdInscricao in Ids do
+    begin
+      Resumo := nil;
+      Certificado := nil;
+      try
+        try
+          Resumo := TInstituicaoConclusaoService.Avaliar(
+            Tenant,
+            IdInscricao,
+            Usuario
+          );
+
+          if CertificadoAutomatico and
+             Resumo.ElegivelCertificado and
+             SameText(Resumo.SituacaoInscricao, 'CONCLUIDO') then
+          begin
+            try
+              Certificado := TInstituicaoCertificadoService.EmitirPendente(
+                Tenant,
+                IdInscricao,
+                Usuario
+              );
+            except
+              on E: Exception do
+                if Pos('já possui certificado', LowerCase(E.Message)) = 0 then
+                begin
+                  C := NovaConexao;
+                  try
+                    TEncontroCheckinDAO.Auditar(
+                      C,
+                      Tenant,
+                      Usuario,
+                      IdInscricao,
+                      'CERTIFICADO_AUTOMATICO_ERRO',
+                      'inscricao'
+                    );
+                  finally
+                    C.Free;
+                  end;
+                end;
+            end;
+          end;
+        except
+          on E: Exception do
+          begin
+            C := NovaConexao;
+            try
+              TEncontroCheckinDAO.Auditar(
+                C,
+                Tenant,
+                Usuario,
+                IdInscricao,
+                'CONCLUSAO_AUTOMATICA_ERRO',
+                'inscricao'
+              );
+            finally
+              C.Free;
+            end;
+          end;
+        end;
+      finally
+        Certificado.Free;
         Resumo.Free;
       end;
     end;
