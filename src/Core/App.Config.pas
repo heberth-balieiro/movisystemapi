@@ -73,9 +73,13 @@ begin
   if LProduto = 'CATALOGO' then
     Exit(apCatalogo);
 
-  if LProduto = 'MoviSystem' then
+  if LProduto = 'MOVISYSTEM' then
     Exit(apMoviSystem);
 
+  raise Exception.Create(
+    'APP.Produto inválido no Config.ini. Valores permitidos: CATALOGO, EASYONE ou MOVISYSTEM. Valor recebido: "' +
+    Trim(AValor) + '".'
+  );
 end;
 
 class function TAppConfig.Carregar(const ACaminhoIni: string): TAppApiConfig;
@@ -89,9 +93,16 @@ begin
 
   Ini := TIniFile.Create(ACaminhoIni);
   try
-    // ALTERAÇÃO: identifica qual produto/módulo a API deve executar.
-    // Padrão CATALOGO para não quebrar instalações atuais.
-    Result.Produto := LerProduto(Ini.ReadString('APP', 'Produto', 'MoviSystem'));
+    // O produto é obrigatório. Nunca assumir módulo por padrão,
+    // pois a mesma API atende bancos e estruturas diferentes.
+    PortaStr := Trim(Ini.ReadString('APP', 'Produto', ''));
+
+    if PortaStr.IsEmpty then
+      raise Exception.Create(
+        'APP.Produto não configurado no Config.ini. Informe CATALOGO, EASYONE ou MOVISYSTEM.'
+      );
+
+    Result.Produto := LerProduto(PortaStr);
 
     // --- DATABASE / DADOS
     Result.Database.Driver   := Ini.ReadString('DADOS', 'DriverID', 'MySQL');
