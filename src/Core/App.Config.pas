@@ -39,6 +39,9 @@ type
 
   TAppApiConfig = record
     Produto: TAppProduto;
+    Ambiente: string;
+    RunDemoSeeds: Boolean;
+    CorsAllowedOrigin: string;
     Porta: Integer;
     SSL: Boolean;
     UsuarioBasic: string;
@@ -104,6 +107,39 @@ begin
 
     Result.Produto := LerProduto(PortaStr);
 
+    Result.Ambiente :=
+      UpperCase(
+        Trim(
+          Ini.ReadString(
+            'APP',
+            'Ambiente',
+            'DESENVOLVIMENTO'
+          )
+        )
+      );
+
+    if not SameText(Result.Ambiente, 'DESENVOLVIMENTO') and
+       not SameText(Result.Ambiente, 'PRODUCAO') then
+      raise Exception.Create(
+        'APP.Ambiente inválido. Utilize DESENVOLVIMENTO ou PRODUCAO.'
+      );
+
+    Result.RunDemoSeeds :=
+      Ini.ReadInteger(
+        'APP',
+        'RunDemoSeeds',
+        0
+      ) <> 0;
+
+    Result.CorsAllowedOrigin :=
+      Trim(
+        Ini.ReadString(
+          'SECURITY',
+          'CorsAllowedOrigin',
+          '*'
+        )
+      );
+
     // --- DATABASE / DADOS
     Result.Database.Driver   := Ini.ReadString('DADOS', 'DriverID', 'MySQL');
     Result.Database.Server   := Ini.ReadString('DADOS', 'Server', 'localhost');
@@ -120,6 +156,12 @@ begin
 
     if Result.Database.Username.Trim.IsEmpty then
       raise Exception.Create('DADOS.User_Name não configurado no Config.ini.');
+
+    if SameText(Result.Ambiente, 'PRODUCAO') and
+       Result.Database.Password.Trim.IsEmpty then
+      raise Exception.Create(
+        'DADOS.Password é obrigatório em ambiente de PRODUCAO.'
+      );
 
     if Result.Database.Port <= 0 then
       Result.Database.Port := 3306;
@@ -152,6 +194,12 @@ begin
 
     if Result.JWT.Secret.Trim.IsEmpty then
       raise Exception.Create('JWT.Secret não configurado no Config.ini.');
+
+    if SameText(Result.Ambiente, 'PRODUCAO') and
+       (Length(Result.JWT.Secret) < 32) then
+      raise Exception.Create(
+        'JWT.Secret deve possuir no mínimo 32 caracteres em PRODUCAO.'
+      );
 
     if Result.JWT.Issuer.Trim.IsEmpty then
       Result.JWT.Issuer     := 'EASYONEDIGITAL';
@@ -189,6 +237,25 @@ begin
         Length(Result.Web.PublicURL),
         1
       );
+
+    if SameText(Result.Ambiente, 'PRODUCAO') then
+    begin
+      if not Result.Web.PublicURL.ToLower.StartsWith('https://') then
+        raise Exception.Create(
+          'WEB.PublicURL deve utilizar HTTPS em PRODUCAO.'
+        );
+
+      if Result.CorsAllowedOrigin.IsEmpty or
+         SameText(Result.CorsAllowedOrigin, '*') then
+        raise Exception.Create(
+          'SECURITY.CorsAllowedOrigin deve informar o domínio HTTPS do frontend em PRODUCAO.'
+        );
+
+      if not Result.CorsAllowedOrigin.ToLower.StartsWith('https://') then
+        raise Exception.Create(
+          'SECURITY.CorsAllowedOrigin deve utilizar HTTPS em PRODUCAO.'
+        );
+    end;
   finally
     Ini.Free;
   end;
