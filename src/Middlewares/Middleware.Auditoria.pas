@@ -55,8 +55,16 @@ begin
   Result :=
     Contem(ACaminho, '/instituicao/participantes') or
     Contem(ACaminho, '/instituicao/usuarios') or
+    Contem(ACaminho, '/instituicao/auditoria') or
+    Contem(ACaminho, '/instituicao/lgpd/') or
+    Contem(ACaminho, '/aluno/lgpd/') or
+    SameText(ACaminho, '/v1/certifica/aluno/me') or
     (
-      Contem(ACaminho, '/certificados/') and
+      Contem(ACaminho, '/aluno/certificados/') and
+      Contem(ACaminho, '/pdf')
+    ) or
+    (
+      Contem(ACaminho, '/instituicao/certificados/') and
       Contem(ACaminho, '/pdf')
     );
 end;
@@ -84,6 +92,8 @@ function ResolverEntidade(
   const ACaminho: string
 ): string;
 begin
+  if Contem(ACaminho, '/lgpd/') then Exit('lgpd_solicitacao');
+  if Contem(ACaminho, '/auditoria') then Exit('auditoria');
   if Contem(ACaminho, '/participantes') then Exit('participante');
   if Contem(ACaminho, '/usuarios') then Exit('usuario');
   if Contem(ACaminho, '/certificados') then Exit('certificado');
@@ -166,6 +176,39 @@ begin
   if Contem(ACaminho, '/plataforma/usuarios/') and
      Contem(ACaminho, '/whatsapp/qrcode') then
     Exit('PLATAFORMA_WHATSAPP_USUARIO_QRCODE_GERADO');
+
+  if SameText(AMetodo, 'GET') and
+     Contem(ACaminho, '/instituicao/auditoria') then
+    Exit('AUDITORIA_CONSULTADA');
+
+  if SameText(AMetodo, 'GET') and
+     SameText(ACaminho, '/v1/certifica/aluno/me') then
+    Exit('DADOS_PESSOAIS_CONSULTADOS');
+
+  if SameText(AMetodo, 'GET') and
+     Contem(ACaminho, '/aluno/certificados/') and
+     Contem(ACaminho, '/pdf') then
+    Exit('CERTIFICADO_DOWNLOAD_ALUNO');
+
+  if Contem(ACaminho, '/certificados/') and
+     Contem(ACaminho, '/reprocessar') then
+    Exit('CERTIFICADO_REPROCESSADO');
+
+  if Contem(ACaminho, '/lgpd/solicitacoes') then
+  begin
+    if SameText(AMetodo, 'GET') then
+      Exit('LGPD_SOLICITACOES_CONSULTADAS');
+
+    if SameText(AMetodo, 'POST') then
+      Exit('LGPD_SOLICITACAO_CRIADA');
+
+    if SameText(AMetodo, 'PATCH') and
+       Contem(ACaminho, '/cancelar') then
+      Exit('LGPD_SOLICITACAO_CANCELADA');
+
+    if SameText(AMetodo, 'PATCH') then
+      Exit('LGPD_SOLICITACAO_ATUALIZADA');
+  end;
 
   if Contem(ACaminho, '/auth/login') then
     Exit('LOGIN');
