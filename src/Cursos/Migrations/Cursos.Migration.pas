@@ -72,6 +72,7 @@ type
     class procedure Migration_049_PlataformaCampanhas(const AConn: TUniConnection); static;
     class procedure Migration_050_PlataformaWhatsAppPorUsuario(const AConn: TUniConnection); static;
     class procedure Migration_051_MovisystemHubModulos(const AConn: TUniConnection); static;
+    class procedure Migration_052_TurmaFluxoConfiguravel(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -220,6 +221,7 @@ begin
       Migration_049_PlataformaCampanhas(Conn);
       Migration_050_PlataformaWhatsAppPorUsuario(Conn);
       Migration_051_MovisystemHubModulos(Conn);
+      Migration_052_TurmaFluxoConfiguravel(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2464,6 +2466,75 @@ begin
     AConn,
     '051',
     'MoviSystem Hub: catalogo de modulos e liberacao por instituicao'
+  );
+end;
+
+class procedure TCursosMigration.Migration_052_TurmaFluxoConfiguravel(
+  const AConn: TUniConnection);
+var
+  Q: TUniQuery;
+
+  procedure AddColumnIfMissing(
+    const AColumn,
+          ADefinition: string
+  );
+  begin
+    Q.Close;
+    Q.SQL.Text :=
+      'SELECT 1 FROM information_schema.columns ' +
+      'WHERE table_schema = DATABASE() ' +
+      'AND table_name = ''turma'' ' +
+      'AND column_name = :coluna';
+    Q.ParamByName('coluna').AsString := AColumn;
+    Q.Open;
+
+    if Q.IsEmpty then
+      ExecSQL(
+        AConn,
+        'ALTER TABLE turma ADD COLUMN ' + AColumn + ' ' + ADefinition
+      );
+  end;
+
+begin
+  if MigrationExists(AConn, '052') then
+    Exit;
+
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+
+    AddColumnIfMissing(
+      'aprovacao_inscricao',
+      'VARCHAR(20) NOT NULL DEFAULT ''MANUAL'' AFTER permitir_inscricao_publica'
+    );
+
+    AddColumnIfMissing(
+      'controle_presenca',
+      'VARCHAR(20) NOT NULL DEFAULT ''ENCONTRO'' AFTER aprovacao_inscricao'
+    );
+
+    AddColumnIfMissing(
+      'exigir_presenca_conclusao',
+      'TINYINT(1) NOT NULL DEFAULT 0 AFTER controle_presenca'
+    );
+
+    AddColumnIfMissing(
+      'conclusao_automatica',
+      'TINYINT(1) NOT NULL DEFAULT 0 AFTER exigir_presenca_conclusao'
+    );
+
+    AddColumnIfMissing(
+      'certificado_automatico',
+      'TINYINT(1) NOT NULL DEFAULT 0 AFTER conclusao_automatica'
+    );
+  finally
+    Q.Free;
+  end;
+
+  RegisterMigration(
+    AConn,
+    '052',
+    'Fluxo configuravel da turma sem substituir o modelo por encontro'
   );
 end;
 
