@@ -104,6 +104,7 @@ begin
             Req.Query.Items['busca'],
             Req.Query.Items['acao'],
             Req.Query.Items['entidade'],
+            Req.Query.Items['sucesso'],
             Req.Query.Items['data_inicio'],
             Req.Query.Items['data_fim'],
             Pagina,
