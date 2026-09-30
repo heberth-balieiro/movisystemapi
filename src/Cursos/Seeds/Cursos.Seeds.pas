@@ -110,6 +110,7 @@ begin
       GarantirPermissao(Conn, 'certificado.visualizar', 'CERTIFICADO', 'Visualizar certificados.');
       GarantirPermissao(Conn, 'certificado.emitir', 'CERTIFICADO', 'Emitir e reemitir certificados.');
       GarantirPermissao(Conn, 'certificado.cancelar', 'CERTIFICADO', 'Cancelar certificados.');
+      GarantirPermissao(Conn, 'certificado.reprocessar', 'CERTIFICADO', 'Reprocessar certificados com erro.');
       GarantirPermissao(Conn, 'certificado.configurar', 'CERTIFICADO', 'Configurar modelos e regras de certificados.');
 
       GarantirPermissao(Conn, 'usuario.visualizar', 'USUARIO', 'Visualizar usu' + #$00E1 + 'rios da institui' + #$00E7 + #$00E3 + 'o.');
