@@ -28,6 +28,7 @@ class function TInstituicaoCertificadoDocumentoConfig.Carregar(
 var
   Ini: TIniFile;
   Arquivo: string;
+  Ambiente: string;
 begin
   Result :=
     Default(
@@ -46,6 +47,17 @@ begin
     );
 
   try
+    Ambiente :=
+      UpperCase(
+        Trim(
+          Ini.ReadString(
+            'APP',
+            'Ambiente',
+            'DESENVOLVIMENTO'
+          )
+        )
+      );
+
     Result.StoragePath :=
       Trim(
         Ini.ReadString(
@@ -111,6 +123,12 @@ begin
      not Result.PublicValidationBaseUrl.ToLower.StartsWith('http://') then
     raise Exception.Create(
       'CERTIFICADO_DOCUMENTO.PublicValidationBaseUrl deve ser uma URL HTTP ou HTTPS.'
+    );
+
+  if SameText(Ambiente, 'PRODUCAO') and
+     not Result.PublicValidationBaseUrl.ToLower.StartsWith('https://') then
+    raise Exception.Create(
+      'CERTIFICADO_DOCUMENTO.PublicValidationBaseUrl deve utilizar HTTPS em PRODUCAO.'
     );
 
   if Result.QrEncodeExecutable.IsEmpty or Result.ChromiumExecutable.IsEmpty then
