@@ -383,7 +383,11 @@ uses
   PlataformaAjuda.Model in 'src\Cursos\Model\PlataformaAjuda.Model.pas',
   PlataformaAjuda.Service in 'src\Cursos\Services\PlataformaAjuda.Service.pas',
   Cursos.Seeds in 'src\Cursos\Seeds\Cursos.Seeds.pas',
-  Cursos.DemoSeeds in 'src\Cursos\Seeds\Cursos.DemoSeeds.pas';
+  Cursos.DemoSeeds in 'src\Cursos\Seeds\Cursos.DemoSeeds.pas',
+  CertificadoProcessamento.Model in 'src\Cursos\Model\CertificadoProcessamento.Model.pas',
+  CertificadoProcessamento.DAO in 'src\Cursos\Dao\CertificadoProcessamento.DAO.pas',
+  CertificadoProcessamento.Service in 'src\Cursos\Services\CertificadoProcessamento.Service.pas',
+  CertificadoProcessamento.Worker in 'src\Cursos\Services\CertificadoProcessamento.Worker.pas';
 
 var
   LConfig       : TAppApiConfig;
@@ -466,6 +470,9 @@ begin
 
           TPlataformaCampanhaWorker.Start;
           Writeln('Worker de campanhas iniciado com sucesso.');
+
+          TCertificadoProcessamentoWorker.Start;
+          Writeln('Worker de certificados iniciado com sucesso.');
 
 
         end;
