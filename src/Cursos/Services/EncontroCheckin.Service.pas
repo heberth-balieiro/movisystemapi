@@ -11,6 +11,8 @@ type
       const Acao: string): TEncontroCheckinInfo; static;
     class function Aluno(Tenant, Usuario: Int64; const Token: string;
       Confirmar: Boolean): TEncontroCheckinInfo; static;
+    class function AdministrarTurma(Tenant, Usuario, Turma: Int64;
+      const Acao: string): TEncontroCheckinInfo; static;
   end;
 
 implementation
@@ -78,6 +80,35 @@ begin
   finally C.Free; end;
 end;
 
+class function TEncontroCheckinService.AdministrarTurma(Tenant, Usuario, Turma: Int64;
+  const Acao: string): TEncontroCheckinInfo;
+var C: TUniConnection; Token, Hash: string;
+begin
+  if Turma <= 0 then TAppErrors.RaiseBadRequest('Turma inválida.');
+  TInstituicaoPermissaoService.Exigir(Tenant, Usuario, 'presenca.editar');
+  if (Acao <> 'consultar') and (Acao <> 'abrir') and (Acao <> 'encerrar') then
+    TAppErrors.RaiseBadRequest('Operação inválida.');
+  Token := '';
+  Hash := '';
+  if Acao = 'abrir' then
+  begin
+    Token := NovoToken;
+    Hash := LowerCase(THashSHA2.GetHashString(Token));
+  end;
+  C := NovaConexao;
+  try
+    C.StartTransaction;
+    try
+      Result := TEncontroCheckinDAO.AdministrarTurma(C, Tenant, Usuario, Turma, Acao, Hash);
+      C.Commit;
+      Result.Token := Token;
+    except
+      if C.InTransaction then C.Rollback;
+      raise;
+    end;
+  finally C.Free; end;
+end;
+
 class function TEncontroCheckinService.Aluno(Tenant, Usuario: Int64;
   const Token: string; Confirmar: Boolean): TEncontroCheckinInfo;
 var C: TUniConnection; Contexto: TAlunoContexto; Ch: Char;
@@ -93,9 +124,32 @@ begin
       Contexto := TAlunoPortalDAO.BuscarContexto(C, Tenant, Usuario);
       try
         if Contexto = nil then TAppErrors.RaiseForbidden('Participante ativo não vinculado ao usuário.');
-        Result := TEncontroCheckinDAO.Consultar(C, Tenant, Contexto.IdParticipante,
-          LowerCase(THashSHA2.GetHashString(Token)));
-        if Confirmar then TEncontroCheckinDAO.Confirmar(C, Tenant, Usuario, Result);
+        if TEncontroCheckinDAO.TokenTurmaExiste(
+          C,
+          Tenant,
+          LowerCase(THashSHA2.GetHashString(Token))
+        ) then
+        begin
+          Result := TEncontroCheckinDAO.ConsultarTurma(
+            C,
+            Tenant,
+            Contexto.IdParticipante,
+            LowerCase(THashSHA2.GetHashString(Token))
+          );
+          if Confirmar then
+            TEncontroCheckinDAO.ConfirmarTurma(C, Tenant, Usuario, Result);
+        end
+        else
+        begin
+          Result := TEncontroCheckinDAO.Consultar(
+            C,
+            Tenant,
+            Contexto.IdParticipante,
+            LowerCase(THashSHA2.GetHashString(Token))
+          );
+          if Confirmar then
+            TEncontroCheckinDAO.Confirmar(C, Tenant, Usuario, Result);
+        end;
       finally Contexto.Free; end;
       C.Commit;
     except
