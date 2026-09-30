@@ -59,6 +59,59 @@ begin
   except on E: Exception do TAppErrors.HandleException(Res, E); end;
 end;
 
+procedure ListarPresencasTurma(Req: THorseRequest; Res: THorseResponse);
+var
+  Claims: TJWTClaims;
+  Lista: TTurmaPresencaLista;
+  Item: TTurmaPresencaItem;
+  Dados: TJSONObject;
+  Itens: TJSONArray;
+  Obj: TJSONObject;
+begin
+  try
+    if not TAppToken.ValidarToken(Req, Res, Claims) then Exit;
+
+    Lista := TEncontroCheckinService.ListarPresencasTurma(
+      Claims.IdInstituicao,
+      Claims.IdUsuarioInstituicao,
+      StrToInt64Def(Req.Params.Items['id_turma'], 0)
+    );
+    try
+      Itens := TJSONArray.Create;
+      for Item in Lista.Itens do
+      begin
+        Obj := TJSONObject.Create;
+        Obj.AddPair('id_inscricao', TJSONNumber.Create(Item.IdInscricao));
+        Obj.AddPair('id_participante', TJSONNumber.Create(Item.IdParticipante));
+        Obj.AddPair('participante_nome', Item.ParticipanteNome);
+        Obj.AddPair('participante_email', Item.ParticipanteEmail);
+        Obj.AddPair('situacao_inscricao', Item.SituacaoInscricao);
+        Obj.AddPair('presente', TJSONBool.Create(Item.TemPresenca and SameText(Item.SituacaoPresenca, 'PRESENTE')));
+        if Item.TemPresenca then Obj.AddPair('situacao_presenca', Item.SituacaoPresenca)
+        else Obj.AddPair('situacao_presenca', TJSONNull.Create);
+        if Item.TemCheckinEm then
+          Obj.AddPair('checkin_em', FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', Item.CheckinEm))
+        else
+          Obj.AddPair('checkin_em', TJSONNull.Create);
+        if Item.Origem <> '' then Obj.AddPair('origem', Item.Origem)
+        else Obj.AddPair('origem', TJSONNull.Create);
+        Itens.AddElement(Obj);
+      end;
+
+      Dados := TJSONObject.Create;
+      Dados.AddPair('total_matriculados', TJSONNumber.Create(Lista.TotalMatriculados));
+      Dados.AddPair('total_presentes', TJSONNumber.Create(Lista.TotalPresentes));
+      Dados.AddPair('itens', Itens);
+
+      TAppResponse.Ok(Res, Dados, 'Presenças da turma carregadas com sucesso.');
+    finally
+      Lista.Free;
+    end;
+  except
+    on E: Exception do TAppErrors.HandleException(Res, E);
+  end;
+end;
+
 procedure Aluno(Req: THorseRequest; Res: THorseResponse; Confirmar: Boolean);
 var Claims: TJWTClaims; Body, V: TJSONValue; Token: string; Info: TEncontroCheckinInfo;
 begin
@@ -89,6 +142,9 @@ begin
     begin Admin(Req, Res, 'encerrar'); end);
   THorse.Get('/v1/certifica/instituicao/turmas/:id_turma/checkin', procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     begin AdminTurma(Req, Res, 'consultar'); end);
+  THorse.Get('/v1/certifica/instituicao/turmas/:id_turma/presencas', procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    begin ListarPresencasTurma(Req, Res); end);
+
   THorse.Post('/v1/certifica/instituicao/turmas/:id_turma/checkin/abrir', procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     begin AdminTurma(Req, Res, 'abrir'); end);
   THorse.Post('/v1/certifica/instituicao/turmas/:id_turma/checkin/encerrar', procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
