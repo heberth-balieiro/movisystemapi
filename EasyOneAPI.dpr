@@ -130,6 +130,7 @@ uses
   Cupom.Controller in 'src\Catalogo\Controller\Cupom.Controller.pas',
   App.Classes in 'src\Core\App.Classes.pas',
   App.Token in 'src\Core\App.Token.pas',
+  App.ModuloAccess in 'src\Core\App.ModuloAccess.pas',
   Catalogo.Migration in 'src\Catalogo\Migrations\Catalogo.Migration.pas',
   Catalogo.Routes in 'src\Catalogo\Routes\Catalogo.Routes.pas',
   Database.Seed in 'src\Catalogo\Seeds\Database.Seed.pas',
