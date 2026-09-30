@@ -22,6 +22,11 @@ type
       const ASituacao: string
     ); static;
 
+    class procedure ValidarFluxo(
+      const AAprovacaoInscricao,
+            AControlePresenca: string
+    ); static;
+
     class procedure ValidarPeriodos(
       const ADataHoraInicio,
             ADataHoraFim: TDateTime;
@@ -174,6 +179,18 @@ begin
     TAppErrors.RaiseBadRequest(
       'Situação da turma inválida.'
     );
+end;
+
+class procedure TInstituicaoTurmaService.ValidarFluxo(
+  const AAprovacaoInscricao,
+        AControlePresenca: string
+);
+begin
+  if not MatchText(UpperCase(Trim(AAprovacaoInscricao)), ['MANUAL','AUTOMATICA']) then
+    TAppErrors.RaiseBadRequest('Tipo de aprovação da inscrição inválido.');
+
+  if not MatchText(UpperCase(Trim(AControlePresenca)), ['ENCONTRO','TURMA','SEM_CONTROLE']) then
+    TAppErrors.RaiseBadRequest('Tipo de controle de presença inválido.');
 end;
 
 class procedure TInstituicaoTurmaService.ValidarPeriodos(
@@ -436,6 +453,11 @@ begin
       Trim(Dados.Situacao)
     );
 
+  Dados.AprovacaoInscricao := UpperCase(Trim(Dados.AprovacaoInscricao));
+  if Dados.AprovacaoInscricao.IsEmpty then Dados.AprovacaoInscricao := 'MANUAL';
+  Dados.ControlePresenca := UpperCase(Trim(Dados.ControlePresenca));
+  if Dados.ControlePresenca.IsEmpty then Dados.ControlePresenca := 'ENCONTRO';
+
   if Dados.Situacao.IsEmpty then
     Dados.Situacao :=
       'PLANEJADA';
@@ -458,6 +480,11 @@ begin
 
   ValidarSituacao(
     Dados.Situacao
+  );
+
+  ValidarFluxo(
+    Dados.AprovacaoInscricao,
+    Dados.ControlePresenca
   );
 
   ValidarPeriodos(
@@ -631,6 +658,11 @@ begin
       Trim(Dados.Situacao)
     );
 
+  Dados.AprovacaoInscricao := UpperCase(Trim(Dados.AprovacaoInscricao));
+  if Dados.AprovacaoInscricao.IsEmpty then Dados.AprovacaoInscricao := 'MANUAL';
+  Dados.ControlePresenca := UpperCase(Trim(Dados.ControlePresenca));
+  if Dados.ControlePresenca.IsEmpty then Dados.ControlePresenca := 'ENCONTRO';
+
   if Dados.IdCurso <= 0 then
     TAppErrors.RaiseBadRequest(
       'Informe o curso da turma.'
@@ -646,6 +678,11 @@ begin
 
   ValidarSituacao(
     Dados.Situacao
+  );
+
+  ValidarFluxo(
+    Dados.AprovacaoInscricao,
+    Dados.ControlePresenca
   );
 
   ValidarPeriodos(
