@@ -13,6 +13,7 @@ type
       Confirmar: Boolean): TEncontroCheckinInfo; static;
     class function AdministrarTurma(Tenant, Usuario, Turma: Int64;
       const Acao: string): TEncontroCheckinInfo; static;
+    class function ListarPresencasTurma(Tenant, Usuario, Turma: Int64): TTurmaPresencaLista; static;
   end;
 
 implementation
@@ -107,6 +108,24 @@ begin
       raise;
     end;
   finally C.Free; end;
+end;
+
+class function TEncontroCheckinService.ListarPresencasTurma(
+  Tenant, Usuario, Turma: Int64): TTurmaPresencaLista;
+var
+  C: TUniConnection;
+begin
+  if Turma <= 0 then
+    TAppErrors.RaiseBadRequest('Turma inválida.');
+
+  TInstituicaoPermissaoService.Exigir(Tenant, Usuario, 'presenca.visualizar');
+
+  C := NovaConexao;
+  try
+    Result := TEncontroCheckinDAO.ListarPresencasTurma(C, Tenant, Turma);
+  finally
+    C.Free;
+  end;
 end;
 
 class function TEncontroCheckinService.Aluno(Tenant, Usuario: Int64;
