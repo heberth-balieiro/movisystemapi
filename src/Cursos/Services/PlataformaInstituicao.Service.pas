@@ -158,11 +158,29 @@ class function TPlataformaInstituicaoService.Listar(const APesquisa,
 var
   Config: TAppApiConfig;
   Conn: TUniConnection;
+  Item: TPlataformaInstituicaoModel;
+  Modulos: TList<string>;
 begin
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(Config.Database);
   try
     Result := TPlataformaInstituicaoDAO.Listar(Conn, APesquisa, ASituacao);
+
+    for Item in Result do
+    begin
+      Modulos :=
+        TPlataformaModuloDAO.ListarCodigosInstituicao(
+          Conn,
+          Item.Id
+        );
+      try
+        Item.Modulos.AddRange(
+          Modulos.ToArray
+        );
+      finally
+        Modulos.Free;
+      end;
+    end;
   finally
     Conn.Free;
   end;
