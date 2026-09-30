@@ -394,3 +394,72 @@ Frontend:
 npm run lint
 npm run build
 ```
+
+
+## Complemento - Conclusão automática e certificado automático
+
+Foram ativadas as configurações já previstas na migration 052 para o fluxo simplificado da turma.
+
+### Conclusão automática
+
+Disponível no MVP quando:
+- `controle_presenca = TURMA`;
+- `conclusao_automatica = 1`.
+
+Ao encerrar a presença da turma:
+1. a API localiza inscrições `CONFIRMADO` ou `EM_ANDAMENTO`;
+2. executa o motor de conclusão já existente;
+3. recalcula presença, aulas e critérios;
+4. quando elegível, altera a inscrição para `CONCLUIDO`;
+5. registra o histórico da conclusão.
+
+Se não existirem critérios obrigatórios:
+- com `exigir_presenca_conclusao = 1`, somente participante com presença da turma registrada é elegível;
+- com `exigir_presenca_conclusao = 0`, a conclusão automática pode ocorrer sem exigir presença.
+
+No frontend, ao ativar conclusão automática no modo QR da turma, **Exigir presença** é marcado por padrão.
+
+### Certificado automático
+
+Quando:
+- `conclusao_automatica = 1`;
+- `certificado_automatico = 1`;
+- inscrição foi concluída e ficou elegível;
+
+a API cria automaticamente o certificado em situação `PENDENTE`, reutilizando o mesmo serviço de emissão já existente.
+
+Isso preserva:
+- número público sequencial;
+- código de validação imprevisível;
+- modelo da turma ou modelo padrão;
+- proteção contra duplicidade e concorrência;
+- multi-tenant;
+- histórico e ciclo de reemissão.
+
+Nesta etapa, o fechamento da presença **não gera todos os PDFs sincronamente**. O certificado automático fica preparado como `PENDENTE` para o processo de geração de PDF + QR já existente. Essa decisão evita travar o encerramento de uma turma com muitos participantes.
+
+### Resiliência
+
+Falhas em uma automação não desfazem o encerramento da presença.
+
+São auditadas as situações:
+- `CONCLUSAO_AUTOMATICA_ERRO`;
+- `CERTIFICADO_AUTOMATICO_ERRO`.
+
+Uma falha em um participante não impede o processamento dos demais.
+
+### Validações
+
+A API rejeita:
+- conclusão automática em fluxo diferente de `TURMA`;
+- certificado automático sem conclusão automática;
+- exigir presença quando `controle_presenca = SEM_CONTROLE`.
+
+### Interface
+
+Na turma agora ficam disponíveis:
+- Exigir presença para conclusão;
+- Conclusão automática;
+- Criar certificado automaticamente.
+
+No detalhe da turma são exibidos os estados das automações configuradas.
