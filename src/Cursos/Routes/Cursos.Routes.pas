@@ -14,6 +14,7 @@ Uses
   EncontroCheckin.Controller,
   PlataformaAuth.Controller,
   PlataformaInstituicao.Controller,
+  PlataformaModulo.Controller,
   PlataformaUsuario.Controller,
   PlataformaAuditoria.Controller,
   PlataformaWhatsApp.Controller,
@@ -61,6 +62,7 @@ begin
   TEncontroCheckinController.Registry;
   TPlataformaAuthController.Registry;
   TPlataformaInstituicaoController.Registry;
+  TPlataformaModuloController.Registry;
   TPlataformaUsuarioController.Registry;
   TPlataformaAuditoriaController.Registry;
   TPlataformaWhatsAppController.Registry;
