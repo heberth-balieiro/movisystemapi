@@ -1131,3 +1131,110 @@ Para o MVP de produção, a prioridade é:
 12. Filtrar auditoria por Falha.
 13. Confirmar que body, senha, CPF e token não aparecem no log.
 14. Validar isolamento entre duas instituições.
+
+
+## Complemento - Validação pública de certificado na home da instituição
+
+A home pública da instituição passou a oferecer uma opção direta para validar certificados sem necessidade de login.
+
+### Fluxo
+
+```
+Home da instituição
+→ Validar certificado
+→ Informar código de validação
+→ Consultar
+→ Exibir resultado
+```
+
+### API
+
+Foi mantida a rota pública global já existente para compatibilidade com QR Codes:
+
+```
+GET /v1/certifica/publico/certificados/validar/:codigo
+```
+
+Também foi adicionada uma rota vinculada à instituição:
+
+```
+GET /v1/certifica/publico/instituicoes/:slug/certificados/validar/:codigo
+```
+
+Essa rota:
+- não exige autenticação;
+- possui rate limit por IP;
+- exige código de validação com 64 caracteres;
+- considera somente instituição com situação ATIVA;
+- valida o certificado apenas dentro da instituição correspondente ao `slug`;
+- registra a tentativa na trilha pública de validação;
+- não usa ID sequencial como código público.
+
+Isso evita que um certificado de outra instituição seja apresentado como válido dentro da home atual.
+
+### Dados públicos retornados
+
+Quando encontrado:
+- situação;
+- número público;
+- participante;
+- curso;
+- instituição emissora;
+- carga horária;
+- data de conclusão;
+- data de emissão;
+- versão.
+
+Não são expostos:
+- CPF;
+- e-mail;
+- telefone;
+- IDs internos;
+- código de validação no retorno.
+
+### Frontend
+
+Na home:
+
+```
+/[slug]
+```
+
+foi incluído:
+- atalho **Validar certificado** no bloco de acesso rápido;
+- seção pública de validação;
+- campo para código;
+- botão **Validar certificado**;
+- retorno visual para:
+  - Certificado válido;
+  - Certificado cancelado;
+  - Certificado indisponível para validação;
+  - Certificado não encontrado.
+
+Também foi adicionado link no rodapé para a seção de validação.
+
+### Segurança
+
+A validação por instituição usa:
+
+```
+slug + codigo_validacao
+```
+
+O `codigo_validacao` continua imprevisível e independente do ID sequencial do certificado.
+
+A instituição precisa estar ATIVA para responder à validação institucional.
+
+### Teste posterior
+
+1. Abrir a home pública de uma instituição.
+2. Validar certificado válido da própria instituição.
+3. Confirmar retorno VÁLIDO.
+4. Validar certificado cancelado.
+5. Confirmar retorno CANCELADO.
+6. Informar código inexistente.
+7. Confirmar NÃO ENCONTRADO.
+8. Informar código válido pertencente a outra instituição.
+9. Confirmar NÃO ENCONTRADO nessa home.
+10. Testar código inválido com menos de 64 caracteres.
+11. Validar funcionamento em desktop e mobile.
