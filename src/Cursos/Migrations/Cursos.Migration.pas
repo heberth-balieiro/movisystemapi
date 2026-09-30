@@ -74,6 +74,7 @@ type
     class procedure Migration_051_MovisystemHubModulos(const AConn: TUniConnection); static;
     class procedure Migration_052_TurmaFluxoConfiguravel(const AConn: TUniConnection); static;
     class procedure Migration_053_TurmaCheckin(const AConn: TUniConnection); static;
+    class procedure Migration_054_CertificadoProcessamento(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -224,6 +225,7 @@ begin
       Migration_051_MovisystemHubModulos(Conn);
       Migration_052_TurmaFluxoConfiguravel(Conn);
       Migration_053_TurmaCheckin(Conn);
+      Migration_054_CertificadoProcessamento(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2593,6 +2595,51 @@ begin
     AConn,
     '053',
     'QR Code e presenca direta por turma no fluxo simplificado'
+  );
+end;
+
+
+class procedure TCursosMigration.Migration_054_CertificadoProcessamento(
+  const AConn: TUniConnection);
+begin
+  if MigrationExists(AConn, '054') then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS certificado_processamento (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_instituicao BIGINT UNSIGNED NOT NULL,' +
+    ' id_certificado BIGINT UNSIGNED NOT NULL,' +
+    ' solicitado_por BIGINT UNSIGNED NOT NULL,' +
+    ' situacao VARCHAR(20) NOT NULL DEFAULT ''PENDENTE'',' +
+    ' tentativas INT NOT NULL DEFAULT 0,' +
+    ' proxima_tentativa_em DATETIME(3) NULL,' +
+    ' processando_em DATETIME(3) NULL,' +
+    ' concluido_em DATETIME(3) NULL,' +
+    ' ultimo_erro VARCHAR(2000) NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ' +
+    '   ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' UNIQUE KEY uq_certificado_processamento_certificado (id_certificado),' +
+    ' KEY ix_certificado_processamento_fila (situacao,proxima_tentativa_em,id),' +
+    ' KEY ix_certificado_processamento_tenant (id_instituicao,id),' +
+    ' CONSTRAINT fk_certificado_processamento_instituicao FOREIGN KEY (id_instituicao) ' +
+    '   REFERENCES instituicao(id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT fk_certificado_processamento_certificado FOREIGN KEY (id_certificado) ' +
+    '   REFERENCES certificado(id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT fk_certificado_processamento_usuario FOREIGN KEY (id_instituicao,solicitado_por) ' +
+    '   REFERENCES usuario_instituicao(id_instituicao,id) ON UPDATE RESTRICT ON DELETE RESTRICT,' +
+    ' CONSTRAINT ck_certificado_processamento_situacao CHECK (situacao IN ' +
+    '   (''PENDENTE'',''PROCESSANDO'',''CONCLUIDO'',''ERRO''))' +
+    ') ENGINE=InnoDB COMMENT=''Fila persistente para geracao automatica de PDF e QR dos certificados.'';'
+  );
+
+  RegisterMigration(
+    AConn,
+    '054',
+    'Fila persistente de processamento automatico de certificados'
   );
 end;
 
