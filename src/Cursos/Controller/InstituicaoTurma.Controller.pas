@@ -444,6 +444,11 @@ begin
       ATurma.PermitirInscricaoPublica
     )
   );
+  Result.AddPair('aprovacao_inscricao', ATurma.AprovacaoInscricao);
+  Result.AddPair('controle_presenca', ATurma.ControlePresenca);
+  Result.AddPair('exigir_presenca_conclusao', TJSONBool.Create(ATurma.ExigirPresencaConclusao));
+  Result.AddPair('conclusao_automatica', TJSONBool.Create(ATurma.ConclusaoAutomatica));
+  Result.AddPair('certificado_automatico', TJSONBool.Create(ATurma.CertificadoAutomatico));
 
   Result.AddPair(
     'situacao',
@@ -843,6 +848,11 @@ begin
               'permitir_inscricao_publica',
               False
             );
+          Cadastro.AprovacaoInscricao := JsonString(Body, 'aprovacao_inscricao', 'MANUAL');
+          Cadastro.ControlePresenca := JsonString(Body, 'controle_presenca', 'ENCONTRO');
+          Cadastro.ExigirPresencaConclusao := JsonBoolean(Body, 'exigir_presenca_conclusao', False);
+          Cadastro.ConclusaoAutomatica := JsonBoolean(Body, 'conclusao_automatica', False);
+          Cadastro.CertificadoAutomatico := JsonBoolean(Body, 'certificado_automatico', False);
 
           Cadastro.Situacao :=
             JsonString(
@@ -1032,6 +1042,11 @@ begin
               'permitir_inscricao_publica',
               False
             );
+          Alteracao.AprovacaoInscricao := JsonString(Body, 'aprovacao_inscricao', 'MANUAL');
+          Alteracao.ControlePresenca := JsonString(Body, 'controle_presenca', 'ENCONTRO');
+          Alteracao.ExigirPresencaConclusao := JsonBoolean(Body, 'exigir_presenca_conclusao', False);
+          Alteracao.ConclusaoAutomatica := JsonBoolean(Body, 'conclusao_automatica', False);
+          Alteracao.CertificadoAutomatico := JsonBoolean(Body, 'certificado_automatico', False);
 
           Alteracao.Situacao :=
             JsonString(
