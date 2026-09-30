@@ -194,6 +194,7 @@ begin
   finally
     Qry.Free;
   end;
+end;
 
 class function TPublicoInstituicaoDAO.BuscarCursoDisponivelPorCodigo(
   const AConn: TUniConnection;
