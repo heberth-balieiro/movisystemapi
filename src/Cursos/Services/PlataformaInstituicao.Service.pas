@@ -37,6 +37,7 @@ uses
   Auth.Passwords,
   Database.Connection,
   PlataformaInstituicao.DAO,
+  PlataformaModulo.DAO,
   InstituicaoPermissao.DAO;
 
 class function TPlataformaInstituicaoService.SomenteNumeros(const AValue: string): string;
@@ -181,6 +182,13 @@ begin
     Result := TPlataformaInstituicaoDAO.BuscarPorId(Conn, AIdInstituicao);
     if Result = nil then
       TAppErrors.RaiseNotFound('Instituição não encontrada.');
+
+    Result.Modulos.AddRange(
+      TPlataformaModuloDAO.ListarCodigosInstituicao(
+        Conn,
+        AIdInstituicao
+      ).ToArray
+    );
   finally
     Conn.Free;
   end;
@@ -204,6 +212,11 @@ begin
   AModel.Situacao := UpperCase(Trim(AModel.Situacao));
   Validar(AModel);
 
+  if AModel.Modulos.Count = 0 then
+    TAppErrors.RaiseBadRequest(
+      'Selecione ao menos um módulo para a instituição.'
+    );
+
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(Config.Database);
   try
@@ -217,6 +230,14 @@ begin
       AModel.CodigoPublico := GerarCodigoPublico;
       AModel.Id := TPlataformaInstituicaoDAO.Inserir(Conn, AModel);
       TPlataformaInstituicaoDAO.SalvarConfiguracao(Conn, AModel);
+
+      TPlataformaModuloDAO.SalvarModulosInstituicao(
+        Conn,
+        AModel.Id,
+        AIdUsuarioAcao,
+        AModel.Modulos
+      );
+
       GarantirAdministrador(Conn, AModel, ASenhaTemporaria);
 
       TInstituicaoPermissaoDAO.GarantirPerfilAdministrador(
@@ -234,6 +255,10 @@ begin
     end;
 
     Result := TPlataformaInstituicaoDAO.BuscarPorId(Conn, AModel.Id);
+    if Result <> nil then
+      Result.Modulos.AddRange(
+        AModel.Modulos.ToArray
+      );
   finally
     Conn.Free;
   end;
