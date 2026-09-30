@@ -15,12 +15,12 @@ uses
   System.SysUtils,
   Horse,
   Horse.Jhonson,
-  Horse.CORS,
   Horse.Upload,
   Uni,
   Middleware.JWT in 'src\Middlewares\Middleware.JWT.pas',
   Middleware.Roles in 'src\Middlewares\Middleware.Roles.pas',
   Middleware.SecurityHeaders in 'src\Middlewares\Middleware.SecurityHeaders.pas',
+  Middleware.CorsSecure in 'src\Middlewares\Middleware.CorsSecure.pas',
   Middleware.Auditoria in 'src\Middlewares\Middleware.Auditoria.pas',
   App.Config in 'src\Core\App.Config.pas',
   APP.Errors in 'src\Core\APP.Errors.pas',
@@ -413,6 +413,7 @@ begin
       apMoviSystem: Writeln('Produto configurado: MOVISYSTEM');
     end;
 
+    Writeln('Ambiente configurado: ' + LConfig.Ambiente);
     Writeln('Banco configurado: ' + LConfig.Database.Database);
     Writeln('Servidor configurado: ' + LConfig.Database.Server);
     Writeln('--------------------------------------------');
@@ -484,8 +485,13 @@ begin
           TCursosSeeds.Run;
           Writeln('Seeds de permissoes e perfis executadas com sucesso.');
 
-          TCursosDemoSeeds.Run;
-          Writeln('Seeds de demo executadas com sucesso.');
+          if LConfig.RunDemoSeeds then
+          begin
+            TCursosDemoSeeds.Run;
+            Writeln('Seeds de demo executadas com sucesso.');
+          end
+          else
+            Writeln('Seeds de demo desabilitadas.');
 
           TPlataformaCampanhaWorker.Start;
           Writeln('Worker de campanhas iniciado com sucesso.');
@@ -503,9 +509,9 @@ begin
     end;
 
     THorse.Use(TMiddlewareSecurityHeaders.Headers);
+    THorse.Use(TMiddlewareCorsSecure.Headers);
     THorse.Use(TMiddlewareAuditoria.Registrar);
     THorse.Use(Jhonson);
-    THorse.Use(CORS);
     THorse.Use(Horse.Upload.Upload);
 
     case LConfig.Produto of
