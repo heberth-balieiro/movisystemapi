@@ -2,6 +2,9 @@ unit CertificadoProcessamento.Service;
 
 interface
 
+uses
+  CertificadoProcessamento.Model;
+
 type
   TCertificadoProcessamentoService = class
   public
@@ -37,7 +40,6 @@ uses
   App.Config,
   APP.Errors,
   Database.Connection,
-  CertificadoProcessamento.Model,
   CertificadoProcessamento.DAO,
   InstituicaoPermissao.Service,
   InstituicaoCertificado.Model,
