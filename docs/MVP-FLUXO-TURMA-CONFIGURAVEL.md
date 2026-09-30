@@ -997,3 +997,137 @@ A tela administrativa de detalhes do certificado já exibe o histórico. O tipo 
 11. Desabilitar SMTP e validar retry.
 12. Cancelar certificado antes do worker e confirmar IGNORADO.
 13. Validar isolamento entre instituições.
+
+
+## Complemento - Auditoria e LGPD para produção
+
+O pacote de auditoria foi reforçado reaproveitando a tabela `auditoria_log`, o middleware existente e as solicitações LGPD já implementadas.
+
+### Auditoria de leituras sensíveis
+
+Além das operações de escrita, agora também são auditadas leituras sensíveis como:
+- consulta de participantes;
+- consulta de usuários;
+- consulta da própria auditoria;
+- consulta de solicitações LGPD;
+- consulta do próprio perfil do participante;
+- download de certificado pela área do participante;
+- download administrativo de certificado.
+
+O middleware continua sem persistir o corpo da requisição.
+
+Não são gravados no log:
+- senha;
+- token;
+- CPF;
+- e-mail do body;
+- payload completo da requisição.
+
+### Novas ações identificadas
+
+Foram adicionadas ações específicas para melhorar a rastreabilidade:
+
+```
+AUDITORIA_CONSULTADA
+DADOS_PESSOAIS_CONSULTADOS
+CERTIFICADO_DOWNLOAD_ALUNO
+CERTIFICADO_REPROCESSADO
+LGPD_SOLICITACOES_CONSULTADAS
+LGPD_SOLICITACAO_CRIADA
+LGPD_SOLICITACAO_CANCELADA
+LGPD_SOLICITACAO_ATUALIZADA
+```
+
+As entidades `auditoria` e `lgpd_solicitacao` também passam a ser identificadas corretamente.
+
+### Sucesso e falha
+
+O painel de auditoria agora permite filtrar por:
+- todos;
+- sucesso;
+- falha.
+
+Parâmetro da API:
+
+```
+sucesso=S
+sucesso=N
+```
+
+Também são aceitos internamente `TRUE/FALSE` e `1/0`.
+
+Isso facilita investigar:
+- tentativas negadas;
+- acessos indevidos;
+- falhas de permissão;
+- erros operacionais;
+- chamadas sensíveis que retornaram erro.
+
+### Tela administrativa
+
+Página:
+
+```
+/[slug]/admin/auditoria
+```
+
+A tela agora possui:
+- busca;
+- ação;
+- entidade;
+- resultado;
+- data inicial;
+- data final;
+- paginação;
+- data/hora;
+- usuário;
+- ação;
+- entidade;
+- método HTTP;
+- rota;
+- IP;
+- resultado;
+- mensagem.
+
+Novas entidades disponíveis no filtro:
+- Solicitação LGPD;
+- Auditoria.
+
+### Isolamento multi-tenant
+
+A consulta da auditoria permanece sempre filtrada por:
+
+```
+id_instituicao
+```
+
+Uma instituição não consegue consultar logs de outra instituição.
+
+### Observação sobre retenção
+
+Não foi criada exclusão automática de logs neste momento.
+
+A retenção de auditoria deve ser definida como política operacional da plataforma e da instituição antes de automatizar expurgo, porque determinados registros podem precisar ser preservados por obrigação legal, contratual, segurança ou defesa de direitos.
+
+Para o MVP de produção, a prioridade é:
+- registrar corretamente;
+- restringir acesso;
+- não armazenar payload sensível desnecessário;
+- permitir investigação e rastreabilidade.
+
+### Teste posterior
+
+1. Consultar participante e confirmar PARTCIPANTE_CONSULTADO.
+2. Consultar usuário.
+3. Abrir Auditoria e confirmar AUDITORIA_CONSULTADA.
+4. Abrir dados pessoais do participante.
+5. Baixar certificado pela área do aluno.
+6. Reprocessar certificado com erro.
+7. Criar solicitação LGPD.
+8. Consultar solicitações LGPD.
+9. Atualizar solicitação LGPD.
+10. Cancelar solicitação LGPD pelo participante.
+11. Forçar uma operação sem permissão.
+12. Filtrar auditoria por Falha.
+13. Confirmar que body, senha, CPF e token não aparecem no log.
+14. Validar isolamento entre duas instituições.
