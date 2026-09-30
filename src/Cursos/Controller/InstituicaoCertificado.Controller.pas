@@ -1378,6 +1378,102 @@ begin
   );
 
 
+  // Validação pública vinculada à instituição da home.
+  THorse.Get(
+    '/v1/certifica/publico/instituicoes/:slug/certificados/validar/:codigo',
+
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Slug: string;
+      Codigo: string;
+      IP: string;
+      UserAgent: string;
+      Validacao: TCertificadoValidacaoPublica;
+      Dados: TJSONObject;
+    begin
+      try
+        Res.RawWebResponse.SetCustomHeader('Cache-Control', 'no-store');
+
+        if not TAppRateLimit.EnforceIP(
+          Req,
+          Res,
+          'publico-certificado-validar-instituicao',
+          60,
+          60
+        ) then
+          Exit;
+
+        Slug := Trim(Req.Params.Items['slug']);
+        Codigo := Trim(Req.Params.Items['codigo']);
+
+        if Slug.IsEmpty then
+          TAppErrors.RaiseBadRequest('Instituição inválida.');
+
+        if Length(Codigo) <> 64 then
+          TAppErrors.RaiseBadRequest('Código de validação inválido.');
+
+        IP := TAppRequestInfo.GetIP(Req);
+        UserAgent := TAppRequestInfo.GetUserAgent(Req);
+
+        Validacao :=
+          TInstituicaoCertificadoService.ValidarPublicamenteInstituicao(
+            Slug,
+            Codigo,
+            IP,
+            UserAgent
+          );
+
+        try
+          Dados := TJSONObject.Create;
+
+          Dados.AddPair(
+            'resultado',
+            Validacao.Resultado
+          );
+
+          Dados.AddPair(
+            'encontrado',
+            TJSONBool.Create(
+              Validacao.Encontrado
+            )
+          );
+
+          if Validacao.Encontrado then
+            Dados.AddPair(
+              'certificado',
+              CertificadoPublicoParaJson(
+                Validacao.Certificado
+              )
+            )
+          else
+            Dados.AddPair(
+              'certificado',
+              TJSONNull.Create
+            );
+
+          TAppResponse.Ok(
+            Res,
+            Dados,
+            'Validação de certificado concluída.'
+          );
+        finally
+          Validacao.Free;
+        end;
+      except
+        on E: Exception do
+          TAppErrors.HandleException(
+            Res,
+            E
+          );
+      end;
+    end
+  );
+
+
   // Rota pública: não usa JWT nem recebe id_instituicao do cliente.
   THorse.Get(
     '/v1/certifica/publico/certificados/validar/:codigo',
