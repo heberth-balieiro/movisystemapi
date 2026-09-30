@@ -259,6 +259,7 @@
         <DCCReference Include="src\Catalogo\Controller\Cupom.Controller.pas"/>
         <DCCReference Include="src\Core\App.Classes.pas"/>
         <DCCReference Include="src\Core\App.Token.pas"/>
+        <DCCReference Include="src\Core\App.ModuloAccess.pas"/>
         <DCCReference Include="src\Catalogo\Migrations\Catalogo.Migration.pas"/>
         <DCCReference Include="src\Catalogo\Routes\Catalogo.Routes.pas"/>
         <DCCReference Include="src\Catalogo\Seeds\Database.Seed.pas"/>
