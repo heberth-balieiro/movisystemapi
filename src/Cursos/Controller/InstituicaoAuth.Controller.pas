@@ -22,7 +22,8 @@ uses
   App.RateLimit,
   InstituicaoAuth.DAO,
   InstituicaoAuth.Service,
-  InstituicaoPermissao.Service;
+  InstituicaoPermissao.Service,
+  PlataformaModulo.Service;
 
 class procedure TInstituicaoAuthController.Registry;
 begin
@@ -246,6 +247,84 @@ begin
       end;
     end
   );
+  THorse.Get(
+    '/v1/certifica/instituicao/auth/contexto',
+
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Claims: TJWTClaims;
+      ListaPermissoes: TArray<string>;
+      ListaModulos: TList<string>;
+      Permissoes: TJSONArray;
+      Modulos: TJSONArray;
+      Permissao,
+      CodigoModulo: string;
+      Dados: TJSONObject;
+    begin
+      try
+        if not TAppToken.ValidarToken(
+          Req,
+          Res,
+          Claims
+        ) then
+          Exit;
+
+        if (Claims.IdInstituicao <= 0) or
+           (Claims.IdUsuarioInstituicao <= 0) then
+        begin
+          TAppResponse.Forbidden(
+            Res,
+            'Token sem contexto de instituição.'
+          );
+          Exit;
+        end;
+
+        ListaPermissoes :=
+          TInstituicaoPermissaoService.ListarDoUsuario(
+            Claims.IdInstituicao,
+            Claims.IdUsuarioInstituicao
+          );
+
+        ListaModulos :=
+          TPlataformaModuloService.ListarInstituicao(
+            Claims.IdInstituicao
+          );
+        try
+          Permissoes := TJSONArray.Create;
+          for Permissao in ListaPermissoes do
+            Permissoes.Add(Permissao);
+
+          Modulos := TJSONArray.Create;
+          for CodigoModulo in ListaModulos do
+            Modulos.Add(CodigoModulo);
+
+          Dados := TJSONObject.Create;
+          Dados.AddPair('permissoes', Permissoes);
+          Dados.AddPair('modulos', Modulos);
+
+          TAppResponse.Ok(
+            Res,
+            Dados,
+            'Contexto de acesso atualizado com sucesso.'
+          );
+        finally
+          ListaModulos.Free;
+        end;
+
+      except
+        on E: Exception do
+          TAppErrors.HandleException(
+            Res,
+            E
+          );
+      end;
+    end
+  );
+
   THorse.Get(
     '/v1/certifica/instituicao/auth/permissoes',
 
