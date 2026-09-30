@@ -26,6 +26,14 @@ type
   end;
 
 
+  TConclusaoFluxoTurma = record
+    ControlePresenca: string;
+    ExigirPresencaConclusao: Boolean;
+    ConclusaoAutomatica: Boolean;
+    CertificadoAutomatico: Boolean;
+  end;
+
+
   TConclusaoMetricaPresenca = record
     TemBaseCalculo: Boolean;
     Percentual: Double;
