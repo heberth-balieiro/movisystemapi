@@ -2678,7 +2678,7 @@ begin
     '   REFERENCES certificado(id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
     ' CONSTRAINT ck_certificado_notificacao_canal CHECK (canal IN (''EMAIL'',''WHATSAPP'')),' +
     ' CONSTRAINT ck_certificado_notificacao_situacao CHECK (situacao IN ' +
-    '   (''PENDENTE'',''PROCESSANDO'',''ENVIADO'',''ERRO''))' +
+    '   (''PENDENTE'',''PROCESSANDO'',''ENVIADO'',''ERRO'',''IGNORADO''))' +
     ') ENGINE=InnoDB COMMENT=''Fila persistente de notificacoes de certificado disponivel.'';'
   );
 
