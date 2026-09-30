@@ -140,6 +140,14 @@ begin
         )
       );
 
+    if not SameText(Result.CorsAllowedOrigin, '*') then
+      while Result.CorsAllowedOrigin.EndsWith('/') do
+        Delete(
+          Result.CorsAllowedOrigin,
+          Length(Result.CorsAllowedOrigin),
+          1
+        );
+
     // --- DATABASE / DADOS
     Result.Database.Driver   := Ini.ReadString('DADOS', 'DriverID', 'MySQL');
     Result.Database.Server   := Ini.ReadString('DADOS', 'Server', 'localhost');
