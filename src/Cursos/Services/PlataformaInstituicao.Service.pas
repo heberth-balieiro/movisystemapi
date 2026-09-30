@@ -290,6 +290,7 @@ var
   Conn: TUniConnection;
   Existente: TPlataformaInstituicaoModel;
   Modulos: TList<string>;
+  CodigoModulo: string;
 begin
   Result := nil;
   ASenhaTemporaria := '';
@@ -304,9 +305,24 @@ begin
   AModel.Situacao := UpperCase(Trim(AModel.Situacao));
   Validar(AModel);
 
+  if AModel.Modulos.Count = 0 then
+    TAppErrors.RaiseBadRequest(
+      'Selecione ao menos um módulo para a instituição.'
+    );
+
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(Config.Database);
   try
+    for CodigoModulo in AModel.Modulos do
+      if not TPlataformaModuloDAO.CodigoAtivoExiste(
+        Conn,
+        CodigoModulo
+      ) then
+        TAppErrors.RaiseBadRequest(
+          'Módulo inválido ou inativo: ' +
+          UpperCase(Trim(CodigoModulo))
+        );
+
     Existente := TPlataformaInstituicaoDAO.BuscarPorId(Conn, AIdInstituicao);
     if Existente = nil then
       TAppErrors.RaiseNotFound('Instituição não encontrada.');
@@ -321,6 +337,14 @@ begin
     try
       TPlataformaInstituicaoDAO.Atualizar(Conn, AModel);
       TPlataformaInstituicaoDAO.SalvarConfiguracao(Conn, AModel);
+
+      TPlataformaModuloDAO.SalvarModulosInstituicao(
+        Conn,
+        AIdInstituicao,
+        AIdUsuarioAcao,
+        AModel.Modulos
+      );
+
       GarantirAdministrador(Conn, AModel, ASenhaTemporaria);
 
       TInstituicaoPermissaoDAO.GarantirPerfilAdministrador(
