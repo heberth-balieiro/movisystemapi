@@ -226,6 +226,12 @@ begin
   Result.PermitirInscricaoPublica :=
     AQry.FieldByName('permitir_inscricao_publica').AsBoolean;
 
+  Result.AprovacaoInscricao := AQry.FieldByName('aprovacao_inscricao').AsString;
+  Result.ControlePresenca := AQry.FieldByName('controle_presenca').AsString;
+  Result.ExigirPresencaConclusao := AQry.FieldByName('exigir_presenca_conclusao').AsBoolean;
+  Result.ConclusaoAutomatica := AQry.FieldByName('conclusao_automatica').AsBoolean;
+  Result.CertificadoAutomatico := AQry.FieldByName('certificado_automatico').AsBoolean;
+
   Result.Situacao :=
     AQry.FieldByName('situacao').AsString;
 
@@ -308,6 +314,11 @@ begin
         't.url_online, ' +
         't.carga_horaria_minutos, ' +
         't.permitir_inscricao_publica, ' +
+        't.aprovacao_inscricao, ' +
+        't.controle_presenca, ' +
+        't.exigir_presenca_conclusao, ' +
+        't.conclusao_automatica, ' +
+        't.certificado_automatico, ' +
         't.situacao, ' +
         't.criado_em, ' +
         't.atualizado_em ' +
@@ -619,6 +630,11 @@ begin
       'url_online, ' +
       'carga_horaria_minutos, ' +
       'permitir_inscricao_publica, ' +
+      'aprovacao_inscricao, ' +
+      'controle_presenca, ' +
+      'exigir_presenca_conclusao, ' +
+      'conclusao_automatica, ' +
+      'certificado_automatico, ' +
       'situacao, ' +
       'criado_por' +
       ') VALUES (' +
@@ -638,6 +654,11 @@ begin
       ':url_online, ' +
       ':carga_horaria_minutos, ' +
       ':permitir_inscricao_publica, ' +
+      ':aprovacao_inscricao, ' +
+      ':controle_presenca, ' +
+      ':exigir_presenca_conclusao, ' +
+      ':conclusao_automatica, ' +
+      ':certificado_automatico, ' +
       ':situacao, ' +
       ':criado_por' +
       ')';
@@ -713,6 +734,11 @@ begin
 
     Qry.ParamByName('permitir_inscricao_publica').AsBoolean :=
       ADados.PermitirInscricaoPublica;
+    Qry.ParamByName('aprovacao_inscricao').AsString := ADados.AprovacaoInscricao;
+    Qry.ParamByName('controle_presenca').AsString := ADados.ControlePresenca;
+    Qry.ParamByName('exigir_presenca_conclusao').AsBoolean := ADados.ExigirPresencaConclusao;
+    Qry.ParamByName('conclusao_automatica').AsBoolean := ADados.ConclusaoAutomatica;
+    Qry.ParamByName('certificado_automatico').AsBoolean := ADados.CertificadoAutomatico;
 
     Qry.ParamByName('situacao').AsString :=
       ADados.Situacao;
@@ -764,6 +790,11 @@ begin
       'url_online = :url_online, ' +
       'carga_horaria_minutos = :carga_horaria_minutos, ' +
       'permitir_inscricao_publica = :permitir_inscricao_publica, ' +
+      'aprovacao_inscricao = :aprovacao_inscricao, ' +
+      'controle_presenca = :controle_presenca, ' +
+      'exigir_presenca_conclusao = :exigir_presenca_conclusao, ' +
+      'conclusao_automatica = :conclusao_automatica, ' +
+      'certificado_automatico = :certificado_automatico, ' +
       'situacao = :situacao ' +
       'WHERE id_instituicao = :id_instituicao ' +
       'AND id = :id';
