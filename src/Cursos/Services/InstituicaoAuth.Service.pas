@@ -10,6 +10,7 @@ type
     Token: string;
     Dados: TInstituicaoLoginDados;
     Permissoes: TArray<string>;
+    Modulos: TArray<string>;
   end;
 
   TInstituicaoAuthService = class
@@ -29,7 +30,8 @@ uses
   APP.Errors,
   Auth.Passwords,
   Database.Connection,
-  InstituicaoPermissao.DAO;
+  InstituicaoPermissao.DAO,
+  PlataformaModulo.DAO;
 
 class function TInstituicaoAuthService.Login(
   const ASlug, ALogin, ASenha: string
@@ -114,6 +116,18 @@ begin
         Dados.IdInstituicao,
         Dados.IdUsuarioInstituicao
       );
+
+    var ModulosLista :=
+      TPlataformaModuloDAO.ListarCodigosInstituicao(
+        Conn,
+        Dados.IdInstituicao
+      );
+    try
+      Result.Modulos :=
+        ModulosLista.ToArray;
+    finally
+      ModulosLista.Free;
+    end;
 
     TInstituicaoAuthDAO.RegistrarLogin(
       Conn,
