@@ -400,16 +400,6 @@ begin
 
       if Trim(StorageKey).IsEmpty then
         TAppErrors.RaiseBadRequest('PDF do certificado não está disponível.');
-
-      TInstituicaoCertificadoDAO.InserirHistorico(
-        Conn,
-        AIdInstituicao,
-        AIdCertificado,
-        AIdUsuarioInstituicao,
-        'DOWNLOAD_ALUNO',
-        'Download do certificado realizado pelo participante autenticado.',
-        ''
-      );
     finally
       Aluno.Free;
     end;
@@ -419,6 +409,21 @@ begin
 
   Result := TInstituicaoCertificadoDocumentoService.ResolverCaminhoPdf(
     AIdInstituicao, StorageKey);
+
+  Conn := NovaConexao;
+  try
+    TInstituicaoCertificadoDAO.InserirHistorico(
+      Conn,
+      AIdInstituicao,
+      AIdCertificado,
+      AIdUsuarioInstituicao,
+      'DOWNLOAD_ALUNO',
+      'Download do certificado solicitado pelo participante autenticado.',
+      ''
+    );
+  finally
+    Conn.Free;
+  end;
 
 end;
 
