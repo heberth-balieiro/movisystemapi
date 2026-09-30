@@ -1377,6 +1377,7 @@ begin
       'LEFT JOIN usuario u ' +
       '  ON u.id = ui.id_usuario ' +
       'WHERE i.slug = :slug ' +
+      'AND i.situacao = ''ATIVA'' ' +
       'AND c.codigo_validacao = :codigo_validacao ' +
       'LIMIT 1';
 
