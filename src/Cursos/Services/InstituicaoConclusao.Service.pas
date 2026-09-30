@@ -511,6 +511,7 @@ var
   Criterio: TConclusaoCriterioItem;
   MetricaPresenca: TConclusaoMetricaPresenca;
   MetricaAulas: TConclusaoMetricaAulas;
+  FluxoTurma: TConclusaoFluxoTurma;
   PercentualMinimo: Double;
   EncontrouPercentual: Boolean;
   JustificadaContaComoPresenca: Boolean;
@@ -567,6 +568,13 @@ begin
       if Contexto = nil then
         TAppErrors.RaiseBadRequest(
           'Inscrição não encontrada.'
+        );
+
+      FluxoTurma :=
+        TInstituicaoConclusaoDAO.BuscarFluxoTurma(
+          Conn,
+          AIdInstituicao,
+          Contexto.IdTurma
         );
 
       Criterios :=
@@ -804,11 +812,23 @@ begin
           end;
 
           if CriteriosObrigatorios = 0 then
-            Elegivel :=
-              SameText(
-                Contexto.Situacao,
-                'CONCLUIDO'
-              )
+          begin
+            if FluxoTurma.ConclusaoAutomatica then
+            begin
+              if FluxoTurma.ExigirPresencaConclusao then
+                Elegivel :=
+                  MetricaPresenca.TemBaseCalculo and
+                  (MetricaPresenca.Percentual >= 100)
+              else
+                Elegivel := True;
+            end
+            else
+              Elegivel :=
+                SameText(
+                  Contexto.Situacao,
+                  'CONCLUIDO'
+                );
+          end
           else
             Elegivel :=
               (
