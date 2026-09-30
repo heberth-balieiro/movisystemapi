@@ -43,6 +43,8 @@ type
     DataFim: TDateTime;
     TemDataInicio: Boolean;
     TemDataFim: Boolean;
+    TemSucesso: Boolean;
+    Sucesso: Boolean;
     Pagina: Integer;
     PorPagina: Integer;
   end;
