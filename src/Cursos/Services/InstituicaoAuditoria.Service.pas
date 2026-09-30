@@ -19,6 +19,7 @@ type
       const ABusca,
             AAcao,
             AEntidade,
+            ASucesso,
             ADataInicio,
             ADataFim: string;
       const APagina,
@@ -65,6 +66,7 @@ class function TInstituicaoAuditoriaService.Listar(
   const ABusca,
         AAcao,
         AEntidade,
+        ASucesso,
         ADataInicio,
         ADataFim: string;
   const APagina,
@@ -84,6 +86,28 @@ begin
   Filtro.Busca := Trim(ABusca);
   Filtro.Acao := UpperCase(Trim(AAcao));
   Filtro.Entidade := LowerCase(Trim(AEntidade));
+
+  if not Trim(ASucesso).IsEmpty then
+  begin
+    if SameText(Trim(ASucesso), 'S') or
+       SameText(Trim(ASucesso), 'TRUE') or
+       SameText(Trim(ASucesso), '1') then
+    begin
+      Filtro.TemSucesso := True;
+      Filtro.Sucesso := True;
+    end
+    else if SameText(Trim(ASucesso), 'N') or
+            SameText(Trim(ASucesso), 'FALSE') or
+            SameText(Trim(ASucesso), '0') then
+    begin
+      Filtro.TemSucesso := True;
+      Filtro.Sucesso := False;
+    end
+    else
+      TAppErrors.RaiseBadRequest(
+        'Filtro de resultado inválido. Utilize S ou N.'
+      );
+  end;
 
   Filtro.Pagina := APagina;
   if Filtro.Pagina <= 0 then
