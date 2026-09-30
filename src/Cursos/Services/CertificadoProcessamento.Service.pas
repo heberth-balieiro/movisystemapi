@@ -35,6 +35,7 @@ uses
   System.SysUtils,
   Uni,
   App.Config,
+  APP.Errors,
   Database.Connection,
   CertificadoProcessamento.Model,
   CertificadoProcessamento.DAO,
@@ -207,7 +208,7 @@ var
   Situacao: string;
 begin
   if AIdInstituicao <= 0 then
-    raise Exception.Create('Instituição não identificada.');
+    TAppErrors.RaiseUnauthorized('Instituição não identificada.');
 
   TInstituicaoPermissaoService.Exigir(
     AIdInstituicao,
@@ -221,7 +222,7 @@ begin
      (Situacao <> 'PROCESSANDO') and
      (Situacao <> 'CONCLUIDO') and
      (Situacao <> 'ERRO') then
-    raise Exception.Create('Situação de processamento inválida.');
+    TAppErrors.RaiseBadRequest('Situação de processamento inválida.');
 
   Pagina := APagina;
   if Pagina <= 0 then Pagina := 1;
@@ -254,7 +255,7 @@ var
   C: TUniConnection;
 begin
   if (AIdInstituicao <= 0) or (AIdCertificado <= 0) then
-    raise Exception.Create('Certificado inválido.');
+    TAppErrors.RaiseBadRequest('Certificado inválido.');
 
   TInstituicaoPermissaoService.Exigir(
     AIdInstituicao,
@@ -273,14 +274,14 @@ begin
       );
 
       if Result = nil then
-        raise Exception.Create('Processamento do certificado não encontrado.');
+        TAppErrors.RaiseBadRequest('Processamento do certificado não encontrado.');
 
       if not SameText(Result.Situacao, 'ERRO') then
-        raise Exception.Create('Somente processamentos com erro podem ser reenfileirados.');
+        TAppErrors.RaiseBadRequest('Somente processamentos com erro podem ser reenfileirados.');
 
       if not SameText(Result.CertificadoSituacao, 'ERRO') and
          not SameText(Result.CertificadoSituacao, 'PENDENTE') then
-        raise Exception.Create('O certificado não está disponível para reprocessamento.');
+        TAppErrors.RaiseBadRequest('O certificado não está disponível para reprocessamento.');
 
       Result.Free;
       Result := nil;
