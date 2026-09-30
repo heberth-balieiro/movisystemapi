@@ -21,6 +21,7 @@ type
       const Hash: string): TEncontroCheckinInfo; static;
     class procedure ConfirmarTurma(C: TUniConnection; Tenant, Usuario: Int64;
       var Info: TEncontroCheckinInfo); static;
+    class function ListarPresencasTurma(C: TUniConnection; Tenant, Turma: Int64): TTurmaPresencaLista; static;
     class procedure Auditar(C: TUniConnection; Tenant, Usuario, Registro: Int64;
       const Acao, Entidade: string); static;
   end;
@@ -413,6 +414,60 @@ begin
     Info.Situacao := 'PRESENTE';
     Info.JaRegistrada := True;
     Auditar(C, Tenant, Usuario, Info.IdPresenca, 'PRESENCA_TURMA_AUTO_CHECKIN', 'turma_presenca');
+  finally
+    Q.Free;
+  end;
+end;
+
+
+class function TEncontroCheckinDAO.ListarPresencasTurma(C: TUniConnection;
+  Tenant, Turma: Int64): TTurmaPresencaLista;
+var
+  Q: TUniQuery;
+  Item: TTurmaPresencaItem;
+begin
+  Result := TTurmaPresencaLista.Create;
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := C;
+    Q.SQL.Text :=
+      'SELECT i.id AS id_inscricao,i.id_participante,p.nome AS participante_nome,' +
+      'COALESCE(p.email,'''') AS participante_email,i.situacao AS situacao_inscricao,' +
+      'tp.situacao AS situacao_presenca,tp.checkin_em,tp.origem ' +
+      'FROM inscricao i ' +
+      'JOIN participante p ON p.id_instituicao=i.id_instituicao AND p.id=i.id_participante ' +
+      'LEFT JOIN turma_presenca tp ON tp.id_instituicao=i.id_instituicao ' +
+      'AND tp.id_turma=i.id_turma AND tp.id_inscricao=i.id ' +
+      'WHERE i.id_instituicao=:t AND i.id_turma=:turma ' +
+      'AND i.situacao IN (''CONFIRMADO'',''EM_ANDAMENTO'',''CONCLUIDO'') ' +
+      'ORDER BY p.nome,i.id';
+    Q.ParamByName('t').AsLargeInt := Tenant;
+    Q.ParamByName('turma').AsLargeInt := Turma;
+    Q.Open;
+
+    while not Q.Eof do
+    begin
+      Item := TTurmaPresencaItem.Create;
+      Item.IdInscricao := Q.FieldByName('id_inscricao').AsLargeInt;
+      Item.IdParticipante := Q.FieldByName('id_participante').AsLargeInt;
+      Item.ParticipanteNome := Q.FieldByName('participante_nome').AsString;
+      Item.ParticipanteEmail := Q.FieldByName('participante_email').AsString;
+      Item.SituacaoInscricao := Q.FieldByName('situacao_inscricao').AsString;
+      Item.TemPresenca := not Q.FieldByName('situacao_presenca').IsNull;
+      if Item.TemPresenca then
+      begin
+        Item.SituacaoPresenca := Q.FieldByName('situacao_presenca').AsString;
+        Item.TemCheckinEm := not Q.FieldByName('checkin_em').IsNull;
+        if Item.TemCheckinEm then
+          Item.CheckinEm := Q.FieldByName('checkin_em').AsDateTime;
+        Item.Origem := Q.FieldByName('origem').AsString;
+        if SameText(Item.SituacaoPresenca, 'PRESENTE') then
+          Inc(Result.TotalPresentes);
+      end;
+      Inc(Result.TotalMatriculados);
+      Result.Itens.Add(Item);
+      Q.Next;
+    end;
   finally
     Q.Free;
   end;
