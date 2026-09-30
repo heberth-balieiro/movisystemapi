@@ -59,16 +59,28 @@ begin
   else
     Payload := BuildSuccess(ADados, AMsg);
 
+  Res.RawWebResponse.SetCustomHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
   Res.Status(AStatus).Send<TJSONObject>(Payload);
 end;
 
 class procedure TAppResponse.Ok(const Res: THorseResponse; const ADados: TJSONValue; const AMensagem: string);
 begin
+  Res.RawWebResponse.SetCustomHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
   Res.Status(200).Send<TJSONObject>(BuildSuccess(ADados, AMensagem));
 end;
 
 class procedure TAppResponse.Created(const Res: THorseResponse; const ADados: TJSONValue; const AMensagem: string);
 begin
+  Res.RawWebResponse.SetCustomHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
   Res.Status(201).Send<TJSONObject>(BuildSuccess(ADados, AMensagem));
 end;
 
@@ -79,31 +91,55 @@ end;
 
 class procedure TAppResponse.BadRequest(const Res: THorseResponse; const AMsg: string);
 begin
+  Res.RawWebResponse.SetCustomHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
   Res.Status(400).Send<TJSONObject>(BuildError(AMsg));
 end;
 
 class procedure TAppResponse.Unauthorized(const Res: THorseResponse; const AMsg: string);
 begin
+  Res.RawWebResponse.SetCustomHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
   Res.Status(401).Send<TJSONObject>(BuildError(AMsg));
 end;
 
 class procedure TAppResponse.Forbidden(const Res: THorseResponse; const AMsg: string);
 begin
+  Res.RawWebResponse.SetCustomHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
   Res.Status(403).Send<TJSONObject>(BuildError(AMsg));
 end;
 
 class procedure TAppResponse.NotFound(const Res: THorseResponse; const AMsg: string);
 begin
+  Res.RawWebResponse.SetCustomHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
   Res.Status(404).Send<TJSONObject>(BuildError(AMsg));
 end;
 
 class procedure TAppResponse.TooManyRequests(const Res: THorseResponse; const AMsg: string);
 begin
+  Res.RawWebResponse.SetCustomHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
   Res.Status(429).Send<TJSONObject>(BuildError(AMsg));
 end;
 
 class procedure TAppResponse.ServerError(const Res: THorseResponse; const AMsg: string);
 begin
+  Res.RawWebResponse.SetCustomHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
   Res.Status(500).Send<TJSONObject>(BuildError(AMsg));
 end;
 
