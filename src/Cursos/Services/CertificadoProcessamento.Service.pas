@@ -12,6 +12,21 @@ type
     ); static;
 
     class function ProcessarProximo: Boolean; static;
+
+    class function Listar(
+      const AIdInstituicao,
+            AUsuarioInstituicao: Int64;
+      const ABusca,
+            ASituacao: string;
+      const APagina,
+            APorPagina: Integer
+    ): TCertificadoProcessamentoLista; static;
+
+    class function Reprocessar(
+      const AIdInstituicao,
+            AIdCertificado,
+            AUsuarioInstituicao: Int64
+    ): TCertificadoProcessamentoItem; static;
   end;
 
 implementation
@@ -23,6 +38,7 @@ uses
   Database.Connection,
   CertificadoProcessamento.Model,
   CertificadoProcessamento.DAO,
+  InstituicaoPermissao.Service,
   InstituicaoCertificado.Model,
   InstituicaoCertificado.DAO,
   InstituicaoCertificado.Service,
@@ -173,6 +189,132 @@ begin
   finally
     Certificado.Free;
     Item.Free;
+  end;
+end;
+
+
+class function TCertificadoProcessamentoService.Listar(
+  const AIdInstituicao,
+        AUsuarioInstituicao: Int64;
+  const ABusca,
+        ASituacao: string;
+  const APagina,
+        APorPagina: Integer
+): TCertificadoProcessamentoLista;
+var
+  C: TUniConnection;
+  Pagina, PorPagina: Integer;
+  Situacao: string;
+begin
+  if AIdInstituicao <= 0 then
+    raise Exception.Create('Instituição não identificada.');
+
+  TInstituicaoPermissaoService.Exigir(
+    AIdInstituicao,
+    AUsuarioInstituicao,
+    'certificado.visualizar'
+  );
+
+  Situacao := UpperCase(Trim(ASituacao));
+  if (Situacao <> '') and
+     (Situacao <> 'PENDENTE') and
+     (Situacao <> 'PROCESSANDO') and
+     (Situacao <> 'CONCLUIDO') and
+     (Situacao <> 'ERRO') then
+    raise Exception.Create('Situação de processamento inválida.');
+
+  Pagina := APagina;
+  if Pagina <= 0 then Pagina := 1;
+
+  PorPagina := APorPagina;
+  if PorPagina <= 0 then PorPagina := 20;
+  if PorPagina > 100 then PorPagina := 100;
+
+  C := NovaConexao;
+  try
+    Result := TCertificadoProcessamentoDAO.Listar(
+      C,
+      AIdInstituicao,
+      ABusca,
+      Situacao,
+      Pagina,
+      PorPagina
+    );
+  finally
+    C.Free;
+  end;
+end;
+
+class function TCertificadoProcessamentoService.Reprocessar(
+  const AIdInstituicao,
+        AIdCertificado,
+        AUsuarioInstituicao: Int64
+): TCertificadoProcessamentoItem;
+var
+  C: TUniConnection;
+begin
+  if (AIdInstituicao <= 0) or (AIdCertificado <= 0) then
+    raise Exception.Create('Certificado inválido.');
+
+  TInstituicaoPermissaoService.Exigir(
+    AIdInstituicao,
+    AUsuarioInstituicao,
+    'certificado.reprocessar'
+  );
+
+  C := NovaConexao;
+  try
+    C.StartTransaction;
+    try
+      Result := TCertificadoProcessamentoDAO.BuscarPorCertificado(
+        C,
+        AIdInstituicao,
+        AIdCertificado
+      );
+
+      if Result = nil then
+        raise Exception.Create('Processamento do certificado não encontrado.');
+
+      if not SameText(Result.Situacao, 'ERRO') then
+        raise Exception.Create('Somente processamentos com erro podem ser reenfileirados.');
+
+      if not SameText(Result.CertificadoSituacao, 'ERRO') and
+         not SameText(Result.CertificadoSituacao, 'PENDENTE') then
+        raise Exception.Create('O certificado não está disponível para reprocessamento.');
+
+      Result.Free;
+      Result := nil;
+
+      TCertificadoProcessamentoDAO.Reprocessar(
+        C,
+        AIdInstituicao,
+        AIdCertificado,
+        AUsuarioInstituicao
+      );
+
+      TInstituicaoCertificadoDAO.InserirHistorico(
+        C,
+        AIdInstituicao,
+        AIdCertificado,
+        AUsuarioInstituicao,
+        'PROCESSAMENTO_REENFILEIRADO',
+        'Reprocessamento manual do PDF e QR Code solicitado.',
+        ''
+      );
+
+      C.Commit;
+
+      Result := TCertificadoProcessamentoDAO.BuscarPorCertificado(
+        C,
+        AIdInstituicao,
+        AIdCertificado
+      );
+    except
+      if C.InTransaction then C.Rollback;
+      raise;
+    end;
+  finally
+    C.Free;
   end;
 end;
 
