@@ -13,6 +13,14 @@ type
       const Hash: string): TEncontroCheckinInfo; static;
     class procedure Confirmar(C: TUniConnection; Tenant, Usuario: Int64;
       var Info: TEncontroCheckinInfo); static;
+    class function AdministrarTurma(C: TUniConnection; Tenant, Usuario, Turma: Int64;
+      const Acao, Hash: string): TEncontroCheckinInfo; static;
+    class function TokenTurmaExiste(C: TUniConnection; Tenant: Int64;
+      const Hash: string): Boolean; static;
+    class function ConsultarTurma(C: TUniConnection; Tenant, Participante: Int64;
+      const Hash: string): TEncontroCheckinInfo; static;
+    class procedure ConfirmarTurma(C: TUniConnection; Tenant, Usuario: Int64;
+      var Info: TEncontroCheckinInfo); static;
     class procedure Auditar(C: TUniConnection; Tenant, Usuario, Registro: Int64;
       const Acao, Entidade: string); static;
   end;
@@ -214,4 +222,198 @@ begin
     Auditar(C, Tenant, Usuario, Info.IdPresenca, 'PRESENCA_AUTO_CHECKIN', 'presenca');
   finally Q.Free; end;
 end;
+
+class function TEncontroCheckinDAO.AdministrarTurma(C: TUniConnection;
+  Tenant, Usuario, Turma: Int64; const Acao, Hash: string): TEncontroCheckinInfo;
+var Q: TUniQuery;
+begin
+  Result := Default(TEncontroCheckinInfo);
+  Result.Tipo := 'TURMA';
+  Result.IdTurma := Turma;
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := C;
+    Q.SQL.Text :=
+      'SELECT t.nome,t.situacao,t.controle_presenca,t.data_hora_inicio,t.data_hora_fim ' +
+      'FROM turma t JOIN instituicao i ON i.id=t.id_instituicao AND i.situacao=''ATIVA'' ' +
+      'JOIN usuario_instituicao ui ON ui.id_instituicao=t.id_instituicao AND ui.id=:u AND ui.situacao=''ATIVO'' ' +
+      'WHERE t.id_instituicao=:t AND t.id=:turma FOR UPDATE';
+    Q.ParamByName('u').AsLargeInt := Usuario;
+    Q.ParamByName('t').AsLargeInt := Tenant;
+    Q.ParamByName('turma').AsLargeInt := Turma;
+    Q.Open;
+    if Q.IsEmpty then TAppErrors.RaiseBadRequest('Turma indisponível.');
+    Result.Titulo := 'Presença da turma';
+    Result.TurmaNome := Q.FieldByName('nome').AsString;
+
+    if not SameText(Q.FieldByName('controle_presenca').AsString, 'TURMA') then
+      TAppErrors.RaiseBadRequest('Esta turma não utiliza presença por QR Code da turma.');
+
+    if Acao = 'abrir' then
+      if (Q.FieldByName('situacao').AsString <> 'EM_ANDAMENTO') or
+         (Now < Q.FieldByName('data_hora_inicio').AsDateTime) or
+         (Now >= Q.FieldByName('data_hora_fim').AsDateTime) then
+        TAppErrors.RaiseBadRequest('A presença só pode ser aberta durante uma turma em andamento.');
+
+    Q.Close;
+
+    if Acao = 'abrir' then
+    begin
+      Q.SQL.Text :=
+        'INSERT INTO turma_checkin (id_instituicao,id_turma,token_hash,expira_em,aberto_por) ' +
+        'SELECT id_instituicao,id,:hash,LEAST(data_hora_fim,DATE_ADD(CURRENT_TIMESTAMP(3),INTERVAL 30 MINUTE)),:u ' +
+        'FROM turma WHERE id_instituicao=:t AND id=:turma ' +
+        'ON DUPLICATE KEY UPDATE token_hash=VALUES(token_hash),expira_em=VALUES(expira_em),' +
+        'aberto_por=VALUES(aberto_por),aberto_em=CURRENT_TIMESTAMP(3),encerrado_em=NULL';
+      Q.ParamByName('hash').AsString := Hash;
+      Q.ParamByName('u').AsLargeInt := Usuario;
+      Q.ParamByName('t').AsLargeInt := Tenant;
+      Q.ParamByName('turma').AsLargeInt := Turma;
+      Q.ExecSQL;
+      Auditar(C, Tenant, Usuario, Turma, 'CHECKIN_TURMA_ABRIR', 'turma');
+    end
+    else if Acao = 'encerrar' then
+    begin
+      Q.SQL.Text := 'UPDATE turma_checkin SET encerrado_em=COALESCE(encerrado_em,CURRENT_TIMESTAMP(3)) ' +
+        'WHERE id_instituicao=:t AND id_turma=:turma';
+      Q.ParamByName('t').AsLargeInt := Tenant;
+      Q.ParamByName('turma').AsLargeInt := Turma;
+      Q.ExecSQL;
+      Auditar(C, Tenant, Usuario, Turma, 'CHECKIN_TURMA_ENCERRAR', 'turma');
+    end;
+
+    Q.Close;
+    Q.SQL.Text :=
+      'SELECT expira_em,GREATEST(0,TIMESTAMPDIFF(SECOND,CURRENT_TIMESTAMP(3),expira_em)) AS segundos,' +
+      '(encerrado_em IS NULL AND expira_em>CURRENT_TIMESTAMP(3)) AS aberto ' +
+      'FROM turma_checkin WHERE id_instituicao=:t AND id_turma=:turma';
+    Q.ParamByName('t').AsLargeInt := Tenant;
+    Q.ParamByName('turma').AsLargeInt := Turma;
+    Q.Open;
+    if not Q.IsEmpty then
+    begin
+      Result.ExpiraEm := Q.FieldByName('expira_em').AsDateTime;
+      Result.Aberto := Q.FieldByName('aberto').AsBoolean;
+      if Result.Aberto then Result.SegundosRestantes := Q.FieldByName('segundos').AsInteger;
+    end;
+  finally
+    Q.Free;
+  end;
+end;
+
+class function TEncontroCheckinDAO.TokenTurmaExiste(C: TUniConnection;
+  Tenant: Int64; const Hash: string): Boolean;
+var Q: TUniQuery;
+begin
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := C;
+    Q.SQL.Text := 'SELECT 1 FROM turma_checkin WHERE id_instituicao=:t AND token_hash=:hash LIMIT 1';
+    Q.ParamByName('t').AsLargeInt := Tenant;
+    Q.ParamByName('hash').AsString := Hash;
+    Q.Open;
+    Result := not Q.IsEmpty;
+  finally
+    Q.Free;
+  end;
+end;
+
+class function TEncontroCheckinDAO.ConsultarTurma(C: TUniConnection;
+  Tenant, Participante: Int64; const Hash: string): TEncontroCheckinInfo;
+var Q: TUniQuery;
+begin
+  Result := Default(TEncontroCheckinInfo);
+  Result.Tipo := 'TURMA';
+  Result.Titulo := 'Presença da turma';
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := C;
+    Q.SQL.Text :=
+      'SELECT tc.id_turma,t.nome AS turma_nome,tc.expira_em,' +
+      'GREATEST(0,TIMESTAMPDIFF(SECOND,CURRENT_TIMESTAMP(3),tc.expira_em)) AS segundos ' +
+      'FROM turma_checkin tc JOIN turma t ON t.id_instituicao=tc.id_instituicao AND t.id=tc.id_turma ' +
+      'WHERE tc.id_instituicao=:tenant AND tc.token_hash=:hash AND tc.encerrado_em IS NULL ' +
+      'AND tc.expira_em>CURRENT_TIMESTAMP(3) AND t.controle_presenca=''TURMA'' ' +
+      'AND t.situacao=''EM_ANDAMENTO'' AND CURRENT_TIMESTAMP(3)>=t.data_hora_inicio ' +
+      'AND CURRENT_TIMESTAMP(3)<t.data_hora_fim FOR UPDATE';
+    Q.ParamByName('tenant').AsLargeInt := Tenant;
+    Q.ParamByName('hash').AsString := Hash;
+    Q.Open;
+    if Q.IsEmpty then TAppErrors.RaiseBadRequest('QR da turma inválido, expirado ou encerrado.');
+    Result.IdTurma := Q.FieldByName('id_turma').AsLargeInt;
+    Result.TurmaNome := Q.FieldByName('turma_nome').AsString;
+    Result.ExpiraEm := Q.FieldByName('expira_em').AsDateTime;
+    Result.SegundosRestantes := Q.FieldByName('segundos').AsInteger;
+    Result.Aberto := True;
+    Q.Close;
+
+    Q.SQL.Text := 'SELECT id FROM inscricao WHERE id_instituicao=:t AND id_turma=:turma ' +
+      'AND id_participante=:p AND situacao IN (''CONFIRMADO'',''EM_ANDAMENTO'') FOR UPDATE';
+    Q.ParamByName('t').AsLargeInt := Tenant;
+    Q.ParamByName('turma').AsLargeInt := Result.IdTurma;
+    Q.ParamByName('p').AsLargeInt := Participante;
+    Q.Open;
+    if Q.IsEmpty then TAppErrors.RaiseForbidden('Você não possui inscrição confirmada nesta turma.');
+    Result.IdInscricao := Q.FieldByName('id').AsLargeInt;
+    Q.Close;
+
+    Q.SQL.Text := 'SELECT id,situacao,checkin_em FROM turma_presenca WHERE id_instituicao=:t ' +
+      'AND id_turma=:turma AND id_inscricao=:i FOR UPDATE';
+    Q.ParamByName('t').AsLargeInt := Tenant;
+    Q.ParamByName('turma').AsLargeInt := Result.IdTurma;
+    Q.ParamByName('i').AsLargeInt := Result.IdInscricao;
+    Q.Open;
+    if not Q.IsEmpty then
+    begin
+      Result.IdPresenca := Q.FieldByName('id').AsLargeInt;
+      Result.Situacao := Q.FieldByName('situacao').AsString;
+      Result.JaRegistrada := SameText(Result.Situacao, 'PRESENTE');
+      if not Q.FieldByName('checkin_em').IsNull then
+        Result.CheckinEm := Q.FieldByName('checkin_em').AsDateTime;
+    end;
+  finally
+    Q.Free;
+  end;
+end;
+
+class procedure TEncontroCheckinDAO.ConfirmarTurma(C: TUniConnection;
+  Tenant, Usuario: Int64; var Info: TEncontroCheckinInfo);
+var Q: TUniQuery;
+begin
+  if Info.JaRegistrada then Exit;
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := C;
+    Q.SQL.Text :=
+      'INSERT INTO turma_presenca (id_instituicao,id_turma,id_inscricao,situacao,checkin_em,registrado_por,origem) ' +
+      'SELECT :t,:turma,:i,''PRESENTE'',CURRENT_TIMESTAMP(3),:u,''AUTO_CHECKIN'' ' +
+      'FROM turma_checkin tc JOIN turma tr ON tr.id_instituicao=tc.id_instituicao AND tr.id=tc.id_turma ' +
+      'WHERE tc.id_instituicao=:t AND tc.id_turma=:turma AND tc.encerrado_em IS NULL ' +
+      'AND tc.expira_em>CURRENT_TIMESTAMP(3) AND tr.controle_presenca=''TURMA'' ' +
+      'AND tr.situacao=''EM_ANDAMENTO'' AND CURRENT_TIMESTAMP(3)>=tr.data_hora_inicio ' +
+      'AND CURRENT_TIMESTAMP(3)<tr.data_hora_fim ' +
+      'ON DUPLICATE KEY UPDATE situacao=''PRESENTE'',checkin_em=COALESCE(checkin_em,CURRENT_TIMESTAMP(3))';
+    Q.ParamByName('t').AsLargeInt := Tenant;
+    Q.ParamByName('turma').AsLargeInt := Info.IdTurma;
+    Q.ParamByName('i').AsLargeInt := Info.IdInscricao;
+    Q.ParamByName('u').AsLargeInt := Usuario;
+    Q.ExecSQL;
+
+    Q.SQL.Text := 'SELECT id,checkin_em FROM turma_presenca WHERE id_instituicao=:t ' +
+      'AND id_turma=:turma AND id_inscricao=:i';
+    Q.ParamByName('t').AsLargeInt := Tenant;
+    Q.ParamByName('turma').AsLargeInt := Info.IdTurma;
+    Q.ParamByName('i').AsLargeInt := Info.IdInscricao;
+    Q.Open;
+    if Q.IsEmpty then TAppErrors.RaiseBadRequest('O check-in expirou. Solicite outro QR à equipe.');
+    Info.IdPresenca := Q.FieldByName('id').AsLargeInt;
+    Info.CheckinEm := Q.FieldByName('checkin_em').AsDateTime;
+    Info.Situacao := 'PRESENTE';
+    Info.JaRegistrada := True;
+    Auditar(C, Tenant, Usuario, Info.IdPresenca, 'PRESENCA_TURMA_AUTO_CHECKIN', 'turma_presenca');
+  finally
+    Q.Free;
+  end;
+end;
+
 end.
