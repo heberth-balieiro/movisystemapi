@@ -19,6 +19,12 @@ type
       const AIdInstituicao: Int64;
       const APagina, APorPagina: Integer
     ): TPublicoCursoLista; static;
+
+    class function BuscarCursoDisponivelPorCodigo(
+      const AConn: TUniConnection;
+      const AIdInstituicao: Int64;
+      const ACodigoTurma: string
+    ): TPublicoCurso; static;
   end;
 
 implementation
@@ -188,6 +194,77 @@ begin
   finally
     Qry.Free;
   end;
+
+class function TPublicoInstituicaoDAO.BuscarCursoDisponivelPorCodigo(
+  const AConn: TUniConnection;
+  const AIdInstituicao: Int64;
+  const ACodigoTurma: string
+): TPublicoCurso;
+var
+  Qry: TUniQuery;
+  Limite, Ocupados: Integer;
+begin
+  Result := nil;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT t.id AS id_turma, t.codigo_publico AS codigo_turma, t.nome AS turma_nome, ' +
+      'c.id AS id_curso, c.codigo_publico AS codigo_curso, c.nome AS curso_nome, ' +
+      'COALESCE(c.descricao, '''') AS curso_descricao, t.modalidade, c.imagem_url, ' +
+      't.data_hora_inicio, t.data_hora_fim, t.inscricao_fim, t.limite_participantes, t.local, ' +
+      'COALESCE(t.carga_horaria_minutos, c.carga_horaria_minutos) AS carga_horaria_minutos, ' +
+      '(SELECT COUNT(*) FROM inscricao i WHERE i.id_instituicao=t.id_instituicao ' +
+      'AND i.id_turma=t.id AND i.situacao IN (''CONFIRMADO'',''EM_ANDAMENTO'',''CONCLUIDO'')) AS inscritos_confirmados ' +
+      'FROM turma t INNER JOIN curso c ON c.id_instituicao=t.id_instituicao AND c.id=t.id_curso ' +
+      'WHERE t.id_instituicao=:id_instituicao AND t.codigo_publico=:codigo_turma ' +
+      'AND c.situacao=''ATIVO'' AND c.permitir_inscricao_publica=1 ' +
+      'AND t.situacao=''INSCRICOES_ABERTAS'' AND t.permitir_inscricao_publica=1 ' +
+      'AND (t.inscricao_inicio IS NULL OR t.inscricao_inicio<=CURRENT_TIMESTAMP(3)) ' +
+      'AND (t.inscricao_fim IS NULL OR t.inscricao_fim>=CURRENT_TIMESTAMP(3)) ' +
+      'AND t.data_hora_fim>=CURRENT_TIMESTAMP(3) LIMIT 1';
+
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('codigo_turma').AsString := Trim(ACodigoTurma);
+    Qry.Open;
+
+    if Qry.IsEmpty then
+      Exit;
+
+    Result := TPublicoCurso.Create;
+    Result.IdTurma := Qry.FieldByName('id_turma').AsLargeInt;
+    Result.CodigoTurma := Qry.FieldByName('codigo_turma').AsString;
+    Result.TurmaNome := Qry.FieldByName('turma_nome').AsString;
+    Result.IdCurso := Qry.FieldByName('id_curso').AsLargeInt;
+    Result.CodigoCurso := Qry.FieldByName('codigo_curso').AsString;
+    Result.CursoNome := Qry.FieldByName('curso_nome').AsString;
+    Result.CursoDescricao := Qry.FieldByName('curso_descricao').AsString;
+    Result.Modalidade := Qry.FieldByName('modalidade').AsString;
+    Result.ImagemUrl := Qry.FieldByName('imagem_url').AsString;
+    Result.DataHoraInicio := Qry.FieldByName('data_hora_inicio').AsDateTime;
+    Result.DataHoraFim := Qry.FieldByName('data_hora_fim').AsDateTime;
+    Result.TemInscricaoFim := not Qry.FieldByName('inscricao_fim').IsNull;
+    if Result.TemInscricaoFim then
+      Result.InscricaoFim := Qry.FieldByName('inscricao_fim').AsDateTime;
+    Result.TemLimiteParticipantes := not Qry.FieldByName('limite_participantes').IsNull;
+    Result.InscritosConfirmados := Qry.FieldByName('inscritos_confirmados').AsInteger;
+    if Result.TemLimiteParticipantes then
+    begin
+      Limite := Qry.FieldByName('limite_participantes').AsInteger;
+      Ocupados := Result.InscritosConfirmados;
+      Result.LimiteParticipantes := Limite;
+      Result.TemVagasDisponiveis := True;
+      Result.VagasDisponiveis := Limite - Ocupados;
+      if Result.VagasDisponiveis < 0 then
+        Result.VagasDisponiveis := 0;
+    end;
+    Result.Local := Qry.FieldByName('local').AsString;
+    Result.CargaHorariaMinutos := Qry.FieldByName('carga_horaria_minutos').AsInteger;
+  finally
+    Qry.Free;
+  end;
+end;
+
 end;
 
 end.
