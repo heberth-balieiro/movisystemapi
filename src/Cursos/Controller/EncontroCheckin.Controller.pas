@@ -16,7 +16,9 @@ uses Horse, System.SysUtils, System.JSON, App.JWT, App.Token, App.Response,
 function InfoJson(const I: TEncontroCheckinInfo): TJSONObject;
 begin
   Result := TJSONObject.Create;
+  Result.AddPair('id_turma', TJSONNumber.Create(I.IdTurma));
   Result.AddPair('id_encontro', TJSONNumber.Create(I.IdEncontro));
+  Result.AddPair('tipo', I.Tipo);
   Result.AddPair('titulo', I.Titulo);
   Result.AddPair('turma_nome', I.TurmaNome);
   Result.AddPair('aberto', TJSONBool.Create(I.Aberto));
@@ -38,6 +40,22 @@ begin
       Claims.IdUsuarioInstituicao, StrToInt64Def(Req.Params.Items['id_turma'], 0),
       StrToInt64Def(Req.Params.Items['id_encontro'], 0), Acao);
     TAppResponse.Ok(Res, InfoJson(Info), 'Check-in atualizado.');
+  except on E: Exception do TAppErrors.HandleException(Res, E); end;
+end;
+
+procedure AdminTurma(Req: THorseRequest; Res: THorseResponse; const Acao: string);
+var Claims: TJWTClaims; Info: TEncontroCheckinInfo;
+begin
+  try
+    Res.RawWebResponse.SetCustomHeader('Cache-Control', 'no-store');
+    if not TAppToken.ValidarToken(Req, Res, Claims) then Exit;
+    Info := TEncontroCheckinService.AdministrarTurma(
+      Claims.IdInstituicao,
+      Claims.IdUsuarioInstituicao,
+      StrToInt64Def(Req.Params.Items['id_turma'], 0),
+      Acao
+    );
+    TAppResponse.Ok(Res, InfoJson(Info), 'Check-in da turma atualizado.');
   except on E: Exception do TAppErrors.HandleException(Res, E); end;
 end;
 
@@ -69,6 +87,12 @@ begin
     begin Admin(Req, Res, 'abrir'); end);
   THorse.Post(Base + '/encerrar', procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     begin Admin(Req, Res, 'encerrar'); end);
+  THorse.Get('/v1/certifica/instituicao/turmas/:id_turma/checkin', procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    begin AdminTurma(Req, Res, 'consultar'); end);
+  THorse.Post('/v1/certifica/instituicao/turmas/:id_turma/checkin/abrir', procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    begin AdminTurma(Req, Res, 'abrir'); end);
+  THorse.Post('/v1/certifica/instituicao/turmas/:id_turma/checkin/encerrar', procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    begin AdminTurma(Req, Res, 'encerrar'); end);
   THorse.Post('/v1/certifica/aluno/checkin/consultar', procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     begin Aluno(Req, Res, False); end);
   THorse.Post('/v1/certifica/aluno/checkin/confirmar', procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
