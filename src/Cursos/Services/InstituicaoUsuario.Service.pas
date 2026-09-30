@@ -371,7 +371,7 @@ begin
       Dados.Login
     ) then
       TAppErrors.RaiseBadRequest(
-        'Este login já está sendo utilizado na instituição.'
+        'Este login j' + #$00E1 + ' est' + #$00E1 + ' sendo utilizado na institui' + #$00E7 + #$00E3 + 'o.'
       );
 
     AUsuarioJaExistia :=
@@ -400,7 +400,7 @@ begin
         IdUsuario
       ) then
         TAppErrors.RaiseBadRequest(
-          'Este usuário já está vinculado à instituição.'
+          'Este usu' + #$00E1 + 'rio j' + #$00E1 + ' est' + #$00E1 + ' vinculado ' + #$00E0 + ' institui' + #$00E7 + #$00E3 + 'o.'
         );
     end
     else
@@ -530,7 +530,7 @@ begin
         AIdUsuarioInstituicao
       ) then
         TAppErrors.RaiseBadRequest(
-          'Este login já está sendo utilizado na instituição.'
+          'Este login j' + #$00E1 + ' est' + #$00E1 + ' sendo utilizado na institui' + #$00E7 + #$00E3 + 'o.'
         );
 
       Conn.StartTransaction;
