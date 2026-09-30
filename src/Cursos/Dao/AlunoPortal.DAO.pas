@@ -162,9 +162,15 @@ begin
 
     Qry.Close;
     Qry.SQL.Text :=
-      'SELECT COUNT(*) AS total FROM certificado ' +
-      'WHERE id_instituicao = :id_instituicao ' +
-      'AND id_participante = :id_participante AND situacao = ''VALIDO''';
+      'SELECT COUNT(*) AS total FROM certificado c ' +
+      'WHERE c.id_instituicao = :id_instituicao ' +
+      'AND c.id_participante = :id_participante AND c.situacao = ''VALIDO'' ' +
+      'AND NOT EXISTS (' +
+      ' SELECT 1 FROM certificado c2 ' +
+      ' WHERE c2.id_instituicao=c.id_instituicao ' +
+      ' AND c2.id_inscricao=c.id_inscricao ' +
+      ' AND c2.situacao=''VALIDO'' AND c2.versao>c.versao' +
+      ')';
 
     Qry.ParamByName('id_instituicao').AsLargeInt := AAluno.IdInstituicao;
     Qry.ParamByName('id_participante').AsLargeInt := AAluno.IdParticipante;
@@ -555,10 +561,16 @@ begin
       Qry.SQL.Text :=
         'SELECT id, numero_publico, versao, situacao, curso_nome, instituicao_nome, ' +
         'carga_horaria_minutos, data_conclusao, emitido_em, cancelado_em, pdf_storage_key ' +
-        'FROM certificado ' +
-        'WHERE id_instituicao = :id_instituicao AND id_participante = :id_participante ' +
-        'AND situacao IN (''VALIDO'',''CANCELADO'') ' +
-        'ORDER BY COALESCE(emitido_em, criado_em) DESC, id DESC';
+        'FROM certificado c ' +
+        'WHERE c.id_instituicao = :id_instituicao AND c.id_participante = :id_participante ' +
+        'AND c.situacao = ''VALIDO'' ' +
+        'AND NOT EXISTS (' +
+        ' SELECT 1 FROM certificado c2 ' +
+        ' WHERE c2.id_instituicao=c.id_instituicao ' +
+        ' AND c2.id_inscricao=c.id_inscricao ' +
+        ' AND c2.situacao=''VALIDO'' AND c2.versao>c.versao' +
+        ') ' +
+        'ORDER BY COALESCE(c.emitido_em, c.criado_em) DESC, c.id DESC';
 
       Qry.ParamByName('id_instituicao').AsLargeInt := AAluno.IdInstituicao;
       Qry.ParamByName('id_participante').AsLargeInt := AAluno.IdParticipante;
@@ -611,9 +623,15 @@ begin
     Qry.SQL.Text :=
       'SELECT id, numero_publico, versao, situacao, curso_nome, instituicao_nome, ' +
       'carga_horaria_minutos, data_conclusao, emitido_em, cancelado_em, pdf_storage_key ' +
-      'FROM certificado ' +
-      'WHERE id_instituicao = :id_instituicao AND id_participante = :id_participante ' +
-      'AND id = :id AND situacao IN (''VALIDO'',''CANCELADO'') LIMIT 1';
+      'FROM certificado c ' +
+      'WHERE c.id_instituicao = :id_instituicao AND c.id_participante = :id_participante ' +
+      'AND c.id = :id AND c.situacao = ''VALIDO'' ' +
+      'AND NOT EXISTS (' +
+      ' SELECT 1 FROM certificado c2 ' +
+      ' WHERE c2.id_instituicao=c.id_instituicao ' +
+      ' AND c2.id_inscricao=c.id_inscricao ' +
+      ' AND c2.situacao=''VALIDO'' AND c2.versao>c.versao' +
+      ') LIMIT 1';
 
     Qry.ParamByName('id_instituicao').AsLargeInt := AAluno.IdInstituicao;
     Qry.ParamByName('id_participante').AsLargeInt := AAluno.IdParticipante;
@@ -659,11 +677,17 @@ begin
   try
     Qry.Connection := AConn;
     Qry.SQL.Text :=
-      'SELECT pdf_storage_key FROM certificado ' +
-      'WHERE id_instituicao = :id_instituicao ' +
-      'AND id_participante = :id_participante ' +
-      'AND id = :id AND situacao = ''VALIDO'' ' +
-      'AND pdf_storage_key IS NOT NULL LIMIT 1';
+      'SELECT c.pdf_storage_key FROM certificado c ' +
+      'WHERE c.id_instituicao = :id_instituicao ' +
+      'AND c.id_participante = :id_participante ' +
+      'AND c.id = :id AND c.situacao = ''VALIDO'' ' +
+      'AND c.pdf_storage_key IS NOT NULL ' +
+      'AND NOT EXISTS (' +
+      ' SELECT 1 FROM certificado c2 ' +
+      ' WHERE c2.id_instituicao=c.id_instituicao ' +
+      ' AND c2.id_inscricao=c.id_inscricao ' +
+      ' AND c2.situacao=''VALIDO'' AND c2.versao>c.versao' +
+      ') LIMIT 1';
 
     Qry.ParamByName('id_instituicao').AsLargeInt := AAluno.IdInstituicao;
     Qry.ParamByName('id_participante').AsLargeInt := AAluno.IdParticipante;
