@@ -34,6 +34,12 @@ type
     class procedure RecuperarTravados(
       const AConn: TUniConnection
     ); static;
+
+    class procedure MarcarCertificadoErro(
+      const AConn: TUniConnection;
+      const AIdInstituicao,
+            AIdCertificado: Int64
+    ); static;
   end;
 
 implementation
@@ -173,6 +179,29 @@ begin
       'proxima_tentativa_em=CURRENT_TIMESTAMP(3) ' +
       'WHERE situacao=''PROCESSANDO'' ' +
       'AND processando_em<DATE_SUB(CURRENT_TIMESTAMP(3),INTERVAL 15 MINUTE)';
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+end;
+
+
+class procedure TCertificadoProcessamentoDAO.MarcarCertificadoErro(
+  const AConn: TUniConnection;
+  const AIdInstituicao,
+        AIdCertificado: Int64
+);
+var
+  Q: TUniQuery;
+begin
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+    Q.SQL.Text :=
+      'UPDATE certificado SET situacao=''ERRO'' ' +
+      'WHERE id_instituicao=:tenant AND id=:certificado AND situacao=''PENDENTE''';
+    Q.ParamByName('tenant').AsLargeInt := AIdInstituicao;
+    Q.ParamByName('certificado').AsLargeInt := AIdCertificado;
     Q.ExecSQL;
   finally
     Q.Free;
