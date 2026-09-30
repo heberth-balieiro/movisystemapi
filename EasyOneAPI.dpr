@@ -387,7 +387,8 @@ uses
   CertificadoProcessamento.Model in 'src\Cursos\Model\CertificadoProcessamento.Model.pas',
   CertificadoProcessamento.DAO in 'src\Cursos\Dao\CertificadoProcessamento.DAO.pas',
   CertificadoProcessamento.Service in 'src\Cursos\Services\CertificadoProcessamento.Service.pas',
-  CertificadoProcessamento.Worker in 'src\Cursos\Services\CertificadoProcessamento.Worker.pas';
+  CertificadoProcessamento.Worker in 'src\Cursos\Services\CertificadoProcessamento.Worker.pas',
+  CertificadoProcessamento.Controller in 'src\Cursos\Controller\CertificadoProcessamento.Controller.pas';
 
 var
   LConfig       : TAppApiConfig;
