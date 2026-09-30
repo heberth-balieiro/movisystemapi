@@ -43,7 +43,8 @@ uses
   AlunoPortal.Model,
   AlunoPortal.DAO,
   AlunoCursoDisponivel.DAO,
-  InstituicaoInscricao.DAO;
+  InstituicaoInscricao.DAO,
+  InstituicaoInscricaoAprovacao.DAO;
 
 class function TAlunoCursoDisponivelService.GerarCodigoPublico: string;
 var
@@ -165,6 +166,8 @@ var
   CodigoDisponivel: Boolean;
   Tentativas: Integer;
   IdInscricao: Int64;
+  Turma: TTurmaAprovacaoLock;
+  Ocupados: Integer;
 begin
   Result := nil;
 
@@ -201,6 +204,27 @@ begin
           TAppErrors.RaiseBadRequest(
             'As inscrições desta turma não estão disponíveis.'
           );
+
+        Turma := TInstituicaoInscricaoAprovacaoDAO.BloquearTurma(
+          Conn,
+          AIdInstituicao,
+          AIdTurma
+        );
+
+        if not Turma.Encontrada then
+          TAppErrors.RaiseBadRequest('Turma não encontrada.');
+
+        if Turma.TemLimiteParticipantes then
+        begin
+          Ocupados := TInstituicaoInscricaoAprovacaoDAO.ContarOcupados(
+            Conn,
+            AIdInstituicao,
+            AIdTurma
+          );
+
+          if Ocupados >= Turma.LimiteParticipantes then
+            TAppErrors.RaiseBadRequest('A turma atingiu o limite de participantes.');
+        end;
 
         if TInstituicaoInscricaoDAO.ParticipanteJaInscrito(
           Conn,
@@ -252,6 +276,29 @@ begin
           'INSCRITO',
           'Solicitação de inscrição realizada pelo participante.'
         );
+
+        if SameText(Turma.AprovacaoInscricao, 'AUTOMATICA') then
+        begin
+          TInstituicaoInscricaoDAO.AlterarSituacao(
+            Conn,
+            AIdInstituicao,
+            IdInscricao,
+            AIdUsuarioInstituicao,
+            'CONFIRMADO',
+            ''
+          );
+
+          TInstituicaoInscricaoDAO.InserirHistorico(
+            Conn,
+            AIdInstituicao,
+            AIdTurma,
+            IdInscricao,
+            AIdUsuarioInstituicao,
+            'INSCRITO',
+            'CONFIRMADO',
+            'Inscrição aprovada automaticamente conforme configuração da turma.'
+          );
+        end;
 
         Result := TInstituicaoInscricaoDAO.BuscarPorId(
           Conn,
