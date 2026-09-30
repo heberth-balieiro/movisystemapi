@@ -40,6 +40,8 @@ end;
 function InstituicaoToJson(const AModel: TPlataformaInstituicaoModel): TJSONObject;
 var
   Tema, Metricas: TJSONObject;
+  Modulos: TJSONArray;
+  CodigoModulo: string;
 begin
   Tema := TJSONObject.Create;
   Tema.AddPair('nome_exibicao', AModel.Tema.NomeExibicao);
@@ -74,14 +76,23 @@ begin
   Result.AddPair('criado_em', FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AModel.CriadoEm));
   Result.AddPair('administrador_nome', AModel.AdministradorNome);
   Result.AddPair('administrador_email', AModel.AdministradorEmail);
+
+  Modulos := TJSONArray.Create;
+  for CodigoModulo in AModel.Modulos do
+    Modulos.Add(CodigoModulo);
+
+  Result.AddPair('modulos', Modulos);
   Result.AddPair('tema', Tema);
   Result.AddPair('metricas', Metricas);
 end;
 
 procedure PreencherFromJson(const AJson: TJSONObject; const AModel: TPlataformaInstituicaoModel);
 var
-  TemaValue: TJSONValue;
+  TemaValue,
+  ModulosValue,
+  ItemModulo: TJSONValue;
   Tema: TJSONObject;
+  ModulosArray: TJSONArray;
 begin
   AModel.Slug := TAppClasses.GetJsonString(AJson, 'slug');
   AModel.RazaoSocial := TAppClasses.GetJsonString(AJson, 'razao_social');
@@ -94,6 +105,24 @@ begin
   AModel.Situacao := TAppClasses.GetJsonString(AJson, 'situacao', 'IMPLANTACAO');
   AModel.AdministradorNome := TAppClasses.GetJsonString(AJson, 'administrador_nome');
   AModel.AdministradorEmail := TAppClasses.GetJsonString(AJson, 'administrador_email');
+
+  AModel.Modulos.Clear;
+  ModulosValue := AJson.GetValue('modulos');
+  if ModulosValue is TJSONArray then
+  begin
+    ModulosArray := ModulosValue as TJSONArray;
+
+    for ItemModulo in ModulosArray do
+      if not (ItemModulo is TJSONNull) and
+         not Trim(ItemModulo.Value).IsEmpty then
+        AModel.Modulos.Add(
+          UpperCase(
+            Trim(
+              ItemModulo.Value
+            )
+          )
+        );
+  end;
 
   TemaValue := AJson.GetValue('tema');
   if (TemaValue <> nil) and (TemaValue is TJSONObject) then
