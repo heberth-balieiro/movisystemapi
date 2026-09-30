@@ -17,11 +17,11 @@ type
             ADescricao: string
     ); static;
   public
-    class procedure Agendar(
+    class function Agendar(
       const AConn: TUniConnection;
       const AIdInstituicao,
             AIdCertificado: Int64
-    ); static;
+    ): Integer; static;
 
     class function ProcessarProximo: Boolean; static;
   end;
@@ -82,14 +82,16 @@ begin
   end;
 end;
 
-class procedure TCertificadoNotificacaoService.Agendar(
+class function TCertificadoNotificacaoService.Agendar(
   const AConn: TUniConnection;
   const AIdInstituicao,
         AIdCertificado: Int64
-);
+): Integer;
 var
   Contexto: TCertificadoNotificacaoContexto;
 begin
+  Result := 0;
+
   Contexto := TCertificadoNotificacaoDAO.BuscarContexto(
     AConn,
     AIdInstituicao,
@@ -100,6 +102,7 @@ begin
       Exit;
 
     if not Trim(Contexto.ParticipanteEmail).IsEmpty then
+    begin
       TCertificadoNotificacaoDAO.Enfileirar(
         AConn,
         AIdInstituicao,
@@ -107,8 +110,11 @@ begin
         'EMAIL',
         Contexto.ParticipanteEmail
       );
+      Inc(Result);
+    end;
 
     if not Trim(Contexto.ParticipanteTelefone).IsEmpty then
+    begin
       TCertificadoNotificacaoDAO.Enfileirar(
         AConn,
         AIdInstituicao,
@@ -116,6 +122,8 @@ begin
         'WHATSAPP',
         Contexto.ParticipanteTelefone
       );
+      Inc(Result);
+    end;
   finally
     Contexto.Free;
   end;
