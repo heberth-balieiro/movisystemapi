@@ -13,6 +13,11 @@ type
       const ASlug: string;
       const APagina, APorPagina: Integer
     ): TPublicoCursoLista; static;
+
+    class function BuscarCursoDisponivel(
+      const ASlug,
+            ACodigoTurma: string
+    ): TPublicoCurso; static;
   end;
 
 implementation
@@ -84,6 +89,46 @@ begin
   finally
     Conn.Free;
   end;
+
+class function TPublicoInstituicaoService.BuscarCursoDisponivel(
+  const ASlug,
+        ACodigoTurma: string
+): TPublicoCurso;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  Instituicao: TPublicoInstituicao;
+begin
+  if Trim(ACodigoTurma).IsEmpty then
+    TAppErrors.RaiseBadRequest('Turma não informada.');
+
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Instituicao := TPublicoInstituicaoDAO.BuscarPorSlug(
+      Conn,
+      LowerCase(Trim(ASlug))
+    );
+    try
+      if Instituicao = nil then
+        TAppErrors.RaiseBadRequest('Instituição não encontrada ou indisponível.');
+
+      Result := TPublicoInstituicaoDAO.BuscarCursoDisponivelPorCodigo(
+        Conn,
+        Instituicao.Id,
+        UpperCase(Trim(ACodigoTurma))
+      );
+
+      if Result = nil then
+        TAppErrors.RaiseBadRequest('Turma não encontrada ou sem inscrições disponíveis.');
+    finally
+      Instituicao.Free;
+    end;
+  finally
+    Conn.Free;
+  end;
+end;
+
 end;
 
 end.
