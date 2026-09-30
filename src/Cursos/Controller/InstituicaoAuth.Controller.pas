@@ -14,6 +14,7 @@ uses
   Horse,
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   App.Classes,
   App.JWT,
   App.Token,
