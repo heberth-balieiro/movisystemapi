@@ -73,6 +73,7 @@ type
     class procedure Migration_050_PlataformaWhatsAppPorUsuario(const AConn: TUniConnection); static;
     class procedure Migration_051_MovisystemHubModulos(const AConn: TUniConnection); static;
     class procedure Migration_052_TurmaFluxoConfiguravel(const AConn: TUniConnection); static;
+    class procedure Migration_053_TurmaCheckin(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -222,6 +223,7 @@ begin
       Migration_050_PlataformaWhatsAppPorUsuario(Conn);
       Migration_051_MovisystemHubModulos(Conn);
       Migration_052_TurmaFluxoConfiguravel(Conn);
+      Migration_053_TurmaCheckin(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2535,6 +2537,62 @@ begin
     AConn,
     '052',
     'Fluxo configuravel da turma sem substituir o modelo por encontro'
+  );
+end;
+
+
+class procedure TCursosMigration.Migration_053_TurmaCheckin(
+  const AConn: TUniConnection);
+begin
+  if MigrationExists(AConn, '053') then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS turma_checkin (' +
+    ' id_instituicao BIGINT UNSIGNED NOT NULL,' +
+    ' id_turma BIGINT UNSIGNED NOT NULL,' +
+    ' token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,' +
+    ' aberto_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' expira_em DATETIME(3) NOT NULL,' +
+    ' encerrado_em DATETIME(3) NULL,' +
+    ' aberto_por BIGINT UNSIGNED NOT NULL,' +
+    ' PRIMARY KEY (id_instituicao,id_turma),' +
+    ' UNIQUE KEY uq_turma_checkin_token (token_hash),' +
+    ' CONSTRAINT fk_turma_checkin_turma FOREIGN KEY (id_instituicao,id_turma) ' +
+    '   REFERENCES turma(id_instituicao,id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT fk_turma_checkin_usuario FOREIGN KEY (id_instituicao,aberto_por) ' +
+    '   REFERENCES usuario_instituicao(id_instituicao,id) ON UPDATE RESTRICT ON DELETE RESTRICT' +
+    ') ENGINE=InnoDB COMMENT=''Sessao temporaria de QR Code para presenca direta da turma.'';'
+  );
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS turma_presenca (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_instituicao BIGINT UNSIGNED NOT NULL,' +
+    ' id_turma BIGINT UNSIGNED NOT NULL,' +
+    ' id_inscricao BIGINT UNSIGNED NOT NULL,' +
+    ' situacao VARCHAR(20) NOT NULL DEFAULT ''PRESENTE'',' +
+    ' checkin_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' registrado_por BIGINT UNSIGNED NOT NULL,' +
+    ' origem VARCHAR(20) NOT NULL DEFAULT ''AUTO_CHECKIN'',' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' UNIQUE KEY uq_turma_presenca_inscricao (id_instituicao,id_turma,id_inscricao),' +
+    ' KEY ix_turma_presenca_turma (id_instituicao,id_turma),' +
+    ' CONSTRAINT fk_turma_presenca_inscricao FOREIGN KEY (id_instituicao,id_turma,id_inscricao) ' +
+    '   REFERENCES inscricao(id_instituicao,id_turma,id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT fk_turma_presenca_usuario FOREIGN KEY (id_instituicao,registrado_por) ' +
+    '   REFERENCES usuario_instituicao(id_instituicao,id) ON UPDATE RESTRICT ON DELETE RESTRICT,' +
+    ' CONSTRAINT ck_turma_presenca_situacao CHECK (situacao IN (''PRESENTE'',''AUSENTE''))' +
+    ') ENGINE=InnoDB COMMENT=''Presenca unica por turma para o fluxo simplificado.'';'
+  );
+
+  RegisterMigration(
+    AConn,
+    '053',
+    'QR Code e presenca direta por turma no fluxo simplificado'
   );
 end;
 
