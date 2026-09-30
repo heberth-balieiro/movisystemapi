@@ -289,3 +289,108 @@ Não fazem parte desta entrega:
 - regras de janela de presença configuráveis por turma.
 
 Essas evoluções podem ser adicionadas sem remover o fluxo atual.
+
+
+## Complemento - Listagem administrativa de presenças
+
+Implementado endpoint:
+
+```
+GET /v1/certifica/instituicao/turmas/:id_turma/presencas
+```
+
+Permissão exigida:
+- `presenca.visualizar`.
+
+Retorno:
+- total de matriculados;
+- total de presentes;
+- participante;
+- e-mail;
+- situação da inscrição;
+- situação da presença;
+- horário do check-in;
+- origem do registro.
+
+No frontend, turmas configuradas com `controle_presenca = TURMA` exibem:
+- painel do QR Code;
+- cards de Matriculados / Presentes / Sem presença;
+- tabela administrativa das presenças;
+- atualização manual da lista.
+
+A listagem considera inscrições nos estados:
+- `CONFIRMADO`;
+- `EM_ANDAMENTO`;
+- `CONCLUIDO`.
+
+## Homologação técnica ponta a ponta - revisão de código
+
+Fluxo revisado:
+
+```
+Curso ativo e público
+  -> Turma com inscrição pública
+  -> Link público por codigo_publico
+  -> Login do participante
+  -> Retorno para a turma
+  -> Solicitação de inscrição
+  -> Aprovação manual ou automática
+  -> Turma EM_ANDAMENTO
+  -> Abertura do QR da turma
+  -> Validação de participante e inscrição
+  -> Registro único em turma_presenca
+  -> Listagem administrativa
+  -> Cálculo de presença para conclusão
+  -> Fluxo existente de conclusão/certificado
+```
+
+Validações confirmadas por inspeção:
+- isolamento por `id_instituicao`;
+- inscrição pública exige curso/turma habilitados e período válido;
+- aprovação automática respeita limite de vagas;
+- QR da turma exige situação `EM_ANDAMENTO`;
+- QR possui token imprevisível e hash persistido;
+- participante precisa possuir inscrição `CONFIRMADO` ou `EM_ANDAMENTO`;
+- presença possui chave única por instituição/turma/inscrição;
+- reuso do QR não cria presença duplicada;
+- fluxo por encontro continua separado e preservado;
+- cálculo de conclusão reconhece presença direta da turma;
+- listagem administrativa exige `presenca.visualizar`.
+
+Correção encontrada durante a homologação:
+- a mensagem do frontend para inscrição automática ainda informava que o participante deveria aguardar aprovação;
+- agora, quando a API retorna `CONFIRMADO`, a tela informa **Inscrição confirmada com sucesso**.
+
+### Homologação prática ainda necessária no ambiente local
+
+A revisão de código não substitui a execução real. Validar localmente:
+
+1. Compilar a API Delphi.
+2. Confirmar migrations 052 e 053 aplicadas.
+3. Criar curso ativo com inscrição pública.
+4. Criar turma com:
+   - inscrição pública = Sim;
+   - aprovação = Manual;
+   - presença = QR Code da turma.
+5. Abrir inscrições e copiar o link público.
+6. Entrar como participante pelo link.
+7. Solicitar inscrição.
+8. Aprovar no administrativo.
+9. Alterar turma para `EM_ANDAMENTO`, mantendo horário atual dentro do período da turma.
+10. Abrir presença e gerar QR.
+11. Ler o QR autenticado como participante.
+12. Confirmar presença.
+13. Atualizar a lista administrativa e conferir o participante como Presente.
+14. Tentar confirmar novamente e validar ausência de duplicidade.
+15. Encerrar o QR e validar que o mesmo QR deixa de aceitar presença.
+16. Validar conclusão/critério e fluxo de certificado já existente.
+17. Repetir com aprovação automática.
+18. Repetir uma turma com `controle_presenca = ENCONTRO` para teste de regressão.
+19. Repetir com outro tenant para validar isolamento.
+
+Frontend:
+
+```bash
+npm run lint
+npm run build
+```
