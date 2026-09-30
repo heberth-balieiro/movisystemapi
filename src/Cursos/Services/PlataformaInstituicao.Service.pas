@@ -257,9 +257,9 @@ begin
         );
 
     if TPlataformaInstituicaoDAO.ExisteSlug(Conn, AModel.Slug) then
-      TAppErrors.RaiseBadRequest('Este slug já está sendo utilizado por outra instituição.');
+      TAppErrors.RaiseBadRequest('Este slug j' + #$00E1 + ' est' + #$00E1 + ' sendo utilizado por outra institui' + #$00E7 + #$00E3 + 'o.');
     if TPlataformaInstituicaoDAO.ExisteDocumento(Conn, AModel.Documento) then
-      TAppErrors.RaiseBadRequest('Este CNPJ já está cadastrado.');
+      TAppErrors.RaiseBadRequest('Este CNPJ j' + #$00E1 + ' est' + #$00E1 + ' cadastrado.');
 
     Conn.StartTransaction;
     try
@@ -347,9 +347,9 @@ begin
     Existente.Free;
 
     if TPlataformaInstituicaoDAO.ExisteSlug(Conn, AModel.Slug, AIdInstituicao) then
-      TAppErrors.RaiseBadRequest('Este slug já está sendo utilizado por outra instituição.');
+      TAppErrors.RaiseBadRequest('Este slug j' + #$00E1 + ' est' + #$00E1 + ' sendo utilizado por outra institui' + #$00E7 + #$00E3 + 'o.');
     if TPlataformaInstituicaoDAO.ExisteDocumento(Conn, AModel.Documento, AIdInstituicao) then
-      TAppErrors.RaiseBadRequest('Este CNPJ já está cadastrado.');
+      TAppErrors.RaiseBadRequest('Este CNPJ j' + #$00E1 + ' est' + #$00E1 + ' cadastrado.');
 
     Conn.StartTransaction;
     try
