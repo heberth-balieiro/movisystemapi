@@ -521,7 +521,7 @@ begin
 
     HorseCORS
       .AllowedOrigin(LConfig.CorsAllowedOrigin)
-      .AllowedCredentials('false')
+      .AllowedCredentials(False)
       .AllowedHeaders('Authorization, Content-Type, Accept')
       .AllowedMethods('GET, POST, PUT, PATCH, DELETE, OPTIONS')
       .ExposedHeaders('');
