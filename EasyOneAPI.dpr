@@ -388,7 +388,11 @@ uses
   CertificadoProcessamento.DAO in 'src\Cursos\Dao\CertificadoProcessamento.DAO.pas',
   CertificadoProcessamento.Service in 'src\Cursos\Services\CertificadoProcessamento.Service.pas',
   CertificadoProcessamento.Worker in 'src\Cursos\Services\CertificadoProcessamento.Worker.pas',
-  CertificadoProcessamento.Controller in 'src\Cursos\Controller\CertificadoProcessamento.Controller.pas';
+  CertificadoProcessamento.Controller in 'src\Cursos\Controller\CertificadoProcessamento.Controller.pas',
+  CertificadoNotificacao.Model in 'src\Cursos\Model\CertificadoNotificacao.Model.pas',
+  CertificadoNotificacao.DAO in 'src\Cursos\Dao\CertificadoNotificacao.DAO.pas',
+  CertificadoNotificacao.Service in 'src\Cursos\Services\CertificadoNotificacao.Service.pas',
+  CertificadoNotificacao.Worker in 'src\Cursos\Services\CertificadoNotificacao.Worker.pas';
 
 var
   LConfig       : TAppApiConfig;
@@ -488,6 +492,9 @@ begin
 
           TCertificadoProcessamentoWorker.Start;
           Writeln('Worker de certificados iniciado com sucesso.');
+
+          TCertificadoNotificacaoWorker.Start;
+          Writeln('Worker de notificacoes de certificados iniciado com sucesso.');
 
 
         end;
