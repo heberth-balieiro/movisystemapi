@@ -398,6 +398,7 @@ var
   LConfig       : TAppApiConfig;
   LConn         : TUniConnection;
   LDatabaseCfg  : TAppDatabaseConfig;
+  LCertDocCfg   : TCertificadoDocumentoConfig;
 begin
   try
     // Carrega sempre o Config.ini da mesma pasta do executável.
@@ -477,6 +478,16 @@ begin
 
           //Roda tabelas
           TCursosMigration.Run(LConfig.Database);
+
+          if SameText(LConfig.Ambiente, 'PRODUCAO') then
+          begin
+            LCertDocCfg :=
+              TInstituicaoCertificadoDocumentoConfig.Carregar(True);
+
+            Writeln(
+              'Configuracao de documentos de certificado validada com sucesso.'
+            );
+          end;
 
           //Roda o seeds com dados inicial
           TCertificaSeeds.Run;
