@@ -15,6 +15,7 @@ implementation
 
 uses
   System.SysUtils,
+  Horse.Exception.Interrupted,
   App.Config;
 
 function OrigemPermitida(
@@ -89,10 +90,10 @@ begin
         '600'
       );
 
-      if SameText(Req.RawWebRequest.Method, 'OPTIONS') then
+      if SameText(Req.Method, 'OPTIONS') then
       begin
-        Res.Status(204).Send('');
-        Exit;
+        Res.Status(204);
+        raise EHorseCallbackInterrupted.Create;
       end;
 
       Next;
