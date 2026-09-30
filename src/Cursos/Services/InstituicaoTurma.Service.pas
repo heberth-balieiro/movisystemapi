@@ -24,7 +24,10 @@ type
 
     class procedure ValidarFluxo(
       const AAprovacaoInscricao,
-            AControlePresenca: string
+            AControlePresenca: string;
+      const AExigirPresencaConclusao,
+            AConclusaoAutomatica,
+            ACertificadoAutomatico: Boolean
     ); static;
 
     class procedure ValidarPeriodos(
@@ -183,7 +186,10 @@ end;
 
 class procedure TInstituicaoTurmaService.ValidarFluxo(
   const AAprovacaoInscricao,
-        AControlePresenca: string
+        AControlePresenca: string;
+  const AExigirPresencaConclusao,
+        AConclusaoAutomatica,
+        ACertificadoAutomatico: Boolean
 );
 begin
   if not MatchText(UpperCase(Trim(AAprovacaoInscricao)), ['MANUAL','AUTOMATICA']) then
@@ -191,6 +197,12 @@ begin
 
   if not MatchText(UpperCase(Trim(AControlePresenca)), ['ENCONTRO','TURMA','SEM_CONTROLE']) then
     TAppErrors.RaiseBadRequest('Tipo de controle de presença inválido.');
+
+  if AExigirPresencaConclusao and SameText(AControlePresenca, 'SEM_CONTROLE') then
+    TAppErrors.RaiseBadRequest('Não é possível exigir presença em uma turma sem controle de presença.');
+
+  if ACertificadoAutomatico and not AConclusaoAutomatica then
+    TAppErrors.RaiseBadRequest('O certificado automático exige conclusão automática da turma.');
 end;
 
 class procedure TInstituicaoTurmaService.ValidarPeriodos(
@@ -484,7 +496,10 @@ begin
 
   ValidarFluxo(
     Dados.AprovacaoInscricao,
-    Dados.ControlePresenca
+    Dados.ControlePresenca,
+    Dados.ExigirPresencaConclusao,
+    Dados.ConclusaoAutomatica,
+    Dados.CertificadoAutomatico
   );
 
   ValidarPeriodos(
@@ -682,7 +697,10 @@ begin
 
   ValidarFluxo(
     Dados.AprovacaoInscricao,
-    Dados.ControlePresenca
+    Dados.ControlePresenca,
+    Dados.ExigirPresencaConclusao,
+    Dados.ConclusaoAutomatica,
+    Dados.CertificadoAutomatico
   );
 
   ValidarPeriodos(
