@@ -66,7 +66,8 @@ begin
       'ON DUPLICATE KEY UPDATE ' +
       'solicitado_por=VALUES(solicitado_por), ' +
       'situacao=CASE WHEN situacao=''CONCLUIDO'' THEN situacao ELSE ''PENDENTE'' END, ' +
-      'proxima_tentativa_em=NULL, ultimo_erro=NULL';
+      'tentativas=CASE WHEN situacao=''CONCLUIDO'' THEN tentativas ELSE 0 END, ' +
+      'proxima_tentativa_em=NULL, processando_em=NULL, ultimo_erro=NULL';
     Q.ParamByName('tenant').AsLargeInt := AIdInstituicao;
     Q.ParamByName('certificado').AsLargeInt := AIdCertificado;
     Q.ParamByName('usuario').AsLargeInt := ASolicitadoPor;
