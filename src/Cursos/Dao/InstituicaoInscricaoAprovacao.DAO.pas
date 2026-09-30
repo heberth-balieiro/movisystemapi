@@ -16,6 +16,7 @@ type
   TTurmaAprovacaoLock = record
     Encontrada: Boolean;
     Situacao: string;
+    AprovacaoInscricao: string;
     TemLimiteParticipantes: Boolean;
     LimiteParticipantes: Integer;
   end;
@@ -92,7 +93,7 @@ begin
   try
     Qry.Connection := AConn;
     Qry.SQL.Text :=
-      'SELECT situacao, limite_participantes ' +
+      'SELECT situacao, aprovacao_inscricao, limite_participantes ' +
       'FROM turma ' +
       'WHERE id_instituicao = :id_instituicao AND id = :id_turma ' +
       'FOR UPDATE';
@@ -106,6 +107,7 @@ begin
 
     Result.Encontrada := True;
     Result.Situacao := Qry.FieldByName('situacao').AsString;
+    Result.AprovacaoInscricao := Qry.FieldByName('aprovacao_inscricao').AsString;
     Result.TemLimiteParticipantes := not Qry.FieldByName('limite_participantes').IsNull;
 
     if Result.TemLimiteParticipantes then
