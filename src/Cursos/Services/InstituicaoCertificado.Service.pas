@@ -115,7 +115,8 @@ uses
   App.Config,
   APP.Errors,
   Database.Connection,
-  InstituicaoCertificado.DAO;
+  InstituicaoCertificado.DAO,
+  CertificadoNotificacao.Service;
 
 class procedure TInstituicaoCertificadoService.ValidarSituacao(
   const ASituacao: string
@@ -1067,6 +1068,22 @@ begin
             Origem.Free;
           end;
         end;
+
+        TCertificadoNotificacaoService.Agendar(
+          Conn,
+          AIdInstituicao,
+          AIdCertificado
+        );
+
+        TInstituicaoCertificadoDAO.InserirHistorico(
+          Conn,
+          AIdInstituicao,
+          AIdCertificado,
+          AUsuarioInstituicao,
+          'NOTIFICACAO_AGENDADA',
+          'Notificação de certificado disponível agendada para os canais cadastrados do participante.',
+          ''
+        );
 
         Result :=
           TInstituicaoCertificadoDAO.BuscarPorId(
