@@ -201,6 +201,9 @@ begin
   if AExigirPresencaConclusao and SameText(AControlePresenca, 'SEM_CONTROLE') then
     TAppErrors.RaiseBadRequest('Não é possível exigir presença em uma turma sem controle de presença.');
 
+  if AConclusaoAutomatica and not SameText(AControlePresenca, 'TURMA') then
+    TAppErrors.RaiseBadRequest('A conclusão automática está disponível no fluxo de presença por QR Code da turma.');
+
   if ACertificadoAutomatico and not AConclusaoAutomatica then
     TAppErrors.RaiseBadRequest('O certificado automático exige conclusão automática da turma.');
 end;
