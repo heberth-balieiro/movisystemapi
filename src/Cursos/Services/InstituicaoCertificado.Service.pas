@@ -899,6 +899,7 @@ var
   Atual: TCertificadoItem;
   Origem: TCertificadoItem;
   DadosJson: string;
+  NotificacoesAgendadas: Integer;
 begin
   Result := nil;
 
@@ -1069,21 +1070,23 @@ begin
           end;
         end;
 
-        TCertificadoNotificacaoService.Agendar(
-          Conn,
-          AIdInstituicao,
-          AIdCertificado
-        );
+        NotificacoesAgendadas :=
+          TCertificadoNotificacaoService.Agendar(
+            Conn,
+            AIdInstituicao,
+            AIdCertificado
+          );
 
-        TInstituicaoCertificadoDAO.InserirHistorico(
-          Conn,
-          AIdInstituicao,
-          AIdCertificado,
-          AUsuarioInstituicao,
-          'NOTIFICACAO_AGENDADA',
-          'Notificação de certificado disponível agendada para os canais cadastrados do participante.',
-          ''
-        );
+        if NotificacoesAgendadas > 0 then
+          TInstituicaoCertificadoDAO.InserirHistorico(
+            Conn,
+            AIdInstituicao,
+            AIdCertificado,
+            AUsuarioInstituicao,
+            'NOTIFICACAO_AGENDADA',
+            'Notificação de certificado disponível agendada para os canais cadastrados do participante.',
+            Format('{"canais":%d}', [NotificacoesAgendadas])
+          );
 
         Result :=
           TInstituicaoCertificadoDAO.BuscarPorId(
