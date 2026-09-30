@@ -620,3 +620,127 @@ Também são necessários no servidor:
 11. Confirmar certificado `VALIDO`.
 12. Baixar PDF e validar QR público.
 13. Simular erro de Chromium e validar retentativas.
+
+
+## Complemento - Painel de processamento de certificados
+
+Foi adicionado o acompanhamento administrativo da fila de geração automática de PDF + QR Code.
+
+### API
+
+Novo endpoint de listagem:
+
+```
+GET /v1/certifica/instituicao/certificados/processamento
+```
+
+Filtros:
+- `busca`: número do certificado, participante ou curso;
+- `situacao`: PENDENTE, PROCESSANDO, CONCLUIDO ou ERRO;
+- `page`;
+- `page_size`.
+
+Permissão:
+- `certificado.visualizar`.
+
+Retorno:
+- certificado;
+- participante;
+- curso;
+- situação da fila;
+- situação do certificado;
+- quantidade de tentativas;
+- último erro;
+- data de criação;
+- última atualização;
+- próxima tentativa;
+- início do processamento;
+- conclusão.
+
+Novo endpoint para reprocessamento:
+
+```
+POST /v1/certifica/instituicao/certificados/:id/reprocessar
+```
+
+Permissão específica:
+- `certificado.reprocessar`.
+
+Regras:
+- somente jobs em `ERRO`;
+- certificado precisa estar `PENDENTE` ou `ERRO`;
+- tentativas são zeradas;
+- fila volta para `PENDENTE`;
+- certificado `ERRO` volta para `PENDENTE`;
+- próximo processamento ocorre pelo worker;
+- ação registrada no histórico como `PROCESSAMENTO_REENFILEIRADO`;
+- sempre filtrado por `id_instituicao`.
+
+### Permissões
+
+Novo seed:
+
+```
+certificado.reprocessar
+```
+
+Descrição:
+> Reprocessar certificados com erro.
+
+Os perfis administrativos são atualizados pelo fluxo já existente de garantia de permissões.
+
+### Frontend
+
+Nova página:
+
+```
+/[slug]/admin/certificados/processamento
+```
+
+A tela exibe:
+- cards de status;
+- busca;
+- filtro por situação;
+- número público;
+- participante;
+- curso;
+- status;
+- tentativas;
+- última atualização;
+- próxima tentativa;
+- último erro;
+- botão para abrir o certificado;
+- botão Reprocessar quando permitido.
+
+A tela principal de certificados ganhou o botão:
+
+**Processamento**
+
+### Histórico
+
+Novo evento reconhecido pelo frontend:
+
+```
+PROCESSAMENTO_REENFILEIRADO
+```
+
+Além de:
+- PROCESSAMENTO_AGENDADO;
+- PROCESSAMENTO_ERRO;
+- PDF_GERADO;
+- EMITIDO.
+
+### Teste posterior
+
+1. Gerar um erro proposital no processamento automático.
+2. Abrir Certificados -> Processamento.
+3. Filtrar por ERRO.
+4. Conferir tentativas e último erro.
+5. Entrar com usuário sem `certificado.reprocessar` e confirmar ausência do botão.
+6. Entrar com usuário autorizado.
+7. Clicar Reprocessar.
+8. Confirmar job PENDENTE.
+9. Aguardar worker.
+10. Confirmar job CONCLUIDO e certificado VALIDO.
+11. Conferir evento PROCESSAMENTO_REENFILEIRADO no histórico.
+12. Validar isolamento entre duas instituições.
