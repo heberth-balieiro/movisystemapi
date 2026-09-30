@@ -171,6 +171,37 @@ begin
       end;
     end
   );
+
+  THorse.Get(
+    '/v1/certifica/publico/instituicoes/:slug/turmas/:codigo_turma',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Item: TPublicoCurso;
+    begin
+      try
+        if not TAppRateLimit.EnforceIP(Req, Res, 'publico-turma-inscricao', 120, 60) then
+          Exit;
+
+        Item := TPublicoInstituicaoService.BuscarCursoDisponivel(
+          Req.Params.Items['slug'],
+          Req.Params.Items['codigo_turma']
+        );
+        try
+          TAppResponse.Ok(
+            Res,
+            CursoJson(Item),
+            'Turma pública carregada com sucesso.'
+          );
+        finally
+          Item.Free;
+        end;
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
 end;
 
 end.
