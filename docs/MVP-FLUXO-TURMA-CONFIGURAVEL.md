@@ -850,3 +850,150 @@ O código de validação não é exposto na listagem autenticada do aluno.
 10. Tentar acessar certificado de outra instituição.
 11. Confirmar bloqueio.
 12. Validar em desktop e mobile.
+
+
+## Complemento - Notificação automática de certificado disponível
+
+Quando o certificado passa definitivamente para `VALIDO`, a API agenda notificações para os canais cadastrados do participante.
+
+### Migration 055
+
+Nova tabela:
+
+```
+certificado_notificacao
+```
+
+Campos principais:
+- `id_instituicao`;
+- `id_certificado`;
+- `canal`: EMAIL ou WHATSAPP;
+- `destinatario`;
+- `situacao`: PENDENTE, PROCESSANDO, ENVIADO, ERRO ou IGNORADO;
+- `tentativas`;
+- `proxima_tentativa_em`;
+- `processando_em`;
+- `enviado_em`;
+- `ultimo_erro`.
+
+Existe unicidade por certificado + canal para evitar duplicidade.
+
+### Agendamento
+
+O agendamento acontece dentro da mesma transação que finaliza o PDF e torna o certificado válido.
+
+Canais:
+- EMAIL, quando o participante possui e-mail;
+- WHATSAPP, quando o participante possui telefone.
+
+Se nenhum canal estiver cadastrado, nenhuma notificação é criada.
+
+Evento de histórico:
+- `NOTIFICACAO_AGENDADA`.
+
+### Worker
+
+Novo worker:
+
+```
+TCertificadoNotificacaoWorker
+```
+
+É iniciado junto com a API.
+
+Comportamento:
+- reserva um job por vez;
+- usa `FOR UPDATE SKIP LOCKED`;
+- máximo de 3 tentativas;
+- nova tentativa após 5 minutos;
+- jobs PROCESSANDO por mais de 15 minutos são recuperados;
+- falha de SMTP ou WhatsApp não desfaz a emissão do certificado.
+
+### Cancelamento antes do envio
+
+Antes de enviar, o worker verifica novamente se o certificado continua `VALIDO`.
+
+Se deixou de estar válido:
+- não envia;
+- marca a notificação como `IGNORADO`;
+- registra `NOTIFICACAO_IGNORADA`.
+
+### E-mail
+
+Usa a configuração SMTP da própria instituição.
+
+Assunto:
+```
+Seu certificado está disponível - <curso>
+```
+
+Inclui:
+- nome do participante;
+- curso;
+- número público;
+- link para a área autenticada do participante.
+
+Evento de sucesso:
+- `NOTIFICACAO_EMAIL_ENVIADA`.
+
+Após 3 falhas:
+- `NOTIFICACAO_EMAIL_ERRO`.
+
+### WhatsApp
+
+Usa a instância Evolution já configurada para a instituição.
+
+Mensagem inclui:
+- aviso de certificado disponível;
+- participante;
+- curso;
+- número público;
+- link para a área do participante.
+
+Evento de sucesso:
+- `NOTIFICACAO_WHATSAPP_ENVIADA`.
+
+Após 3 falhas:
+- `NOTIFICACAO_WHATSAPP_ERRO`.
+
+### Link
+
+O link utiliza:
+
+```
+[WEB].PublicURL
+```
+
+Formato:
+
+```
+{PublicURL}/{slug}/aluno/certificados/{id_certificado}
+```
+
+### Frontend
+
+Não foi necessária uma nova tela.
+
+A tela administrativa de detalhes do certificado já exibe o histórico. O tipo do frontend foi atualizado para reconhecer:
+- NOTIFICACAO_AGENDADA;
+- NOTIFICACAO_EMAIL_ENVIADA;
+- NOTIFICACAO_WHATSAPP_ENVIADA;
+- NOTIFICACAO_EMAIL_ERRO;
+- NOTIFICACAO_WHATSAPP_ERRO;
+- NOTIFICACAO_IGNORADA.
+
+### Teste posterior
+
+1. Participante com e-mail e telefone.
+2. Finalizar um certificado.
+3. Conferir duas linhas na fila.
+4. Confirmar envio de e-mail.
+5. Confirmar envio de WhatsApp.
+6. Conferir os eventos no histórico.
+7. Testar somente e-mail.
+8. Testar somente telefone.
+9. Testar participante sem canais.
+10. Desconectar WhatsApp e validar retry.
+11. Desabilitar SMTP e validar retry.
+12. Cancelar certificado antes do worker e confirmar IGNORADO.
+13. Validar isolamento entre instituições.
