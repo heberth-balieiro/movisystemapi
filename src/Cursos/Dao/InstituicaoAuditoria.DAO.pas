@@ -60,6 +60,10 @@ begin
     Result := Result +
       ' AND a.entidade = :entidade ';
 
+  if AFiltro.TemSucesso then
+    Result := Result +
+      ' AND a.sucesso = :sucesso ';
+
   if AFiltro.TemDataInicio then
     Result := Result +
       ' AND a.criado_em >= :data_inicio ';
@@ -89,6 +93,9 @@ begin
   if not Trim(AFiltro.Entidade).IsEmpty then
     AQry.ParamByName('entidade').AsString :=
       LowerCase(Trim(AFiltro.Entidade));
+
+  if AFiltro.TemSucesso then
+    AQry.ParamByName('sucesso').AsInteger := Ord(AFiltro.Sucesso);
 
   if AFiltro.TemDataInicio then
     AQry.ParamByName('data_inicio').AsDateTime :=
