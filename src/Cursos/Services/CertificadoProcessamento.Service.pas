@@ -24,6 +24,7 @@ uses
   CertificadoProcessamento.Model,
   CertificadoProcessamento.DAO,
   InstituicaoCertificado.Model,
+  InstituicaoCertificado.Service,
   InstituicaoCertificadoDocumento.Service;
 
 function NovaConexao: TUniConnection;
@@ -105,9 +106,34 @@ begin
     except
       on E: Exception do
       begin
+        Certificado.Free;
+        Certificado := nil;
+
+        try
+          Certificado := TInstituicaoCertificadoService.BuscarPorId(
+            Item.IdInstituicao,
+            Item.IdCertificado
+          );
+        except
+          Certificado.Free;
+          Certificado := nil;
+        end;
+
         C := NovaConexao;
         try
-          TCertificadoProcessamentoDAO.MarcarErro(C, Item.Id, E.Message);
+          if (Certificado <> nil) and SameText(Certificado.Situacao, 'VALIDO') then
+            TCertificadoProcessamentoDAO.MarcarConcluido(C, Item.Id)
+          else
+          begin
+            TCertificadoProcessamentoDAO.MarcarErro(C, Item.Id, E.Message);
+
+            if Item.Tentativas >= 3 then
+              TCertificadoProcessamentoDAO.MarcarCertificadoErro(
+                C,
+                Item.IdInstituicao,
+                Item.IdCertificado
+              );
+          end;
         finally
           C.Free;
         end;
