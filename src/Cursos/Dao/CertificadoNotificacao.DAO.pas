@@ -38,6 +38,12 @@ type
       const AErro: string
     ); static;
 
+    class procedure MarcarIgnorado(
+      const AConn: TUniConnection;
+      const AId: Int64;
+      const AMotivo: string
+    ); static;
+
     class procedure RecuperarTravados(
       const AConn: TUniConnection
     ); static;
@@ -190,6 +196,29 @@ begin
       'proxima_tentativa_em=DATE_ADD(CURRENT_TIMESTAMP(3),INTERVAL 5 MINUTE) WHERE id=:id';
     Q.ParamByName('id').AsLargeInt := AId;
     Q.ParamByName('erro').AsString := Copy(Trim(AErro),1,2000);
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+end;
+
+
+class procedure TCertificadoNotificacaoDAO.MarcarIgnorado(
+  const AConn: TUniConnection;
+  const AId: Int64;
+  const AMotivo: string
+);
+var
+  Q: TUniQuery;
+begin
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+    Q.SQL.Text :=
+      'UPDATE certificado_notificacao SET situacao=''IGNORADO'',ultimo_erro=:motivo,' +
+      'proxima_tentativa_em=NULL WHERE id=:id';
+    Q.ParamByName('id').AsLargeInt := AId;
+    Q.ParamByName('motivo').AsString := Copy(Trim(AMotivo),1,2000);
     Q.ExecSQL;
   finally
     Q.Free;
