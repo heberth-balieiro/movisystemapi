@@ -400,6 +400,11 @@ begin
       't.url_online, ' +
       't.carga_horaria_minutos, ' +
       't.permitir_inscricao_publica, ' +
+      't.aprovacao_inscricao, ' +
+      't.controle_presenca, ' +
+      't.exigir_presenca_conclusao, ' +
+      't.conclusao_automatica, ' +
+      't.certificado_automatico, ' +
       't.situacao, ' +
       't.criado_em, ' +
       't.atualizado_em ' +
