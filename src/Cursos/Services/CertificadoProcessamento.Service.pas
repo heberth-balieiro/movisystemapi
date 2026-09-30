@@ -24,6 +24,7 @@ uses
   CertificadoProcessamento.Model,
   CertificadoProcessamento.DAO,
   InstituicaoCertificado.Model,
+  InstituicaoCertificado.DAO,
   InstituicaoCertificado.Service,
   InstituicaoCertificadoDocumento.Service;
 
@@ -48,12 +49,30 @@ begin
 
   C := NovaConexao;
   try
-    TCertificadoProcessamentoDAO.Enfileirar(
-      C,
-      AIdInstituicao,
-      AIdCertificado,
-      ASolicitadoPor
-    );
+    C.StartTransaction;
+    try
+      TCertificadoProcessamentoDAO.Enfileirar(
+        C,
+        AIdInstituicao,
+        AIdCertificado,
+        ASolicitadoPor
+      );
+
+      TInstituicaoCertificadoDAO.InserirHistorico(
+        C,
+        AIdInstituicao,
+        AIdCertificado,
+        ASolicitadoPor,
+        'PROCESSAMENTO_AGENDADO',
+        'Geração automática do PDF e QR Code agendada.',
+        ''
+      );
+
+      C.Commit;
+    except
+      if C.InTransaction then C.Rollback;
+      raise;
+    end;
   finally
     C.Free;
   end;
@@ -128,11 +147,23 @@ begin
             TCertificadoProcessamentoDAO.MarcarErro(C, Item.Id, E.Message);
 
             if Item.Tentativas >= 3 then
+            begin
               TCertificadoProcessamentoDAO.MarcarCertificadoErro(
                 C,
                 Item.IdInstituicao,
                 Item.IdCertificado
               );
+
+              TInstituicaoCertificadoDAO.InserirHistorico(
+                C,
+                Item.IdInstituicao,
+                Item.IdCertificado,
+                Item.SolicitadoPor,
+                'PROCESSAMENTO_ERRO',
+                'Falha definitiva após 3 tentativas de geração automática do PDF e QR Code.',
+                ''
+              );
+            end;
           end;
         finally
           C.Free;
