@@ -24,6 +24,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Uni,
   App.Config,
   App.JWT,
@@ -41,6 +42,7 @@ var
   Conn: TUniConnection;
   Dados: TInstituicaoLoginDados;
   Roles: TArray<string>;
+  ModulosLista: TList<string>;
 begin
   Result := Default(TInstituicaoLoginResult);
 
@@ -95,6 +97,15 @@ begin
     if not VerifySenha(ASenha, Dados.SenhaHash) then
       TAppErrors.RaiseUnauthorized('Usu' + #$00E1 + 'rio ou senha inv' + #$00E1 + 'lidos.');
 
+    if not TPlataformaModuloDAO.InstituicaoPossuiModulo(
+      Conn,
+      Dados.IdInstituicao,
+      'CERTIFICA'
+    ) then
+      TAppErrors.RaiseForbidden(
+        'O módulo MoviSystem Certifica não está liberado para esta instituição.'
+      );
+
     if Dados.Principal then
       Roles := ['ADMIN_INSTITUICAO']
     else
@@ -117,7 +128,7 @@ begin
         Dados.IdUsuarioInstituicao
       );
 
-    var ModulosLista :=
+    ModulosLista :=
       TPlataformaModuloDAO.ListarCodigosInstituicao(
         Conn,
         Dados.IdInstituicao
