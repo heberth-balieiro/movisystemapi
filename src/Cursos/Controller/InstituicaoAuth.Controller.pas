@@ -42,7 +42,9 @@ begin
       InstituicaoJson: TJSONObject;
       TemaJson: TJSONObject;
       Permissoes: TJSONArray;
-      Permissao: string;
+      Modulos: TJSONArray;
+      Permissao,
+      CodigoModulo: string;
       Slug, Login, Senha: string;
     begin
       try
@@ -198,6 +200,18 @@ begin
         InstituicaoJson.AddPair(
           'tema',
           TemaJson
+        );
+
+        Modulos := TJSONArray.Create;
+
+        for CodigoModulo in Resultado.Modulos do
+          Modulos.Add(
+            CodigoModulo
+          );
+
+        InstituicaoJson.AddPair(
+          'modulos',
+          Modulos
         );
 
         Dados := TJSONObject.Create;
