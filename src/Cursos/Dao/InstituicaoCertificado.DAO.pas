@@ -101,6 +101,12 @@ type
       const ACodigoValidacao: string
     ): TCertificadoItem; static;
 
+    class function BuscarPublicoPorCodigoInstituicao(
+      const AConn: TUniConnection;
+      const ASlug,
+            ACodigoValidacao: string
+    ): TCertificadoItem; static;
+
     class function Listar(
       const AConn: TUniConnection;
       const AIdInstituicao: Int64;
@@ -1335,6 +1341,51 @@ begin
           Qry
         );
 
+  finally
+    Qry.Free;
+  end;
+end;
+
+
+class function TInstituicaoCertificadoDAO.BuscarPublicoPorCodigoInstituicao(
+  const AConn: TUniConnection;
+  const ASlug,
+        ACodigoValidacao: string
+): TCertificadoItem;
+var
+  Qry: TUniQuery;
+begin
+  Result := nil;
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+
+    Qry.SQL.Text :=
+      'SELECT ' +
+      'c.*, ' +
+      'm.nome AS modelo_nome, ' +
+      'u.nome AS emitido_por_nome ' +
+      'FROM certificado c ' +
+      'JOIN instituicao i ON i.id = c.id_instituicao ' +
+      'LEFT JOIN certificado_modelo m ' +
+      '  ON m.id_instituicao = c.id_instituicao ' +
+      ' AND m.id = c.id_modelo ' +
+      'LEFT JOIN usuario_instituicao ui ' +
+      '  ON ui.id_instituicao = c.id_instituicao ' +
+      ' AND ui.id = c.emitido_por ' +
+      'LEFT JOIN usuario u ' +
+      '  ON u.id = ui.id_usuario ' +
+      'WHERE i.slug = :slug ' +
+      'AND c.codigo_validacao = :codigo_validacao ' +
+      'LIMIT 1';
+
+    Qry.ParamByName('slug').AsString := LowerCase(Trim(ASlug));
+    Qry.ParamByName('codigo_validacao').AsString := Trim(ACodigoValidacao);
+    Qry.Open;
+
+    if not Qry.IsEmpty then
+      Result := MapearCertificado(Qry);
   finally
     Qry.Free;
   end;
