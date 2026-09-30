@@ -18,9 +18,11 @@ type
 
 implementation
 
-uses System.SysUtils, System.Classes, System.Hash, Uni, App.Config,
+uses System.SysUtils, System.Classes, System.Hash, System.Generics.Collections, Uni, App.Config,
   Database.Connection, APP.Errors, InstituicaoPermissao.Service,
-  AlunoPortal.DAO, AlunoPortal.Model, EncontroCheckin.DAO;
+  AlunoPortal.DAO, AlunoPortal.Model, EncontroCheckin.DAO,
+  InstituicaoConclusao.Service, InstituicaoConclusao.Model,
+  InstituicaoCertificado.Service, InstituicaoCertificado.Model;
 
 {$IFDEF MSWINDOWS}
 function BCryptGenRandom(Algorithm: Pointer; Buffer: PByte; Size, Flags: Cardinal): LongInt;
@@ -81,6 +83,93 @@ begin
   finally C.Free; end;
 end;
 
+procedure ProcessarAutomacoesTurma(
+  const Tenant, Usuario, Turma: Int64
+);
+var
+  C: TUniConnection;
+  Q: TUniQuery;
+  Ids: TList<Int64>;
+  IdInscricao: Int64;
+  ConclusaoAutomatica: Boolean;
+  CertificadoAutomatico: Boolean;
+  Resumo: TConclusaoResumo;
+  Certificado: TCertificadoItem;
+begin
+  C := NovaConexao;
+  Ids := TList<Int64>.Create;
+  try
+    Q := TUniQuery.Create(nil);
+    try
+      Q.Connection := C;
+      Q.SQL.Text :=
+        'SELECT conclusao_automatica,certificado_automatico FROM turma ' +
+        'WHERE id_instituicao=:t AND id=:turma LIMIT 1';
+      Q.ParamByName('t').AsLargeInt := Tenant;
+      Q.ParamByName('turma').AsLargeInt := Turma;
+      Q.Open;
+      if Q.IsEmpty then Exit;
+
+      ConclusaoAutomatica := Q.FieldByName('conclusao_automatica').AsBoolean;
+      CertificadoAutomatico := Q.FieldByName('certificado_automatico').AsBoolean;
+
+      if not ConclusaoAutomatica then Exit;
+
+      Q.Close;
+      Q.SQL.Text :=
+        'SELECT id FROM inscricao WHERE id_instituicao=:t AND id_turma=:turma ' +
+        'AND situacao IN (''CONFIRMADO'',''EM_ANDAMENTO'') ORDER BY id';
+      Q.ParamByName('t').AsLargeInt := Tenant;
+      Q.ParamByName('turma').AsLargeInt := Turma;
+      Q.Open;
+      while not Q.Eof do
+      begin
+        Ids.Add(Q.FieldByName('id').AsLargeInt);
+        Q.Next;
+      end;
+    finally
+      Q.Free;
+    end;
+  finally
+    C.Free;
+  end;
+
+  try
+    for IdInscricao in Ids do
+    begin
+      Resumo := TInstituicaoConclusaoService.Avaliar(
+        Tenant,
+        IdInscricao,
+        Usuario
+      );
+      try
+        if CertificadoAutomatico and
+           Resumo.ElegivelCertificado and
+           SameText(Resumo.SituacaoInscricao, 'CONCLUIDO') then
+        begin
+          Certificado := nil;
+          try
+            Certificado := TInstituicaoCertificadoService.EmitirPendente(
+              Tenant,
+              IdInscricao,
+              Usuario
+            );
+          except
+            on E: Exception do
+              if Pos('já possui certificado', LowerCase(E.Message)) = 0 then
+                raise;
+          end;
+          Certificado.Free;
+        end;
+      finally
+        Resumo.Free;
+      end;
+    end;
+  finally
+    Ids.Free;
+  end;
+end;
+
 class function TEncontroCheckinService.AdministrarTurma(Tenant, Usuario, Turma: Int64;
   const Acao: string): TEncontroCheckinInfo;
 var C: TUniConnection; Token, Hash: string;
@@ -103,6 +192,9 @@ begin
       Result := TEncontroCheckinDAO.AdministrarTurma(C, Tenant, Usuario, Turma, Acao, Hash);
       C.Commit;
       Result.Token := Token;
+
+      if Acao = 'encerrar' then
+        ProcessarAutomacoesTurma(Tenant, Usuario, Turma);
     except
       if C.InTransaction then C.Rollback;
       raise;
