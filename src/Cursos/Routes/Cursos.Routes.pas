@@ -87,8 +87,8 @@ begin
   TInstituicaoInscricaoController.Registry;
   TInstituicaoPresencaController.Registry;
   TInstituicaoConclusaoController.Registry;
-  TInstituicaoCertificadoController.Registry;
   TCertificadoProcessamentoController.Registry;
+  TInstituicaoCertificadoController.Registry;
   TInstituicaoCertificadoDocumentoController.Registry;
   TAlunoPortalController.Registry;
   TInstituicaoParticipanteAcessoController.Registry;
