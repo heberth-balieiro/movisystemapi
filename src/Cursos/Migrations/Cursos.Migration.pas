@@ -16,6 +16,12 @@ type
   TCursosMigration = class
   private
     class procedure ExecSQL(const AConn: TUniConnection; const ASQL: string); static;
+    class function ColumnExists(const AConn: TUniConnection; const ATable, AColumn: string): Boolean; static;
+    class function IndexExists(const AConn: TUniConnection; const ATable, AIndex: string): Boolean; static;
+    class function ConstraintExists(const AConn: TUniConnection; const ATable, AConstraint: string): Boolean; static;
+    class procedure AddColumnIfMissing(const AConn: TUniConnection; const ATable, AColumn, ADefinition: string); static;
+    class procedure AddIndexIfMissing(const AConn: TUniConnection; const ATable, AIndex, ADefinition: string); static;
+    class procedure AddConstraintIfMissing(const AConn: TUniConnection; const ATable, AConstraint, ADefinition: string); static;
     class function MigrationExists(const AConn: TUniConnection; const AVersion: string): Boolean; static;
     class procedure RegisterMigration(const AConn: TUniConnection; const AVersion, ADescription: string); static;
     class procedure CreateMigrationTable(const AConn: TUniConnection); static;
@@ -117,6 +123,120 @@ begin
   finally
     Qry.Free;
   end;
+end;
+
+class function TCursosMigration.ColumnExists(
+  const AConn: TUniConnection;
+  const ATable, AColumn: string
+): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT 1 FROM information_schema.columns ' +
+      'WHERE table_schema = DATABASE() ' +
+      'AND table_name = :tabela ' +
+      'AND column_name = :coluna ' +
+      'LIMIT 1';
+    Qry.ParamByName('tabela').AsString := ATable;
+    Qry.ParamByName('coluna').AsString := AColumn;
+    Qry.Open;
+    Result := not Qry.IsEmpty;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TCursosMigration.IndexExists(
+  const AConn: TUniConnection;
+  const ATable, AIndex: string
+): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT 1 FROM information_schema.statistics ' +
+      'WHERE table_schema = DATABASE() ' +
+      'AND table_name = :tabela ' +
+      'AND index_name = :indice ' +
+      'LIMIT 1';
+    Qry.ParamByName('tabela').AsString := ATable;
+    Qry.ParamByName('indice').AsString := AIndex;
+    Qry.Open;
+    Result := not Qry.IsEmpty;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TCursosMigration.ConstraintExists(
+  const AConn: TUniConnection;
+  const ATable, AConstraint: string
+): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT 1 FROM information_schema.table_constraints ' +
+      'WHERE constraint_schema = DATABASE() ' +
+      'AND table_name = :tabela ' +
+      'AND constraint_name = :constraint_name ' +
+      'LIMIT 1';
+    Qry.ParamByName('tabela').AsString := ATable;
+    Qry.ParamByName('constraint_name').AsString := AConstraint;
+    Qry.Open;
+    Result := not Qry.IsEmpty;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class procedure TCursosMigration.AddColumnIfMissing(
+  const AConn: TUniConnection;
+  const ATable, AColumn, ADefinition: string
+);
+begin
+  if not ColumnExists(AConn, ATable, AColumn) then
+    ExecSQL(
+      AConn,
+      'ALTER TABLE ' + ATable +
+      ' ADD COLUMN ' + AColumn + ' ' + ADefinition
+    );
+end;
+
+class procedure TCursosMigration.AddIndexIfMissing(
+  const AConn: TUniConnection;
+  const ATable, AIndex, ADefinition: string
+);
+begin
+  if not IndexExists(AConn, ATable, AIndex) then
+    ExecSQL(
+      AConn,
+      'ALTER TABLE ' + ATable +
+      ' ADD ' + ADefinition
+    );
+end;
+
+class procedure TCursosMigration.AddConstraintIfMissing(
+  const AConn: TUniConnection;
+  const ATable, AConstraint, ADefinition: string
+);
+begin
+  if not ConstraintExists(AConn, ATable, AConstraint) then
+    ExecSQL(
+      AConn,
+      'ALTER TABLE ' + ATable +
+      ' ADD CONSTRAINT ' + AConstraint + ' ' + ADefinition
+    );
 end;
 
 class function TCursosMigration.MigrationExists(const AConn: TUniConnection;
@@ -1749,15 +1869,24 @@ const
 begin
   if MigrationExists(AConn, VERSION) then Exit;
   // Define se o tenant é uma empresa privada ou instituição pública.
-  ExecSQL(AConn,
-    'ALTER TABLE instituicao ' +
-    'ADD COLUMN tipo VARCHAR(20) NOT NULL DEFAULT ''PRIVADA'' AFTER cnpj'
+  AddColumnIfMissing(
+    AConn,
+    'instituicao',
+    'tipo',
+    'VARCHAR(20) NOT NULL DEFAULT ''PRIVADA'' AFTER cnpj'
   );
-  // Inclui a etapa de implantação utilizada no onboarding do cliente.
-  ExecSQL(AConn, 'ALTER TABLE instituicao DROP CHECK ck_instituicao_situacao');
-  ExecSQL(AConn,
-    'ALTER TABLE instituicao ' +
-    'ADD CONSTRAINT ck_instituicao_situacao ' +
+
+  // Recria a constraint de situação para garantir a versão atual da regra.
+  if ConstraintExists(AConn, 'instituicao', 'ck_instituicao_situacao') then
+    ExecSQL(
+      AConn,
+      'ALTER TABLE instituicao DROP CHECK ck_instituicao_situacao'
+    );
+
+  AddConstraintIfMissing(
+    AConn,
+    'instituicao',
+    'ck_instituicao_situacao',
     'CHECK (situacao IN (''ATIVA'',''IMPLANTACAO'',''INATIVA'',''BLOQUEADA''))'
   );
   RegisterMigration(AConn, VERSION, DESCRIPTION);
@@ -1773,17 +1902,19 @@ begin
     Exit;
 
   // Dados institucionais exibidos na area publica.
-  ExecSQL(
+  AddColumnIfMissing(
     AConn,
-    'ALTER TABLE instituicao ' +
-    'ADD COLUMN descricao TEXT NULL AFTER nome_fantasia'
+    'instituicao',
+    'descricao',
+    'TEXT NULL AFTER nome_fantasia'
   );
 
   // Banner utilizado na home publica da instituicao.
-  ExecSQL(
+  AddColumnIfMissing(
     AConn,
-    'ALTER TABLE instituicao_configuracao ' +
-    'ADD COLUMN banner_url VARCHAR(1000) NULL AFTER imagem_login_url'
+    'instituicao_configuracao',
+    'banner_url',
+    'VARCHAR(1000) NULL AFTER imagem_login_url'
   );
 
   // Configuracao da Evolution API por tenant.
@@ -2005,28 +2136,31 @@ begin
   if MigrationExists(AConn, VERSION) then
     Exit;
 
-  ExecSQL(
+  AddColumnIfMissing(
     AConn,
-    'ALTER TABLE usuario_recuperacao_senha ' +
-    'ADD COLUMN id_instituicao BIGINT UNSIGNED NULL AFTER id_usuario'
+    'usuario_recuperacao_senha',
+    'id_instituicao',
+    'BIGINT UNSIGNED NULL AFTER id_usuario'
   );
 
-  ExecSQL(
+  AddColumnIfMissing(
     AConn,
-    'ALTER TABLE usuario_recuperacao_senha ' +
-    'ADD COLUMN tipo VARCHAR(30) NOT NULL DEFAULT ''PRIMEIRO_ACESSO'' AFTER id_instituicao'
+    'usuario_recuperacao_senha',
+    'tipo',
+    'VARCHAR(30) NOT NULL DEFAULT ''PRIMEIRO_ACESSO'' AFTER id_instituicao'
   );
 
-  ExecSQL(
+  AddIndexIfMissing(
     AConn,
-    'ALTER TABLE usuario_recuperacao_senha ' +
-    'ADD KEY ix_recuperacao_tenant_tipo (id_instituicao, tipo, criado_em)'
+    'usuario_recuperacao_senha',
+    'ix_recuperacao_tenant_tipo',
+    'KEY ix_recuperacao_tenant_tipo (id_instituicao, tipo, criado_em)'
   );
 
-  ExecSQL(
+  AddConstraintIfMissing(
     AConn,
-    'ALTER TABLE usuario_recuperacao_senha ' +
-    'ADD CONSTRAINT fk_recuperacao_instituicao ' +
+    'usuario_recuperacao_senha',
+    'fk_recuperacao_instituicao',
     'FOREIGN KEY (id_instituicao) REFERENCES instituicao(id) ' +
     'ON UPDATE RESTRICT ON DELETE CASCADE'
   );
@@ -2045,16 +2179,18 @@ begin
   if MigrationExists(AConn, VERSION) then
     Exit;
 
-  ExecSQL(
+  AddColumnIfMissing(
     AConn,
-    'ALTER TABLE instituicao_configuracao ' +
-    'ADD COLUMN acesso_envio_email TINYINT(1) NOT NULL DEFAULT 0 AFTER cor_texto'
+    'instituicao_configuracao',
+    'acesso_envio_email',
+    'TINYINT(1) NOT NULL DEFAULT 0 AFTER cor_texto'
   );
 
-  ExecSQL(
+  AddColumnIfMissing(
     AConn,
-    'ALTER TABLE instituicao_configuracao ' +
-    'ADD COLUMN acesso_envio_whatsapp TINYINT(1) NOT NULL DEFAULT 1 AFTER acesso_envio_email'
+    'instituicao_configuracao',
+    'acesso_envio_whatsapp',
+    'TINYINT(1) NOT NULL DEFAULT 1 AFTER acesso_envio_email'
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
