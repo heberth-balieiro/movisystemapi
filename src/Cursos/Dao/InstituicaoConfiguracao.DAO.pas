@@ -70,6 +70,17 @@ type
       const ADestinatario: string
     ); static;
 
+    class function BuscarAutoCadastro(
+      const AConn: TUniConnection;
+      const AIdInstituicao: Int64
+    ): TInstituicaoAutoCadastroConfig; static;
+
+    class procedure SalvarAutoCadastro(
+      const AConn: TUniConnection;
+      const AIdInstituicao: Int64;
+      const ADados: TInstituicaoAutoCadastroInput
+    ); static;
+
     class function BuscarAcessoEnvio(
       const AConn: TUniConnection;
       const AIdInstituicao: Int64
@@ -710,6 +721,54 @@ begin
   end;
 end;
 
+
+class function TInstituicaoConfiguracaoDAO.BuscarAutoCadastro(
+  const AConn: TUniConnection;
+  const AIdInstituicao: Int64
+): TInstituicaoAutoCadastroConfig;
+var
+  Qry: TUniQuery;
+begin
+  Result := Default(TInstituicaoAutoCadastroConfig);
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT permitir_auto_cadastro ' +
+      'FROM instituicao_configuracao ' +
+      'WHERE id_instituicao = :id_instituicao';
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.Open;
+    if not Qry.IsEmpty then
+      Result.PermitirAutoCadastro := Qry.FieldByName('permitir_auto_cadastro').AsBoolean;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class procedure TInstituicaoConfiguracaoDAO.SalvarAutoCadastro(
+  const AConn: TUniConnection;
+  const AIdInstituicao: Int64;
+  const ADados: TInstituicaoAutoCadastroInput
+);
+var
+  Qry: TUniQuery;
+begin
+  GarantirConfiguracao(AConn, AIdInstituicao);
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'UPDATE instituicao_configuracao ' +
+      'SET permitir_auto_cadastro = :permitir_auto_cadastro ' +
+      'WHERE id_instituicao = :id_instituicao';
+    Qry.ParamByName('permitir_auto_cadastro').AsBoolean := ADados.PermitirAutoCadastro;
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.Execute;
+  finally
+    Qry.Free;
+  end;
+end;
 
 class function TInstituicaoConfiguracaoDAO.BuscarAcessoEnvio(
   const AConn: TUniConnection;
