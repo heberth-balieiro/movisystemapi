@@ -82,6 +82,7 @@ type
     class procedure Migration_053_TurmaCheckin(const AConn: TUniConnection); static;
     class procedure Migration_054_CertificadoProcessamento(const AConn: TUniConnection); static;
     class procedure Migration_055_CertificadoNotificacao(const AConn: TUniConnection); static;
+    class procedure Migration_056_InstituicaoAutoCadastro(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -348,6 +349,7 @@ begin
       Migration_053_TurmaCheckin(Conn);
       Migration_054_CertificadoProcessamento(Conn);
       Migration_055_CertificadoNotificacao(Conn);
+      Migration_056_InstituicaoAutoCadastro(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2824,6 +2826,27 @@ begin
     'Fila de notificacao de certificado disponivel por email e WhatsApp'
   );
 end;
+
+class procedure TCursosMigration.Migration_056_InstituicaoAutoCadastro(
+  const AConn: TUniConnection);
+begin
+  if MigrationExists(AConn, '056') then
+    Exit;
+
+  AddColumnIfMissing(
+    AConn,
+    'instituicao_configuracao',
+    'permitir_auto_cadastro',
+    'TINYINT(1) NOT NULL DEFAULT 0 AFTER permitir_inscricao_publica'
+  );
+
+  RegisterMigration(
+    AConn,
+    '056',
+    'Configuracao de auto cadastro de participantes por instituicao'
+  );
+end;
+
 
 {$ENDREGION}
 
