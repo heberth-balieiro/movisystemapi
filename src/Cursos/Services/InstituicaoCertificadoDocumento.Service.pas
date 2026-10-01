@@ -567,11 +567,24 @@ var
         Exit(Candidato);
   end;
 
+  procedure AguardarPdf;
+  var
+    Tentativa: Integer;
+  begin
+    for Tentativa := 1 to 50 do
+    begin
+      if TFile.Exists(AArquivoPdf) and (TFile.GetSize(AArquivoPdf) > 0) then
+        Exit;
+      Sleep(100);
+    end;
+  end;
+
 begin
   Executavel := Trim(AExecutable);
 
   {$IFDEF MSWINDOWS}
   if Executavel.IsEmpty or
+     SameText(Executavel, 'auto') or
      SameText(Executavel, 'chromium') or
      SameText(Executavel, 'chrome') or
      SameText(Executavel, 'chrome.exe') or
@@ -610,11 +623,23 @@ begin
   {$ENDIF}
 
   {$IFDEF POSIX}
+  if Executavel.IsEmpty or SameText(Executavel, 'auto') then
+    Executavel := PrimeiroExecutavelExistente([
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable'
+    ]);
+
   if Executavel.IsEmpty then
-    Executavel := 'chromium';
+    raise Exception.Create(
+      'Chromium/Chrome não encontrado no Linux. Instale o Chromium ou configure CERTIFICADO_DOCUMENTO.ChromiumExecutable.'
+    );
   {$ENDIF}
 
   PastaPerfil := GerarNomeTemporario('.profile');
+  TDirectory.CreateDirectory(PastaPerfil);
+
   Args :=
     TList<string>.Create;
 
@@ -634,6 +659,26 @@ begin
           Parte
         );
     end;
+
+    if not Args.Contains('--headless') and
+       not Args.Contains('--headless=new') then
+      Args.Add('--headless=new');
+
+    if not Args.Contains('--no-first-run') then
+      Args.Add('--no-first-run');
+
+    if not Args.Contains('--no-default-browser-check') then
+      Args.Add('--no-default-browser-check');
+
+    {$IFDEF POSIX}
+    if not Args.Contains('--disable-dev-shm-usage') then
+      Args.Add('--disable-dev-shm-usage');
+
+    // Em servidores Linux/containers o processo costuma executar sem desktop.
+    // Pode ser sobrescrito/removido via configuração futura caso o ambiente use sandbox.
+    if not Args.Contains('--no-sandbox') then
+      Args.Add('--no-sandbox');
+    {$ENDIF}
 
     Args.Add('--user-data-dir=' + PastaPerfil);
 
@@ -664,6 +709,8 @@ begin
       Executavel,
       Args.ToArray
     );
+
+    AguardarPdf;
 
   finally
     Args.Free;
