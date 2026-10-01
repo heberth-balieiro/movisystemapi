@@ -551,9 +551,69 @@ var
   Parte: string;
   UrlArquivo: string;
   PastaPerfil: string;
+  Executavel: string;
   Stream: TFileStream;
   Cabecalho: array[0..4] of AnsiChar;
+
+  function PrimeiroExecutavelExistente(
+    const ACandidatos: array of string
+  ): string;
+  var
+    Candidato: string;
+  begin
+    Result := '';
+    for Candidato in ACandidatos do
+      if (not Trim(Candidato).IsEmpty) and TFile.Exists(Candidato) then
+        Exit(Candidato);
+  end;
+
 begin
+  Executavel := Trim(AExecutable);
+
+  {$IFDEF MSWINDOWS}
+  if Executavel.IsEmpty or
+     SameText(Executavel, 'chromium') or
+     SameText(Executavel, 'chrome') or
+     SameText(Executavel, 'chrome.exe') or
+     SameText(Executavel, 'msedge') or
+     SameText(Executavel, 'msedge.exe') or
+     not TFile.Exists(Executavel) then
+  begin
+    Executavel := PrimeiroExecutavelExistente([
+      TPath.Combine(
+        GetEnvironmentVariable('PROGRAMFILES'),
+        'Google\Chrome\Application\chrome.exe'
+      ),
+      TPath.Combine(
+        GetEnvironmentVariable('PROGRAMFILES(X86)'),
+        'Google\Chrome\Application\chrome.exe'
+      ),
+      TPath.Combine(
+        GetEnvironmentVariable('LOCALAPPDATA'),
+        'Google\Chrome\Application\chrome.exe'
+      ),
+      TPath.Combine(
+        GetEnvironmentVariable('PROGRAMFILES'),
+        'Microsoft\Edge\Application\msedge.exe'
+      ),
+      TPath.Combine(
+        GetEnvironmentVariable('PROGRAMFILES(X86)'),
+        'Microsoft\Edge\Application\msedge.exe'
+      )
+    ]);
+  end;
+
+  if Executavel.IsEmpty or not TFile.Exists(Executavel) then
+    raise Exception.Create(
+      'Chrome/Chromium/Edge não encontrado. Configure CERTIFICADO_DOCUMENTO.ChromiumExecutable no Config.ini.'
+    );
+  {$ENDIF}
+
+  {$IFDEF POSIX}
+  if Executavel.IsEmpty then
+    Executavel := 'chromium';
+  {$ENDIF}
+
   PastaPerfil := GerarNomeTemporario('.profile');
   Args :=
     TList<string>.Create;
@@ -601,7 +661,7 @@ begin
     Args.Add(UrlArquivo);
 
     TAppProcessRunner.Execute(
-      AExecutable,
+      Executavel,
       Args.ToArray
     );
 
