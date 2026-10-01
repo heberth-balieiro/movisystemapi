@@ -563,7 +563,7 @@ begin
     Result.UsarAno :=
       Qry.FieldByName(
         'usar_ano'
-      ).AsBoolean;
+      ).AsInteger = 1;
 
     Result.DigitosSequencia :=
       Qry.FieldByName(
@@ -740,7 +740,7 @@ begin
       't.id_modelo_certificado, ' +
       'p.nome AS participante_nome, ' +
       'c.nome AS curso_nome, ' +
-      'inst.nome AS instituicao_nome, ' +
+      'inst.nome_fantasia AS instituicao_nome, ' +
       'COALESCE(t.carga_horaria_minutos, c.carga_horaria_minutos) AS carga_horaria_minutos, ' +
       'i.concluido_em, ' +
       'i.situacao AS situacao_inscricao, ' +
@@ -849,7 +849,7 @@ begin
     Result.ElegivelCertificado :=
       Qry.FieldByName(
         'elegivel_certificado'
-      ).AsBoolean;
+      ).AsInteger = 1;
 
   finally
     Qry.Free;
