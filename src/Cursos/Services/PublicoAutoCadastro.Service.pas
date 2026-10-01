@@ -184,6 +184,12 @@ begin
         Telefone
       );
 
+      TPublicoAutoCadastroDAO.RegistrarAceitesVigentes(
+        Conn,
+        Instituicao.IdInstituicao,
+        IdParticipante
+      );
+
       TPublicoAutoCadastroDAO.RegistrarAuditoria(
         Conn,
         Instituicao.IdInstituicao,
