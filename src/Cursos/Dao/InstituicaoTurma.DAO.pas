@@ -870,6 +870,21 @@ begin
     Qry.ParamByName('permitir_inscricao_publica').AsBoolean :=
       ADados.PermitirInscricaoPublica;
 
+    Qry.ParamByName('aprovacao_inscricao').AsString :=
+      ADados.AprovacaoInscricao;
+
+    Qry.ParamByName('controle_presenca').AsString :=
+      ADados.ControlePresenca;
+
+    Qry.ParamByName('exigir_presenca_conclusao').AsBoolean :=
+      ADados.ExigirPresencaConclusao;
+
+    Qry.ParamByName('conclusao_automatica').AsBoolean :=
+      ADados.ConclusaoAutomatica;
+
+    Qry.ParamByName('certificado_automatico').AsBoolean :=
+      ADados.CertificadoAutomatico;
+
     Qry.ParamByName('situacao').AsString :=
       ADados.Situacao;
 
