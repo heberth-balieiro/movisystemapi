@@ -58,6 +58,7 @@ begin
   Result.AddPair('email', AItem.Email);
   Result.AddPair('telefone', AItem.Telefone);
   Result.AddPair('site', NullableString(AItem.Site));
+  Result.AddPair('permitir_auto_cadastro', TJSONBool.Create(AItem.PermitirAutoCadastro));
   Result.AddPair('tema', Tema);
 end;
 
