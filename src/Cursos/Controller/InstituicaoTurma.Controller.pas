@@ -119,6 +119,56 @@ begin
     );
 end;
 
+function TryParseDataHoraLocal(
+  const AValor: string;
+  out AData: TDateTime
+): Boolean;
+var
+  S: string;
+  Ano, Mes, Dia, Hora, Minuto, Segundo, Milissegundo: Word;
+begin
+  Result := False;
+  AData := 0;
+  S := Trim(AValor);
+
+  if (Length(S) < 16) or (S[5] <> '-') or (S[8] <> '-') or
+     not CharInSet(S[11], ['T', ' ']) or (S[14] <> ':') then
+    Exit;
+
+  Ano := StrToIntDef(Copy(S, 1, 4), 0);
+  Mes := StrToIntDef(Copy(S, 6, 2), 0);
+  Dia := StrToIntDef(Copy(S, 9, 2), 0);
+  Hora := StrToIntDef(Copy(S, 12, 2), 99);
+  Minuto := StrToIntDef(Copy(S, 15, 2), 99);
+  Segundo := 0;
+  Milissegundo := 0;
+
+  if Length(S) >= 19 then
+  begin
+    if S[17] <> ':' then
+      Exit;
+    Segundo := StrToIntDef(Copy(S, 18, 2), 99);
+  end;
+
+  if Length(S) >= 23 then
+  begin
+    if S[20] <> '.' then
+      Exit;
+    Milissegundo := StrToIntDef(Copy(S, 21, 3), 9999);
+  end;
+
+  Result := TryEncodeDateTime(
+    Ano,
+    Mes,
+    Dia,
+    Hora,
+    Minuto,
+    Segundo,
+    Milissegundo,
+    AData
+  );
+end;
+
 function JsonDateTimeObrigatorio(
   const AObj: TJSONObject;
   const ANome,
@@ -144,11 +194,8 @@ begin
   end;
 
   try
-    Result :=
-      ISO8601ToDate(
-        Valor.Value,
-        False
-      );
+    if not TryParseDataHoraLocal(Valor.Value, Result) then
+      raise Exception.Create('Data/hora invalida');
   except
     TAppErrors.RaiseBadRequest(
       'Data/hora inválida no campo ' +
@@ -183,11 +230,8 @@ begin
     Exit;
 
   try
-    AData :=
-      ISO8601ToDate(
-        Valor.Value,
-        False
-      );
+    if not TryParseDataHoraLocal(Valor.Value, AData) then
+      raise Exception.Create('Data/hora invalida');
 
     AInformado := True;
   except
