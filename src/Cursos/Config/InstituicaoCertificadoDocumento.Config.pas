@@ -6,7 +6,6 @@ type
   TCertificadoDocumentoConfig = record
     StoragePath: string;
     PublicValidationBaseUrl: string;
-    QrEncodeExecutable: string;
     ChromiumExecutable: string;
     ChromiumArgs: string;
   end;
@@ -76,15 +75,6 @@ begin
         )
       );
 
-    Result.QrEncodeExecutable :=
-      Trim(
-        Ini.ReadString(
-          'CERTIFICADO_DOCUMENTO',
-          'QrEncodeExecutable',
-          'qrencode'
-        )
-      );
-
     Result.ChromiumExecutable :=
       Trim(
         Ini.ReadString(
@@ -131,8 +121,8 @@ begin
       'CERTIFICADO_DOCUMENTO.PublicValidationBaseUrl deve utilizar HTTPS em PRODUCAO.'
     );
 
-  if Result.QrEncodeExecutable.IsEmpty or Result.ChromiumExecutable.IsEmpty then
-    raise Exception.Create('Configure os executáveis qrencode e Chromium.');
+  if Result.ChromiumExecutable.IsEmpty then
+    raise Exception.Create('Configure o executável do Chromium.');
 
 end;
 
