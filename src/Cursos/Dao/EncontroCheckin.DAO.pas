@@ -116,7 +116,7 @@ begin
     if not Q.IsEmpty then
     begin
       Result.ExpiraEm := Q.FieldByName('expira_em').AsDateTime;
-      Result.Aberto := Q.FieldByName('aberto').AsBoolean;
+      Result.Aberto := Q.FieldByName('aberto').AsInteger = 1;
       if Result.Aberto then Result.SegundosRestantes := Q.FieldByName('segundos').AsInteger;
     end;
   finally Q.Free; end;
@@ -253,10 +253,22 @@ begin
       TAppErrors.RaiseBadRequest('Esta turma não utiliza presença por QR Code da turma.');
 
     if Acao = 'abrir' then
-      if (Q.FieldByName('situacao').AsString <> 'EM_ANDAMENTO') or
-         (Now < Q.FieldByName('data_hora_inicio').AsDateTime) or
-         (Now >= Q.FieldByName('data_hora_fim').AsDateTime) then
-        TAppErrors.RaiseBadRequest('A presença só pode ser aberta durante uma turma em andamento.');
+    begin
+      if Q.FieldByName('situacao').AsString <> 'EM_ANDAMENTO' then
+        TAppErrors.RaiseBadRequest('A presença só pode ser aberta quando a turma estiver em andamento.');
+
+      if Now < Q.FieldByName('data_hora_inicio').AsDateTime then
+        TAppErrors.RaiseBadRequest(
+          'A presença poderá ser aberta a partir de ' +
+          FormatDateTime('dd/mm/yyyy hh:nn', Q.FieldByName('data_hora_inicio').AsDateTime) +
+          '.'
+        );
+
+      if Now >= Q.FieldByName('data_hora_fim').AsDateTime then
+        TAppErrors.RaiseBadRequest(
+          'A presença não pode ser aberta porque o horário da turma já foi encerrado.'
+        );
+    end;
 
     Q.Close;
 
