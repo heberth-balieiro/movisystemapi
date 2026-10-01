@@ -308,7 +308,7 @@ begin
     if not Q.IsEmpty then
     begin
       Result.ExpiraEm := Q.FieldByName('expira_em').AsDateTime;
-      Result.Aberto := Q.FieldByName('aberto').AsBoolean;
+      Result.Aberto := Q.FieldByName('aberto').AsInteger = 1;
       if Result.Aberto then Result.SegundosRestantes := Q.FieldByName('segundos').AsInteger;
     end;
   finally
