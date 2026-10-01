@@ -20,10 +20,6 @@ type
       const AExtensao: string
     ): string; static;
 
-    class function ExtrairSvg(
-      const AArquivo: string
-    ): string; static;
-
     class function Sha256Arquivo(
       const AArquivo: string
     ): string; static;
@@ -46,11 +42,9 @@ type
       const ACertificado: TCertificadoItem
     ): string; static;
 
-    class procedure GerarQrCode(
-      const AExecutable,
-            AUrlValidacao,
-            AArquivoSvg: string
-    ); static;
+    class function GerarQrCodeSvg(
+      const AUrlValidacao: string
+    ): string; static;
 
     class procedure GerarPdfChromium(
       const AExecutable,
@@ -92,7 +86,8 @@ uses
   InstituicaoCertificadoDocumento.Model,
   InstituicaoCertificadoDocumento.DAO,
   InstituicaoCertificado.Service,
-  InstituicaoPermissao.Service;
+  InstituicaoPermissao.Service,
+  DelphiZXingQRCode;
 
 class function TInstituicaoCertificadoDocumentoService.ResolverCaminhoPdf(
   const AIdInstituicao: Int64; const AStorageKey: string): string;
@@ -289,40 +284,6 @@ begin
         Nome
       ) +
       AExtensao
-    );
-end;
-
-class function TInstituicaoCertificadoDocumentoService.ExtrairSvg(
-  const AArquivo: string
-): string;
-var
-  Texto: string;
-  PosSvg: Integer;
-begin
-  Texto :=
-    TFile.ReadAllText(
-      AArquivo,
-      TEncoding.UTF8
-    );
-
-  PosSvg :=
-    Pos(
-      '<svg',
-      LowerCase(
-        Texto
-      )
-    );
-
-  if PosSvg <= 0 then
-    raise Exception.Create(
-      'O qrencode não gerou um SVG válido.'
-    );
-
-  Result :=
-    Copy(
-      Texto,
-      PosSvg,
-      MaxInt
     );
 end;
 
@@ -538,31 +499,44 @@ begin
       '</body></html>';
 end;
 
-class procedure TInstituicaoCertificadoDocumentoService.GerarQrCode(
-  const AExecutable,
-        AUrlValidacao,
-        AArquivoSvg: string
-);
+class function TInstituicaoCertificadoDocumentoService.GerarQrCodeSvg(
+  const AUrlValidacao: string
+): string;
+var
+  Qr: TDelphiZXingQRCode;
+  Builder: TStringBuilder;
+  Linha, Coluna: Integer;
 begin
-  TAppProcessRunner.Execute(
-    AExecutable,
-    [
-      '-t',
-      'SVG',
-      '-o',
-      AArquivoSvg,
-      '-s',
-      '8',
-      AUrlValidacao
-    ]
-  );
+  if Trim(AUrlValidacao).IsEmpty then
+    raise Exception.Create('URL de validação do certificado não informada.');
 
-  if not TFile.Exists(
-    AArquivoSvg
-  ) then
-    raise Exception.Create(
-      'O arquivo SVG do QR Code não foi gerado.'
+  Qr := TDelphiZXingQRCode.Create;
+  Builder := TStringBuilder.Create;
+  try
+    Qr.Encoding := qrUTF8NoBOM;
+    Qr.QuietZone := 4;
+    Qr.Data := AUrlValidacao;
+
+    Builder.Append(
+      Format(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" shape-rendering="crispEdges" role="img" aria-label="QR Code de validação">',
+        [Qr.Columns, Qr.Rows]
+      )
     );
+    Builder.Append('<rect width="100%" height="100%" fill="#fff"/>');
+    Builder.Append('<path fill="#000" d="');
+
+    for Linha := 0 to Qr.Rows - 1 do
+      for Coluna := 0 to Qr.Columns - 1 do
+        if Qr.IsBlack[Linha, Coluna] then
+          Builder.AppendFormat('M%d %dh1v1h-1z', [Coluna, Linha]);
+
+    Builder.Append('"/></svg>');
+    Result := Builder.ToString;
+  finally
+    Builder.Free;
+    Qr.Free;
+  end;
 end;
 
 class procedure TInstituicaoCertificadoDocumentoService.GerarPdfChromium(
@@ -671,7 +645,6 @@ var
   Template: TCertificadoDocumentoTemplate;
 
   UrlValidacao: string;
-  ArquivoQr: string;
   ArquivoHtml: string;
   ArquivoPdfTemporario: string;
   QrSvg: string;
@@ -689,7 +662,6 @@ begin
   Template := nil;
   Certificado := nil;
 
-  ArquivoQr := '';
   ArquivoHtml := '';
   ArquivoPdfTemporario := '';
   ArquivoPdfDestino := '';
@@ -773,11 +745,6 @@ begin
         Certificado.CodigoValidacao
       );
 
-    ArquivoQr :=
-      GerarNomeTemporario(
-        '.svg'
-      );
-
     ArquivoHtml :=
       GerarNomeTemporario(
         '.html'
@@ -788,15 +755,9 @@ begin
         '.pdf'
       );
 
-    GerarQrCode(
-      DocumentoConfig.QrEncodeExecutable,
-      UrlValidacao,
-      ArquivoQr
-    );
-
     QrSvg :=
-      ExtrairSvg(
-        ArquivoQr
+      GerarQrCodeSvg(
+        UrlValidacao
       );
 
     Html :=
@@ -922,14 +883,6 @@ begin
   finally
     Template.Free;
     Certificado.Free;
-
-    if not ArquivoQr.IsEmpty and
-       TFile.Exists(
-         ArquivoQr
-       ) then
-      TFile.Delete(
-        ArquivoQr
-      );
 
     if not ArquivoHtml.IsEmpty and
        TFile.Exists(
