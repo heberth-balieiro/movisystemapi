@@ -42,6 +42,15 @@ type
     function ToJSON: TJSONObject;
   end;
 
+  TInstituicaoAutoCadastroInput = record
+    PermitirAutoCadastro: Boolean;
+  end;
+
+  TInstituicaoAutoCadastroConfig = record
+    PermitirAutoCadastro: Boolean;
+    function ToJSON: TJSONObject;
+  end;
+
   TInstituicaoAcessoEnvioInput = record
     EnviarEmail: Boolean;
     EnviarWhatsApp: Boolean;
@@ -87,6 +96,12 @@ begin
   Result.AddPair('remetente_nome', RemetenteNome);
   Result.AddPair('remetente_email', RemetenteEmail);
   Result.AddPair('responder_para', ResponderPara);
+end;
+
+function TInstituicaoAutoCadastroConfig.ToJSON: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('permitir_auto_cadastro', TJSONBool.Create(PermitirAutoCadastro));
 end;
 
 function TInstituicaoAcessoEnvioConfig.ToJSON: TJSONObject;
