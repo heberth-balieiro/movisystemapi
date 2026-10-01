@@ -26,6 +26,7 @@ type
     CorDestaque: string;
     CorFundo: string;
     CorTexto: string;
+    PermitirAutoCadastro: Boolean;
   end;
 
   TPublicoCurso = class
