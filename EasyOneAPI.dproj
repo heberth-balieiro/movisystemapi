@@ -360,6 +360,9 @@
         <DCCReference Include="src\EasyOneDescktop\Controller\EasyOneIntegracao.Controller.pas"/>
         <DCCReference Include="src\Cursos\Migrations\Cursos.Migration.pas"/>
         <DCCReference Include="src\Cursos\Routes\Cursos.Routes.pas"/>
+        <DCCReference Include="src\Cursos\Dao\PublicoAutoCadastro.DAO.pas"/>
+        <DCCReference Include="src\Cursos\Services\PublicoAutoCadastro.Service.pas"/>
+        <DCCReference Include="src\Cursos\Controller\PublicoAutoCadastro.Controller.pas"/>
         <DCCReference Include="src\Cursos\Controller\PlataformaAuth.Controller.pas"/>
         <DCCReference Include="src\Cursos\Services\PlataformaAuth.Service.pas"/>
         <DCCReference Include="src\Cursos\Seeds\Certifica.Seeds.pas"/>
