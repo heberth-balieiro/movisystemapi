@@ -166,11 +166,11 @@ begin
       repeat
         Inc(Tentativas);
         Codigo := GerarCodigoPublico;
-      until (Tentativas >= 5) or (not TPublicoAutoCadastroDAO.ExisteCpf(
-        Conn,
-        Instituicao.IdInstituicao,
-        CpfHash
-      ));
+      until (Tentativas >= 5) or
+            (not TPublicoAutoCadastroDAO.CodigoPublicoExiste(Conn, Codigo));
+
+      if TPublicoAutoCadastroDAO.CodigoPublicoExiste(Conn, Codigo) then
+        raise Exception.Create('Nao foi possivel gerar o codigo publico do participante.');
 
       IdParticipante := TPublicoAutoCadastroDAO.CriarParticipante(
         Conn,
