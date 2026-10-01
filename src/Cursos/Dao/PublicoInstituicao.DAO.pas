@@ -56,7 +56,8 @@ begin
       'COALESCE(ic.cor_secundaria, ''#1E40AF'') AS cor_secundaria, ' +
       'COALESCE(ic.cor_destaque, ''#F59E0B'') AS cor_destaque, ' +
       'COALESCE(ic.cor_fundo, ''#F8FAFC'') AS cor_fundo, ' +
-      'COALESCE(ic.cor_texto, ''#0F172A'') AS cor_texto ' +
+      'COALESCE(ic.cor_texto, ''#0F172A'') AS cor_texto, ' +
+      'COALESCE(ic.permitir_auto_cadastro, 0) AS permitir_auto_cadastro ' +
       'FROM instituicao i ' +
       'LEFT JOIN instituicao_configuracao ic ON ic.id_instituicao = i.id ' +
       'WHERE i.slug = :slug AND i.situacao = ''ATIVA'' ' +
@@ -87,6 +88,7 @@ begin
     Result.CorDestaque := Qry.FieldByName('cor_destaque').AsString;
     Result.CorFundo := Qry.FieldByName('cor_fundo').AsString;
     Result.CorTexto := Qry.FieldByName('cor_texto').AsString;
+    Result.PermitirAutoCadastro := Qry.FieldByName('permitir_auto_cadastro').AsBoolean;
   finally
     Qry.Free;
   end;
