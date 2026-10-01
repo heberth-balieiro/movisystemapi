@@ -44,6 +44,11 @@ type
     class function EmailValido(const AEmail: string): Boolean; static;
 
   public
+    class function BuscarInstituicao(
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64
+    ): TJSONObject; static;
+
     class function AtualizarInstituicao(
       const AIdInstituicao,
             AIdUsuarioInstituicao: Int64;
@@ -181,6 +186,28 @@ begin
     TAppErrors.RaiseBadRequest(
       'Informe uma URL HTTP ou HTTPS valida.'
     );
+end;
+
+class function TInstituicaoConfiguracaoService.BuscarInstituicao(
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64
+): TJSONObject;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  Result := nil;
+  ValidarTenant(AIdInstituicao, AIdUsuarioInstituicao);
+
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Result := TInstituicaoConfiguracaoDAO.BuscarInstituicao(Conn, AIdInstituicao);
+    if Result = nil then
+      TAppErrors.RaiseBadRequest('Instituicao nao encontrada.');
+  finally
+    Conn.Free;
+  end;
 end;
 
 class function TInstituicaoConfiguracaoService.AtualizarInstituicao(
