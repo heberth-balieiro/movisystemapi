@@ -673,11 +673,6 @@ begin
     {$IFDEF POSIX}
     if not Args.Contains('--disable-dev-shm-usage') then
       Args.Add('--disable-dev-shm-usage');
-
-    // Em servidores Linux/containers o processo costuma executar sem desktop.
-    // Pode ser sobrescrito/removido via configuração futura caso o ambiente use sandbox.
-    if not Args.Contains('--no-sandbox') then
-      Args.Add('--no-sandbox');
     {$ENDIF}
 
     Args.Add('--user-data-dir=' + PastaPerfil);
