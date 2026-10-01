@@ -561,9 +561,8 @@ begin
       ).AsString;
 
     Result.UsarAno :=
-      Qry.FieldByName(
-        'usar_ano'
-      ).AsInteger = 1;
+      SameText(Trim(Qry.FieldByName('usar_ano').AsString), '1') or
+      SameText(Trim(Qry.FieldByName('usar_ano').AsString), 'true');
 
     Result.DigitosSequencia :=
       Qry.FieldByName(
