@@ -227,9 +227,9 @@ begin
       'Informe a data/hora de término da turma.'
     );
 
-  if ADataHoraFim < ADataHoraInicio then
+  if ADataHoraFim <= ADataHoraInicio then
     TAppErrors.RaiseBadRequest(
-      'A data/hora de término não pode ser anterior ao início.'
+      'O término da turma deve ser posterior ao início.'
     );
 
   if
