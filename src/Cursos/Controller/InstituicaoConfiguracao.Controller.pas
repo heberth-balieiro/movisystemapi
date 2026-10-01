@@ -401,6 +401,104 @@ begin
   {$ENDREGION}
 
 
+  {$REGION 'Auto cadastro de participantes'}
+
+  THorse.Get(
+    '/v1/certifica/configuracoes/auto-cadastro',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Config: TInstituicaoAutoCadastroConfig;
+    begin
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then
+          Exit;
+
+        if Claims.IdUsuarioInstituicao <= 0 then
+        begin
+          TAppResponse.Forbidden(
+            Res,
+            'Token sem vínculo de usuário com a instituição.'
+          );
+          Exit;
+        end;
+
+        Config := TInstituicaoConfiguracaoService.BuscarAutoCadastro(
+          Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao
+        );
+
+        TAppResponse.Ok(
+          Res,
+          Config.ToJSON,
+          'Configuração de auto cadastro carregada com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  THorse.Put(
+    '/v1/certifica/configuracoes/auto-cadastro',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      JsonValue: TJSONValue;
+      Body: TJSONObject;
+      Dados: TInstituicaoAutoCadastroInput;
+      Config: TInstituicaoAutoCadastroConfig;
+    begin
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then
+          Exit;
+
+        if Claims.IdUsuarioInstituicao <= 0 then
+        begin
+          TAppResponse.Forbidden(
+            Res,
+            'Token sem vínculo de usuário com a instituição.'
+          );
+          Exit;
+        end;
+
+        JsonValue := TJSONObject.ParseJSONValue(Req.Body);
+        if not (JsonValue is TJSONObject) then
+        begin
+          JsonValue.Free;
+          TAppErrors.RaiseBadRequest('JSON inválido.');
+        end;
+
+        Body := JsonValue as TJSONObject;
+        try
+          Dados := Default(TInstituicaoAutoCadastroInput);
+          Dados.PermitirAutoCadastro :=
+            JsonBoolean(Body, 'permitir_auto_cadastro', False);
+        finally
+          Body.Free;
+        end;
+
+        Config := TInstituicaoConfiguracaoService.AtualizarAutoCadastro(
+          Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao,
+          Dados
+        );
+
+        TAppResponse.Ok(
+          Res,
+          Config.ToJSON,
+          'Configuração de auto cadastro atualizada com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  {$ENDREGION}
+
   {$REGION 'Configuração de E-mail'}
 
   THorse.Get(
