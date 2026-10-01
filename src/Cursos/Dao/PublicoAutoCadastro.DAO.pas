@@ -71,6 +71,11 @@ type
             AEmail, ATelefone: string
     ): Int64; static;
 
+    class procedure RegistrarAceitesVigentes(
+      const AConn: TUniConnection;
+      const AIdInstituicao, AIdParticipante: Int64
+    ); static;
+
     class procedure RegistrarAuditoria(
       const AConn: TUniConnection;
       const AIdInstituicao, AIdUsuarioInstituicao, AIdParticipante: Int64
@@ -315,6 +320,30 @@ begin
     Q.SQL.Text := 'SELECT LAST_INSERT_ID() AS id';
     Q.Open;
     Result := Q.FieldByName('id').AsLargeInt;
+  finally
+    Q.Free;
+  end;
+end;
+
+class procedure TPublicoAutoCadastroDAO.RegistrarAceitesVigentes(
+  const AConn: TUniConnection;
+  const AIdInstituicao, AIdParticipante: Int64
+);
+var
+  Q: TUniQuery;
+begin
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+    Q.SQL.Text :=
+      'INSERT INTO termo_aceite ' +
+      '(id_instituicao,id_termo,id_participante,id_usuario_instituicao,aceito_em) ' +
+      'SELECT id_instituicao,id,:id_participante,NULL,CURRENT_TIMESTAMP(3) ' +
+      'FROM termo WHERE id_instituicao=:id_instituicao AND vigente=1 ' +
+      'AND tipo IN (''PRIVACIDADE'',''USO'',''CONSENTIMENTO'')';
+    Q.ParamByName('id_participante').AsLargeInt := AIdParticipante;
+    Q.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Q.ExecSQL;
   finally
     Q.Free;
   end;
