@@ -88,7 +88,7 @@ begin
     Result.CorDestaque := Qry.FieldByName('cor_destaque').AsString;
     Result.CorFundo := Qry.FieldByName('cor_fundo').AsString;
     Result.CorTexto := Qry.FieldByName('cor_texto').AsString;
-    Result.PermitirAutoCadastro := Qry.FieldByName('permitir_auto_cadastro').AsBoolean;
+    Result.PermitirAutoCadastro := Qry.FieldByName('permitir_auto_cadastro').AsInteger = 1;
   finally
     Qry.Free;
   end;
