@@ -75,6 +75,17 @@ type
       out ASenha: string
     ): Boolean; static;
 
+    class function BuscarAutoCadastro(
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64
+    ): TInstituicaoAutoCadastroConfig; static;
+
+    class function AtualizarAutoCadastro(
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64;
+      const ADados: TInstituicaoAutoCadastroInput
+    ): TInstituicaoAutoCadastroConfig; static;
+
     class function BuscarAcessoEnvio(
       const AIdInstituicao,
             AIdUsuarioInstituicao: Int64
@@ -920,6 +931,59 @@ begin
   end;
 end;
 
+
+class function TInstituicaoConfiguracaoService.BuscarAutoCadastro(
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64
+): TInstituicaoAutoCadastroConfig;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  ValidarTenant(AIdInstituicao, AIdUsuarioInstituicao);
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Result := TInstituicaoConfiguracaoDAO.BuscarAutoCadastro(Conn, AIdInstituicao);
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TInstituicaoConfiguracaoService.AtualizarAutoCadastro(
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64;
+  const ADados: TInstituicaoAutoCadastroInput
+): TInstituicaoAutoCadastroConfig;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  ValidarTenant(AIdInstituicao, AIdUsuarioInstituicao);
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Conn.StartTransaction;
+    try
+      TInstituicaoConfiguracaoDAO.SalvarAutoCadastro(
+        Conn,
+        AIdInstituicao,
+        ADados
+      );
+      Result := TInstituicaoConfiguracaoDAO.BuscarAutoCadastro(
+        Conn,
+        AIdInstituicao
+      );
+      Conn.Commit;
+    except
+      if Conn.InTransaction then
+        Conn.Rollback;
+      raise;
+    end;
+  finally
+    Conn.Free;
+  end;
+end;
 
 class function TInstituicaoConfiguracaoService.BuscarAcessoEnvio(
   const AIdInstituicao,
