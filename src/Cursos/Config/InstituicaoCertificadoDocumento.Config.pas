@@ -80,7 +80,7 @@ begin
         Ini.ReadString(
           'CERTIFICADO_DOCUMENTO',
           'ChromiumExecutable',
-          'chromium'
+          'auto'
         )
       );
 
@@ -89,7 +89,7 @@ begin
         Ini.ReadString(
           'CERTIFICADO_DOCUMENTO',
           'ChromiumArgs',
-          '--headless --disable-gpu --no-pdf-header-footer'
+          '--headless=new --disable-gpu --no-pdf-header-footer --no-first-run --no-default-browser-check'
         )
       );
 
