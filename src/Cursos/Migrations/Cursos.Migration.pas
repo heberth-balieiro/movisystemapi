@@ -83,6 +83,7 @@ type
     class procedure Migration_054_CertificadoProcessamento(const AConn: TUniConnection); static;
     class procedure Migration_055_CertificadoNotificacao(const AConn: TUniConnection); static;
     class procedure Migration_056_InstituicaoAutoCadastro(const AConn: TUniConnection); static;
+    class procedure Migration_057_CertificadoHistoricoEventos(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -350,6 +351,7 @@ begin
       Migration_054_CertificadoProcessamento(Conn);
       Migration_055_CertificadoNotificacao(Conn);
       Migration_056_InstituicaoAutoCadastro(Conn);
+      Migration_057_CertificadoHistoricoEventos(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2844,6 +2846,56 @@ begin
     AConn,
     '056',
     'Configuracao de auto cadastro de participantes por instituicao'
+  );
+end;
+
+
+class procedure TCursosMigration.Migration_057_CertificadoHistoricoEventos(
+  const AConn: TUniConnection);
+const
+  VERSION = '057';
+  DESCRIPTION = 'Atualizar eventos permitidos no historico de certificados';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  if ConstraintExists(
+    AConn,
+    'certificado_historico',
+    'ck_certificado_historico_evento'
+  ) then
+    ExecSQL(
+      AConn,
+      'ALTER TABLE certificado_historico ' +
+      'DROP CHECK ck_certificado_historico_evento'
+    );
+
+  ExecSQL(
+    AConn,
+    'ALTER TABLE certificado_historico ' +
+    'ADD CONSTRAINT ck_certificado_historico_evento CHECK (evento IN (' +
+      '''EMITIDO'',' +
+      '''PDF_GERADO'',' +
+      '''CANCELADO'',' +
+      '''REEMITIDO'',' +
+      '''ERRO'',' +
+      '''PROCESSAMENTO_AGENDADO'',' +
+      '''PROCESSAMENTO_ERRO'',' +
+      '''PROCESSAMENTO_REENFILEIRADO'',' +
+      '''NOTIFICACAO_AGENDADA'',' +
+      '''NOTIFICACAO_EMAIL_ENVIADA'',' +
+      '''NOTIFICACAO_WHATSAPP_ENVIADA'',' +
+      '''NOTIFICACAO_EMAIL_ERRO'',' +
+      '''NOTIFICACAO_WHATSAPP_ERRO'',' +
+      '''NOTIFICACAO_IGNORADA'',' +
+      '''DOWNLOAD_ALUNO''' +
+    '))'
+  );
+
+  RegisterMigration(
+    AConn,
+    VERSION,
+    DESCRIPTION
   );
 end;
 
