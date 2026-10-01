@@ -847,9 +847,22 @@ begin
       ).AsString;
 
     Result.ElegivelCertificado :=
-      Qry.FieldByName(
-        'elegivel_certificado'
-      ).AsInteger = 1;
+      SameText(
+        Trim(
+          Qry.FieldByName(
+            'elegivel_certificado'
+          ).AsString
+        ),
+        '1'
+      ) or
+      SameText(
+        Trim(
+          Qry.FieldByName(
+            'elegivel_certificado'
+          ).AsString
+        ),
+        'true'
+      );
 
   finally
     Qry.Free;
