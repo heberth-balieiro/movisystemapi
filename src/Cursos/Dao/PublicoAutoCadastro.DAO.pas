@@ -49,6 +49,11 @@ type
       const ACpfHash: string
     ): Boolean; static;
 
+    class function CodigoPublicoExiste(
+      const AConn: TUniConnection;
+      const ACodigoPublico: string
+    ): Boolean; static;
+
     class function CriarUsuario(
       const AConn: TUniConnection;
       const ANome, AEmail, AEmailNormalizado, ASenhaHash: string
@@ -198,6 +203,25 @@ begin
       'WHERE id_instituicao=:id_instituicao AND cpf_hash_busca=:cpf LIMIT 1';
     Q.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
     Q.ParamByName('cpf').AsString := ACpfHash;
+    Q.Open;
+    Result := not Q.IsEmpty;
+  finally
+    Q.Free;
+  end;
+end;
+
+class function TPublicoAutoCadastroDAO.CodigoPublicoExiste(
+  const AConn: TUniConnection;
+  const ACodigoPublico: string
+): Boolean;
+var
+  Q: TUniQuery;
+begin
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+    Q.SQL.Text := 'SELECT 1 FROM participante WHERE codigo_publico=:codigo LIMIT 1';
+    Q.ParamByName('codigo').AsString := ACodigoPublico;
     Q.Open;
     Result := not Q.IsEmpty;
   finally
