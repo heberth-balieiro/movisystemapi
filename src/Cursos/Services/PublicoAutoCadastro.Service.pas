@@ -113,6 +113,15 @@ begin
     if TPublicoAutoCadastroDAO.ExisteCpf(Conn, Instituicao.IdInstituicao, CpfHash) then
       TAppErrors.RaiseBadRequest('Ja existe participante cadastrado com este CPF.');
 
+    if TPublicoAutoCadastroDAO.ExisteEmailParticipante(
+      Conn,
+      Instituicao.IdInstituicao,
+      Email
+    ) then
+      TAppErrors.RaiseBadRequest(
+        'Ja existe participante cadastrado com este e-mail. Entre com seu acesso.'
+      );
+
     Usuario := TPublicoAutoCadastroDAO.BuscarUsuarioPorEmail(Conn, Email);
 
     if Usuario.Encontrado and not SameText(Usuario.Situacao, 'ATIVO') then
