@@ -230,6 +230,7 @@ uses
   EasyOneIntegracao.Service in 'src\EasyOneDescktop\Service\EasyOneIntegracao.Service.pas',
   EasyOneIntegracao.Controller in 'src\EasyOneDescktop\Controller\EasyOneIntegracao.Controller.pas',
   Cursos.Migration in 'src\Cursos\Migrations\Cursos.Migration.pas',
+  DelphiZXingQRCode in 'src\ThirdParty\DelphiZXingQRCode.pas',
   Cursos.Routes in 'src\Cursos\Routes\Cursos.Routes.pas',
   PublicoAutoCadastro.DAO in 'src\Cursos\Dao\PublicoAutoCadastro.DAO.pas',
   PublicoAutoCadastro.Service in 'src\Cursos\Services\PublicoAutoCadastro.Service.pas',
