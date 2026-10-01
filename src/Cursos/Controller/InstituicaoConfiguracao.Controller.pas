@@ -125,6 +125,45 @@ end;
 
 class procedure TInstituicaoConfiguracaoController.Registry;
 begin
+  {$REGION 'Buscar Instituicao'}
+
+  THorse.Get(
+    '/v1/certifica/configuracoes/instituicao',
+
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Claims: TJWTClaims;
+      Retorno: TJSONObject;
+    begin
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then
+          Exit;
+
+        if Claims.IdUsuarioInstituicao <= 0 then
+        begin
+          TAppResponse.Forbidden(Res, 'Token sem vinculo de usuario com a instituicao.');
+          Exit;
+        end;
+
+        Retorno := TInstituicaoConfiguracaoService.BuscarInstituicao(
+          Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao
+        );
+
+        TAppResponse.Ok(Res, Retorno, 'Dados da instituicao carregados com sucesso.');
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  {$ENDREGION}
+
   {$REGION 'Atualizar Instituição'}
 
   THorse.Put(
