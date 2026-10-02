@@ -1035,7 +1035,11 @@ var
   Config: TAppApiConfig;
   Conn: TUniConnection;
 begin
-  ValidarTenant(AIdInstituicao, AIdUsuarioInstituicao);
+  TInstituicaoPermissaoService.Exigir(
+    AIdInstituicao,
+    AIdUsuarioInstituicao,
+    'turma.visualizar'
+  );
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(Config.Database);
   try
