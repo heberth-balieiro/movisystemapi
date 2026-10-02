@@ -28,13 +28,19 @@ type
     class function Inserir(
       const AConn: TUniConnection;
       const AIdUsuario: Int64;
-      const ANome, ACanal, AAssuntoEmail, ACorpoEmail, AMensagemWhatsApp: string
+      const ANome, ACanal, AAssuntoEmail, ACorpoEmail, AMensagemWhatsApp,
+            ATipoEnvio: string;
+      const AAgendadoPara: TDateTime;
+      const ATemAgendadoPara: Boolean
     ): Int64; static;
 
     class procedure Atualizar(
       const AConn: TUniConnection;
       const AId: Int64;
-      const ANome, ACanal, AAssuntoEmail, ACorpoEmail, AMensagemWhatsApp: string
+      const ANome, ACanal, AAssuntoEmail, ACorpoEmail, AMensagemWhatsApp,
+            ATipoEnvio: string;
+      const AAgendadoPara: TDateTime;
+      const ATemAgendadoPara: Boolean
     ); static;
 
     class function AdicionarDestinatario(
@@ -112,6 +118,10 @@ type
     class procedure Iniciar(
       const AConn: TUniConnection;
       const AIdCampanha: Int64
+    ); static;
+
+    class procedure AtivarAgendadas(
+      const AConn: TUniConnection
     ); static;
 
     class procedure Cancelar(
@@ -202,7 +212,7 @@ begin
 
     Q.Close;
     Q.SQL.Text :=
-      'SELECT c.id, c.nome, c.canal, c.situacao, c.total_destinatarios, c.total_envios, ' +
+      'SELECT c.id, c.nome, c.canal, c.situacao, c.tipo_envio, c.agendado_para, c.total_destinatarios, c.total_envios, ' +
       'c.total_enviados, c.total_falhas, c.iniciado_em, c.concluido_em, c.criado_em, ' +
       'u.nome criado_por_nome ' +
       'FROM plataforma_campanha c JOIN usuario u ON u.id = c.criado_por ' +
@@ -222,6 +232,9 @@ begin
       J.AddPair('nome', Q.FieldByName('nome').AsString);
       J.AddPair('canal', Q.FieldByName('canal').AsString);
       J.AddPair('situacao', Q.FieldByName('situacao').AsString);
+      J.AddPair('tipo_envio', Q.FieldByName('tipo_envio').AsString);
+      if Q.FieldByName('agendado_para').IsNull then J.AddPair('agendado_para', TJSONNull.Create)
+      else J.AddPair('agendado_para', FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', Q.FieldByName('agendado_para').AsDateTime));
       J.AddPair('total_destinatarios', TJSONNumber.Create(Q.FieldByName('total_destinatarios').AsInteger));
       J.AddPair('total_envios', TJSONNumber.Create(Q.FieldByName('total_envios').AsInteger));
       J.AddPair('total_enviados', TJSONNumber.Create(Q.FieldByName('total_enviados').AsInteger));
@@ -287,6 +300,9 @@ begin
       Result.AddPair('id_whatsapp_usuario', TJSONNumber.Create(Q.FieldByName('id_whatsapp_usuario').AsLargeInt));
     Result.AddPair('whatsapp_instancia', Q.FieldByName('whatsapp_instancia').AsString);
     Result.AddPair('situacao', Q.FieldByName('situacao').AsString);
+    Result.AddPair('tipo_envio', Q.FieldByName('tipo_envio').AsString);
+    if Q.FieldByName('agendado_para').IsNull then Result.AddPair('agendado_para', TJSONNull.Create)
+    else Result.AddPair('agendado_para', FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', Q.FieldByName('agendado_para').AsDateTime));
     Result.AddPair('total_destinatarios', TJSONNumber.Create(Q.FieldByName('total_destinatarios').AsInteger));
     Result.AddPair('total_envios', TJSONNumber.Create(Q.FieldByName('total_envios').AsInteger));
     Result.AddPair('total_enviados', TJSONNumber.Create(Q.FieldByName('total_enviados').AsInteger));
@@ -365,7 +381,10 @@ end;
 
 class function TPlataformaCampanhaDAO.Inserir(
   const AConn: TUniConnection; const AIdUsuario: Int64;
-  const ANome, ACanal, AAssuntoEmail, ACorpoEmail, AMensagemWhatsApp: string): Int64;
+  const ANome, ACanal, AAssuntoEmail, ACorpoEmail, AMensagemWhatsApp,
+        ATipoEnvio: string;
+  const AAgendadoPara: TDateTime;
+  const ATemAgendadoPara: Boolean): Int64;
 var Q: TUniQuery;
 begin
   Q := TUniQuery.Create(nil);
@@ -373,13 +392,15 @@ begin
     Q.Connection := AConn;
     Q.SQL.Text :=
       'INSERT INTO plataforma_campanha ' +
-      '(nome, canal, assunto_email, corpo_email, mensagem_whatsapp, criado_por) ' +
-      'VALUES (:nome, :canal, :assunto, :corpo, :whatsapp, :usuario)';
+      '(nome, canal, assunto_email, corpo_email, mensagem_whatsapp, tipo_envio, agendado_para, criado_por) ' +
+      'VALUES (:nome, :canal, :assunto, :corpo, :whatsapp, :tipo_envio, :agendado_para, :usuario)';
     Q.ParamByName('nome').AsString := ANome;
     Q.ParamByName('canal').AsString := ACanal;
     if AAssuntoEmail.IsEmpty then Q.ParamByName('assunto').Clear else Q.ParamByName('assunto').AsString := AAssuntoEmail;
     if ACorpoEmail.IsEmpty then Q.ParamByName('corpo').Clear else Q.ParamByName('corpo').AsString := ACorpoEmail;
     if AMensagemWhatsApp.IsEmpty then Q.ParamByName('whatsapp').Clear else Q.ParamByName('whatsapp').AsString := AMensagemWhatsApp;
+    Q.ParamByName('tipo_envio').AsString := ATipoEnvio;
+    if ATemAgendadoPara then Q.ParamByName('agendado_para').AsDateTime := AAgendadoPara else Q.ParamByName('agendado_para').Clear;
     Q.ParamByName('usuario').AsLargeInt := AIdUsuario;
     Q.Execute;
     Q.SQL.Text := 'SELECT LAST_INSERT_ID() id';
@@ -390,7 +411,10 @@ end;
 
 class procedure TPlataformaCampanhaDAO.Atualizar(
   const AConn: TUniConnection; const AId: Int64;
-  const ANome, ACanal, AAssuntoEmail, ACorpoEmail, AMensagemWhatsApp: string);
+  const ANome, ACanal, AAssuntoEmail, ACorpoEmail, AMensagemWhatsApp,
+        ATipoEnvio: string;
+  const AAgendadoPara: TDateTime;
+  const ATemAgendadoPara: Boolean);
 var Q: TUniQuery;
 begin
   Q := TUniQuery.Create(nil);
@@ -398,12 +422,15 @@ begin
     Q.Connection := AConn;
     Q.SQL.Text :=
       'UPDATE plataforma_campanha SET nome=:nome, canal=:canal, assunto_email=:assunto, ' +
-      'corpo_email=:corpo, mensagem_whatsapp=:whatsapp WHERE id=:id AND situacao=''RASCUNHO''';
+      'corpo_email=:corpo, mensagem_whatsapp=:whatsapp, tipo_envio=:tipo_envio, agendado_para=:agendado_para ' +
+      'WHERE id=:id AND situacao=''RASCUNHO''';
     Q.ParamByName('nome').AsString := ANome;
     Q.ParamByName('canal').AsString := ACanal;
     if AAssuntoEmail.IsEmpty then Q.ParamByName('assunto').Clear else Q.ParamByName('assunto').AsString := AAssuntoEmail;
     if ACorpoEmail.IsEmpty then Q.ParamByName('corpo').Clear else Q.ParamByName('corpo').AsString := ACorpoEmail;
     if AMensagemWhatsApp.IsEmpty then Q.ParamByName('whatsapp').Clear else Q.ParamByName('whatsapp').AsString := AMensagemWhatsApp;
+    Q.ParamByName('tipo_envio').AsString := ATipoEnvio;
+    if ATemAgendadoPara then Q.ParamByName('agendado_para').AsDateTime := AAgendadoPara else Q.ParamByName('agendado_para').Clear;
     Q.ParamByName('id').AsLargeInt := AId;
     Q.Execute;
   finally Q.Free; end;
@@ -664,7 +691,9 @@ begin
  Q:=TUniQuery.Create(nil);
  try
   Q.Connection:=AConn;
-  Q.SQL.Text:='UPDATE plataforma_campanha SET situacao=''PROCESSANDO'', iniciado_em=CURRENT_TIMESTAMP(3), concluido_em=NULL '+
+  Q.SQL.Text:='UPDATE plataforma_campanha SET '+
+    'situacao=CASE WHEN tipo_envio=''AGENDADO'' THEN ''AGENDADA'' ELSE ''PROCESSANDO'' END, '+
+    'iniciado_em=CASE WHEN tipo_envio=''AGENDADO'' THEN NULL ELSE CURRENT_TIMESTAMP(3) END, concluido_em=NULL '+
     'WHERE id=:id AND situacao=''RASCUNHO''';
   Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
   if Q.RowsAffected<>1 then raise Exception.Create('A campanha não está disponível para início.');
@@ -686,6 +715,23 @@ begin
  finally Q.Free; end;
 end;
 
+class procedure TPlataformaCampanhaDAO.AtivarAgendadas(
+  const AConn: TUniConnection);
+var Q: TUniQuery;
+begin
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+    Q.SQL.Text :=
+      'UPDATE plataforma_campanha SET situacao=''PROCESSANDO'', iniciado_em=CURRENT_TIMESTAMP(3) ' +
+      'WHERE situacao=''AGENDADA'' AND agendado_para IS NOT NULL ' +
+      'AND agendado_para<=CURRENT_TIMESTAMP(3)';
+    Q.Execute;
+  finally
+    Q.Free;
+  end;
+end;
+
 class procedure TPlataformaCampanhaDAO.Cancelar(
   const AConn:TUniConnection; const AIdCampanha:Int64);
 var Q:TUniQuery;
@@ -693,7 +739,7 @@ begin
  Q:=TUniQuery.Create(nil);
  try Q.Connection:=AConn;
   Q.SQL.Text:='UPDATE plataforma_campanha SET situacao=''CANCELADA'',cancelado_em=CURRENT_TIMESTAMP(3) '+
-   'WHERE id=:id AND situacao IN (''RASCUNHO'',''PROCESSANDO'')';
+   'WHERE id=:id AND situacao IN (''RASCUNHO'',''AGENDADA'',''PROCESSANDO'')';
   Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
   Q.SQL.Text:='UPDATE plataforma_campanha_envio SET situacao=''CANCELADO'' WHERE id_campanha=:id AND situacao=''PENDENTE''';
   Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
