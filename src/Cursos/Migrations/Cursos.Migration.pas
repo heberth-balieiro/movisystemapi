@@ -85,6 +85,7 @@ type
     class procedure Migration_056_InstituicaoAutoCadastro(const AConn: TUniConnection); static;
     class procedure Migration_057_CertificadoHistoricoEventos(const AConn: TUniConnection); static;
     class procedure Migration_058_PlataformaIdentidade(const AConn: TUniConnection); static;
+    class procedure Migration_059_PlataformaCampanhaAgendamento(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -354,6 +355,7 @@ begin
       Migration_056_InstituicaoAutoCadastro(Conn);
       Migration_057_CertificadoHistoricoEventos(Conn);
       Migration_058_PlataformaIdentidade(Conn);
+      Migration_059_PlataformaCampanhaAgendamento(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2934,6 +2936,64 @@ begin
     AConn,
     'INSERT INTO plataforma_identidade_configuracao (id) VALUES (1) ' +
     'ON DUPLICATE KEY UPDATE id=id'
+  );
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+
+class procedure TCursosMigration.Migration_059_PlataformaCampanhaAgendamento(
+  const AConn: TUniConnection);
+const
+  VERSION = '059';
+  DESCRIPTION = 'Agendamento de campanhas da plataforma SaaS';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  AddColumnIfMissing(
+    AConn,
+    'plataforma_campanha',
+    'tipo_envio',
+    'VARCHAR(20) NOT NULL DEFAULT ''IMEDIATO'' AFTER mensagem_whatsapp'
+  );
+
+  AddColumnIfMissing(
+    AConn,
+    'plataforma_campanha',
+    'agendado_para',
+    'DATETIME(3) NULL AFTER tipo_envio'
+  );
+
+  if ConstraintExists(
+    AConn,
+    'plataforma_campanha',
+    'ck_plataforma_campanha_situacao'
+  ) then
+    ExecSQL(
+      AConn,
+      'ALTER TABLE plataforma_campanha DROP CHECK ck_plataforma_campanha_situacao'
+    );
+
+  AddConstraintIfMissing(
+    AConn,
+    'plataforma_campanha',
+    'ck_plataforma_campanha_situacao',
+    'CHECK (situacao IN (''RASCUNHO'',''AGENDADA'',''PROCESSANDO'',''CONCLUIDA'',''CANCELADA''))'
+  );
+
+  AddConstraintIfMissing(
+    AConn,
+    'plataforma_campanha',
+    'ck_plataforma_campanha_tipo_envio',
+    'CHECK (tipo_envio IN (''IMEDIATO'',''AGENDADO''))'
+  );
+
+  AddIndexIfMissing(
+    AConn,
+    'plataforma_campanha',
+    'ix_plataforma_campanha_agendamento',
+    'KEY ix_plataforma_campanha_agendamento (situacao, agendado_para)'
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
