@@ -86,6 +86,7 @@ type
     class procedure Migration_057_CertificadoHistoricoEventos(const AConn: TUniConnection); static;
     class procedure Migration_058_PlataformaIdentidade(const AConn: TUniConnection); static;
     class procedure Migration_059_PlataformaCampanhaAgendamento(const AConn: TUniConnection); static;
+    class procedure Migration_060_AuditoriaMensagemPadrao(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -356,6 +357,7 @@ begin
       Migration_057_CertificadoHistoricoEventos(Conn);
       Migration_058_PlataformaIdentidade(Conn);
       Migration_059_PlataformaCampanhaAgendamento(Conn);
+      Migration_060_AuditoriaMensagemPadrao(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2994,6 +2996,28 @@ begin
     'plataforma_campanha',
     'ix_plataforma_campanha_agendamento',
     'KEY ix_plataforma_campanha_agendamento (situacao, agendado_para)'
+  );
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+
+class procedure TCursosMigration.Migration_060_AuditoriaMensagemPadrao(
+  const AConn: TUniConnection);
+const
+  VERSION = '060';
+  DESCRIPTION = 'Normalizar mensagem padrao de auditoria HTTP';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'UPDATE auditoria_log SET mensagem = CONCAT(' +
+    'SUBSTRING_INDEX(mensagem,'' - '',1),' +
+    ''' - operacao auditada sem persistir o corpo da requisicao.'') ' +
+    'WHERE entidade=''api'' AND mensagem LIKE ''HTTP %'' ' +
+    'AND mensagem LIKE ''%corpo%'''
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
