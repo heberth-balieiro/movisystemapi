@@ -259,6 +259,11 @@ begin
       );
 
     try
+      if Lista.Count > 50000 then
+        TAppErrors.RaiseBadRequest(
+          'A exportação excede 50.000 registros. Refine os filtros e tente novamente.'
+        );
+
       Csv := TStringBuilder.Create;
       try
         Csv.AppendLine(
