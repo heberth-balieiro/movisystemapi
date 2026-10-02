@@ -836,6 +836,9 @@ begin
     Qry.ParamByName('modalidade').AsString :=
       ADados.Modalidade;
 
+    Qry.ParamByName('tipo_fluxo').AsString :=
+      ADados.TipoFluxo;
+
     Qry.ParamByName('data_hora_inicio').AsDateTime :=
       ADados.DataHoraInicio;
 
