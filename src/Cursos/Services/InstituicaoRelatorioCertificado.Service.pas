@@ -33,6 +33,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Classes,
   System.DateUtils,
   System.Generics.Collections,
@@ -258,8 +259,7 @@ begin
         end;
 
         Result :=
-          UTF8String(#$EF#$BB#$BF) +
-          Csv.ToString;
+          #$FEFF + Csv.ToString;
       finally
         Csv.Free;
       end;
