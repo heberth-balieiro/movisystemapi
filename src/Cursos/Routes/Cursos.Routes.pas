@@ -30,6 +30,7 @@ Uses
   InstituicaoCursoCategoria.Controller,
   InstituicaoCertificadoModelo.Controller,
   InstituicaoTurma.Controller,
+  InstituicaoTurmaImportacao.Controller,
   InstituicaoInstrutor.Controller,
   InstituicaoCursoInstrutor.Controller,
   InstituicaoTurmaInstrutor.Controller,
@@ -81,6 +82,7 @@ begin
   TInstituicaoCursoCategoriaController.Registry;
   TInstituicaoCertificadoModeloController.Registry;
   TInstituicaoTurmaController.Registry;
+  TInstituicaoTurmaImportacaoController.Registry;
   TInstituicaoInstrutorController.Registry;
   TInstituicaoCursoInstrutorController.Registry;
   TInstituicaoTurmaInstrutorController.Registry;
