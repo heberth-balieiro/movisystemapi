@@ -263,6 +263,45 @@ begin
         on E: Exception do TAppErrors.HandleException(Res, E);
       end;
     end);
+  THorse.Post('/v1/certifica/plataforma/instituicoes/:id/acesso/enviar',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Id: Int64;
+      Body: TJSONObject;
+      Canal: string;
+      Dados: TJSONObject;
+    begin
+      try
+        if not AutorizarSuperAdmin(Req, Res, Claims) then Exit;
+
+        Id := StrToInt64Def(Req.Params['id'], 0);
+        Body := Req.Body<TJSONObject>;
+        if Body = nil then
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
+
+        Canal := TAppClasses.GetJsonString(Body, 'canal');
+
+        Dados := TPlataformaInstituicaoService.EnviarAcesso(
+          Id,
+          Claims.UserId,
+          Canal,
+          TAppRequestInfo.GetIP(Req),
+          TAppRequestInfo.GetUserAgent(Req)
+        );
+
+        TAppResponse.Ok(
+          Res,
+          Dados,
+          'Acesso enviado com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end);
+
+
 end;
 
 end.
