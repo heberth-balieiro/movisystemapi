@@ -23,7 +23,11 @@ type
       const APagina, APorPagina: Integer): TJSONObject; static;
     class function Buscar(const AId: Int64): TJSONObject; static;
     class function Salvar(const AIdUsuario, AId: Int64;
-      const ANome, ACanal, AAssuntoEmail, ACorpoEmail, AMensagemWhatsApp, AIP, AUserAgent: string): TJSONObject; static;
+      const ANome, ACanal, AAssuntoEmail, ACorpoEmail, AMensagemWhatsApp,
+            ATipoEnvio: string;
+      const AAgendadoPara: TDateTime;
+      const ATemAgendadoPara: Boolean;
+      const AIP, AUserAgent: string): TJSONObject; static;
     class function AdicionarDestinatario(const AIdCampanha: Int64;
       const ANome, AEmail, AWhatsApp, AEmpresa, AOrigem: string): TJSONObject; static;
     class function ImportarCSV(const AIdCampanha: Int64; const AStream: TStream): TJSONObject; static;
@@ -122,12 +126,23 @@ begin if AId<=0 then TAppErrors.RaiseBadRequest('Campanha inválida.');
  C:=NovaConexao; try Result:=TPlataformaCampanhaDAO.Buscar(C,AId); if Result=nil then TAppErrors.RaiseNotFound('Campanha não encontrada.'); finally C.Free; end; end;
 
 class function TPlataformaCampanhaService.Salvar(const AIdUsuario,AId:Int64;
- const ANome,ACanal,AAssuntoEmail,ACorpoEmail,AMensagemWhatsApp,AIP,AUserAgent:string):TJSONObject;
-var C:TUniConnection; Id:Int64; Canal:string;
+ const ANome,ACanal,AAssuntoEmail,ACorpoEmail,AMensagemWhatsApp,
+       ATipoEnvio:string;
+ const AAgendadoPara:TDateTime;
+ const ATemAgendadoPara:Boolean;
+ const AIP,AUserAgent:string):TJSONObject;
+var C:TUniConnection; Id:Int64; Canal,TipoEnvio:string;
 begin
  if AIdUsuario<=0 then TAppErrors.RaiseForbidden('Usuário não identificado.');
  if Trim(ANome).IsEmpty or (Length(Trim(ANome))>180) then TAppErrors.RaiseBadRequest('Informe um nome de campanha válido.');
  Canal:=UpperCase(Trim(ACanal)); if not CanalValido(Canal) then TAppErrors.RaiseBadRequest('Canal inválido.');
+ TipoEnvio:=UpperCase(Trim(ATipoEnvio));
+ if TipoEnvio.IsEmpty then TipoEnvio:='IMEDIATO';
+ if not MatchText(TipoEnvio,['IMEDIATO','AGENDADO']) then TAppErrors.RaiseBadRequest('Tipo de envio inválido.');
+ if (TipoEnvio='AGENDADO') and (not ATemAgendadoPara) then
+   TAppErrors.RaiseBadRequest('Informe a data e o horário do envio agendado.');
+ if (TipoEnvio='AGENDADO') and (AAgendadoPara<=Now) then
+   TAppErrors.RaiseBadRequest('O agendamento deve ser para uma data e horário futuros.');
  if (Canal<>'WHATSAPP') and Trim(AAssuntoEmail).IsEmpty then TAppErrors.RaiseBadRequest('Informe o assunto do e-mail.');
  if (Canal<>'WHATSAPP') and Trim(ACorpoEmail).IsEmpty then TAppErrors.RaiseBadRequest('Informe o conteúdo do e-mail.');
  if (Canal<>'EMAIL') and Trim(AMensagemWhatsApp).IsEmpty then TAppErrors.RaiseBadRequest('Informe a mensagem do WhatsApp.');
@@ -137,11 +152,13 @@ begin
   try
    Id:=AId;
    if Id<=0 then begin
-    Id:=TPlataformaCampanhaDAO.Inserir(C,AIdUsuario,Trim(ANome),Canal,Trim(AAssuntoEmail),ACorpoEmail,AMensagemWhatsApp);
+    Id:=TPlataformaCampanhaDAO.Inserir(C,AIdUsuario,Trim(ANome),Canal,Trim(AAssuntoEmail),ACorpoEmail,AMensagemWhatsApp,
+      TipoEnvio,AAgendadoPara,ATemAgendadoPara);
     TPlataformaCampanhaDAO.RegistrarAuditoria(C,AIdUsuario,'CAMPANHA_CRIADA',Id,'Campanha criada.',AIP,AUserAgent);
    end else begin
     ExigirRascunho(C,Id);
-    TPlataformaCampanhaDAO.Atualizar(C,Id,Trim(ANome),Canal,Trim(AAssuntoEmail),ACorpoEmail,AMensagemWhatsApp);
+    TPlataformaCampanhaDAO.Atualizar(C,Id,Trim(ANome),Canal,Trim(AAssuntoEmail),ACorpoEmail,AMensagemWhatsApp,
+      TipoEnvio,AAgendadoPara,ATemAgendadoPara);
     TPlataformaCampanhaDAO.RegistrarAuditoria(C,AIdUsuario,'CAMPANHA_ALTERADA',Id,'Campanha alterada.',AIP,AUserAgent);
    end;
    TPlataformaCampanhaDAO.AtualizarTotaisCampanha(C,Id); C.Commit;
@@ -398,15 +415,26 @@ begin
         AIdCampanha
       );
 
-      TPlataformaCampanhaDAO.RegistrarAuditoria(
-        C,
-        AIdUsuario,
-        'CAMPANHA_INICIADA',
-        AIdCampanha,
-        'Campanha iniciada. Remetente WhatsApp congelado no início do processamento.',
-        AIP,
-        AUserAgent
-      );
+      if SameText(Camp.GetValue<string>('tipo_envio','IMEDIATO'),'AGENDADO') then
+        TPlataformaCampanhaDAO.RegistrarAuditoria(
+          C,
+          AIdUsuario,
+          'CAMPANHA_AGENDADA',
+          AIdCampanha,
+          'Campanha agendada para processamento automático.',
+          AIP,
+          AUserAgent
+        )
+      else
+        TPlataformaCampanhaDAO.RegistrarAuditoria(
+          C,
+          AIdUsuario,
+          'CAMPANHA_INICIADA',
+          AIdCampanha,
+          'Campanha iniciada. Remetente WhatsApp congelado no início do processamento.',
+          AIP,
+          AUserAgent
+        );
 
       C.Commit;
     except
@@ -530,6 +558,7 @@ var C:TUniConnection; E:TJSONObject; IdEnvio,IdCampanha:Int64; Canal,Dest,Nome,E
 begin
  C:=NovaConexao; E:=nil; Anexos:=nil;
  try
+  TPlataformaCampanhaDAO.AtivarAgendadas(C);
   C.StartTransaction;
   try
     E:=TPlataformaCampanhaDAO.ProximoEnvio(C);
