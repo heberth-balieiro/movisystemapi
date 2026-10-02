@@ -730,13 +730,6 @@ begin
 
   if SameText(Dados.TipoFluxo, 'CERTIFICACAO') then
   begin
-    if not TInstituicaoConfiguracaoService.PermiteTurmaSomenteCertificacao(
-      AIdInstituicao
-    ) then
-      TAppErrors.RaiseBadRequest(
-        'A instituição não permite turmas somente para certificação.'
-      );
-
     Dados.PermitirInscricaoPublica := False;
     Dados.AprovacaoInscricao := 'MANUAL';
     Dados.ControlePresenca := 'SEM_CONTROLE';
@@ -817,6 +810,26 @@ begin
         TAppErrors.RaiseBadRequest(
           'Turma não encontrada.'
         );
+
+      if not SameText(Dados.TipoFluxo, TurmaAtual.TipoFluxo) then
+      begin
+        if TInstituicaoTurmaDAO.TemInscricoes(
+          Conn,
+          AIdInstituicao,
+          AIdTurma
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'Não é possível alterar o tipo da turma após existirem inscrições.'
+          );
+
+        if SameText(Dados.TipoFluxo, 'CERTIFICACAO') and
+           not TInstituicaoConfiguracaoService.PermiteTurmaSomenteCertificacao(
+             AIdInstituicao
+           ) then
+          TAppErrors.RaiseBadRequest(
+            'A instituição não permite turmas somente para certificação.'
+          );
+      end;
 
       if Dados.IdCurso <> TurmaAtual.IdCurso then
       begin
