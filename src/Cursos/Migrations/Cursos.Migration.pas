@@ -3071,6 +3071,7 @@ begin
     ' importado_por BIGINT UNSIGNED NOT NULL,' +
     ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
     ' PRIMARY KEY (id),' +
+    ' UNIQUE KEY uq_turma_importacao_tenant_id (id_instituicao,id),' +
     ' KEY ix_turma_importacao_turma (id_instituicao,id_turma,criado_em),' +
     ' CONSTRAINT fk_turma_importacao_turma FOREIGN KEY (id_instituicao,id_turma) ' +
     '   REFERENCES turma(id_instituicao,id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
@@ -3090,8 +3091,8 @@ begin
     ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
     ' PRIMARY KEY (id),' +
     ' KEY ix_turma_importacao_erro (id_instituicao,id_importacao),' +
-    ' CONSTRAINT fk_turma_importacao_erro_importacao FOREIGN KEY (id_importacao) ' +
-    '   REFERENCES turma_importacao(id) ON UPDATE RESTRICT ON DELETE CASCADE' +
+    ' CONSTRAINT fk_turma_importacao_erro_importacao FOREIGN KEY (id_instituicao,id_importacao) ' +
+    '   REFERENCES turma_importacao(id_instituicao,id) ON UPDATE RESTRICT ON DELETE CASCADE' +
     ') ENGINE=InnoDB COMMENT=''Erros encontrados em importacoes CSV.'';'
   );
 
