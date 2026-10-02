@@ -24,6 +24,15 @@ type
     class function BuscarUsuarioPorEmail(const AConn: TUniConnection; const AEmail: string): Int64; static;
     class function InserirUsuario(const AConn: TUniConnection; const ANome, AEmail, ASenhaHash: string): Int64; static;
     class procedure VincularAdministradorPrincipal(const AConn: TUniConnection; const AIdInstituicao, AIdUsuario: Int64; const AEmail: string); static;
+    class function BuscarAdministradorPrincipalId(
+      const AConn: TUniConnection;
+      const AIdInstituicao: Int64
+    ): Int64; static;
+    class procedure AtualizarSenhaUsuario(
+      const AConn: TUniConnection;
+      const AIdUsuario: Int64;
+      const ASenhaHash: string
+    ); static;
 
     class procedure RegistrarAuditoria(const AConn: TUniConnection; const AIdInstituicao, AIdUsuario: Int64;
       const AAcao, AMensagem, AMetodo, ARota, AIP, AUserAgent: string); static;
@@ -384,6 +393,54 @@ begin
     Qry.ParamByName('id_usuario').AsLargeInt := AIdUsuario;
     Qry.ParamByName('login').AsString := LowerCase(Trim(AEmail));
     Qry.Execute;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TPlataformaInstituicaoDAO.BuscarAdministradorPrincipalId(
+  const AConn: TUniConnection;
+  const AIdInstituicao: Int64
+): Int64;
+var
+  Qry: TUniQuery;
+begin
+  Result := 0;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT ui.id_usuario FROM usuario_instituicao ui ' +
+      'WHERE ui.id_instituicao=:id_instituicao AND ui.principal=1 ' +
+      'AND ui.situacao=''ATIVO'' LIMIT 1';
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.Open;
+    if not Qry.IsEmpty then
+      Result := Qry.FieldByName('id_usuario').AsLargeInt;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class procedure TPlataformaInstituicaoDAO.AtualizarSenhaUsuario(
+  const AConn: TUniConnection;
+  const AIdUsuario: Int64;
+  const ASenhaHash: string
+);
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'UPDATE usuario SET senha_hash=:senha_hash, senha_alterada_em=CURRENT_TIMESTAMP(3) ' +
+      'WHERE id=:id_usuario AND situacao=''ATIVO''';
+    Qry.ParamByName('senha_hash').AsString := ASenhaHash;
+    Qry.ParamByName('id_usuario').AsLargeInt := AIdUsuario;
+    Qry.Execute;
+    if Qry.RowsAffected <> 1 then
+      raise Exception.Create('Não foi possível renovar a senha do administrador da instituição.');
   finally
     Qry.Free;
   end;
