@@ -56,6 +56,7 @@ Uses
   InstituicaoWhatsApp.Controller,
   InstituicaoAuditoria.Controller,
   InstituicaoRelatorioCertificado.Controller,
+  InstituicaoRelatorioTurma.Controller,
   LgpdSolicitacao.Controller,
   PublicoPrimeiroAcesso.Controller,
   PublicoAutoCadastro.Controller;
@@ -109,6 +110,7 @@ begin
   TInstituicaoWhatsAppController.Registry;
   TInstituicaoAuditoriaController.Registry;
   TInstituicaoRelatorioCertificadoController.Registry;
+  TInstituicaoRelatorioTurmaController.Registry;
   TLgpdSolicitacaoController.Registry;
   TPublicoPrimeiroAcessoController.Registry;
   TPublicoAutoCadastroController.Registry;
