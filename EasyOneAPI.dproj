@@ -496,6 +496,10 @@
         <DCCReference Include="src\Cursos\Services\PlataformaWhatsApp.Service.pas"/>
         <DCCReference Include="src\Cursos\Controller\PlataformaWhatsApp.Controller.pas"/>
         <DCCReference Include="src\Cursos\Controller\PlataformaEmail.Controller.pas"/>
+        <DCCReference Include="src\Cursos\Model\PlataformaIdentidade.Model.pas"/>
+        <DCCReference Include="src\Cursos\Dao\PlataformaIdentidade.DAO.pas"/>
+        <DCCReference Include="src\Cursos\Services\PlataformaIdentidade.Service.pas"/>
+        <DCCReference Include="src\Cursos\Controller\PlataformaIdentidade.Controller.pas"/>
         <DCCReference Include="src\Cursos\Dao\PlataformaEmail.DAO.pas"/>
         <DCCReference Include="src\Cursos\Model\PlataformaEmail.Model.pas"/>
         <DCCReference Include="src\Cursos\Services\PlataformaEmail.Service.pas"/>
