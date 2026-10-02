@@ -19,6 +19,7 @@ Uses
   PlataformaAuditoria.Controller,
   PlataformaWhatsApp.Controller,
   PlataformaEmail.Controller,
+  PlataformaIdentidade.Controller,
   PlataformaAjuda.Controller,
   PlataformaCampanha.Controller,
   PlataformaUsuarioWhatsApp.Controller,
@@ -69,6 +70,7 @@ begin
   TPlataformaAuditoriaController.Registry;
   TPlataformaWhatsAppController.Registry;
   TPlataformaEmailController.Registry;
+  TPlataformaIdentidadeController.Registry;
   TPlataformaAjudaController.Registry;
   TPlataformaCampanhaController.Registry;
   TPlataformaUsuarioWhatsAppController.Registry;
