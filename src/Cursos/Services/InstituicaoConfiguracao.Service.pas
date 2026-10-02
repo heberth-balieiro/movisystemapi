@@ -91,6 +91,21 @@ type
       const ADados: TInstituicaoAutoCadastroInput
     ): TInstituicaoAutoCadastroConfig; static;
 
+    class function BuscarCertificacao(
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64
+    ): TInstituicaoCertificacaoConfig; static;
+
+    class function AtualizarCertificacao(
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64;
+      const ADados: TInstituicaoCertificacaoInput
+    ): TInstituicaoCertificacaoConfig; static;
+
+    class function PermiteTurmaSomenteCertificacao(
+      const AIdInstituicao: Int64
+    ): Boolean; static;
+
     class function BuscarAcessoEnvio(
       const AIdInstituicao,
             AIdUsuarioInstituicao: Int64
@@ -1007,6 +1022,73 @@ begin
         Conn.Rollback;
       raise;
     end;
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TInstituicaoConfiguracaoService.BuscarCertificacao(
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64
+): TInstituicaoCertificacaoConfig;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  ValidarTenant(AIdInstituicao, AIdUsuarioInstituicao);
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Result := TInstituicaoConfiguracaoDAO.BuscarCertificacao(Conn, AIdInstituicao);
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TInstituicaoConfiguracaoService.AtualizarCertificacao(
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64;
+  const ADados: TInstituicaoCertificacaoInput
+): TInstituicaoCertificacaoConfig;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  ValidarTenant(AIdInstituicao, AIdUsuarioInstituicao);
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Conn.StartTransaction;
+    try
+      TInstituicaoConfiguracaoDAO.SalvarCertificacao(Conn, AIdInstituicao, ADados);
+      Result := TInstituicaoConfiguracaoDAO.BuscarCertificacao(Conn, AIdInstituicao);
+      Conn.Commit;
+    except
+      if Conn.InTransaction then
+        Conn.Rollback;
+      raise;
+    end;
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TInstituicaoConfiguracaoService.PermiteTurmaSomenteCertificacao(
+  const AIdInstituicao: Int64
+): Boolean;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  Dados: TInstituicaoCertificacaoConfig;
+begin
+  Result := False;
+  if AIdInstituicao <= 0 then
+    Exit;
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Dados := TInstituicaoConfiguracaoDAO.BuscarCertificacao(Conn, AIdInstituicao);
+    Result := Dados.PermitirTurmaSomenteCertificacao;
   finally
     Conn.Free;
   end;
