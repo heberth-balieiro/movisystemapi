@@ -246,6 +246,83 @@ end;
 class procedure TInstituicaoRelatorioCertificadoController.Registry;
 begin
   THorse.Get(
+    '/v1/certifica/instituicao/relatorios/certificados/filtros',
+    procedure(
+      Req: THorseRequest;
+      Res: THorseResponse;
+      Next: TProc
+    )
+    var
+      Claims: TJWTClaims;
+      Filtros: TRelatorioCertificadoFiltros;
+      Item: TRelatorioCertificadoFiltroOpcao;
+      Dados: TJSONObject;
+      Cursos, Turmas: TJSONArray;
+      JsonItem: TJSONObject;
+    begin
+      Res.RawWebResponse.SetCustomHeader(
+        'Cache-Control',
+        'private, no-store'
+      );
+
+      try
+        if not AutorizarInstituicao(
+          Req,
+          Res,
+          Claims
+        ) then
+          Exit;
+
+        Filtros :=
+          TInstituicaoRelatorioCertificadoService.ListarFiltros(
+            Claims.IdInstituicao,
+            Claims.IdUsuarioInstituicao
+          );
+
+        try
+          Cursos := TJSONArray.Create;
+          Turmas := TJSONArray.Create;
+
+          for Item in Filtros.Cursos do
+          begin
+            JsonItem := TJSONObject.Create;
+            JsonItem.AddPair('id', TJSONNumber.Create(Item.Id));
+            JsonItem.AddPair('nome', Item.Nome);
+            Cursos.AddElement(JsonItem);
+          end;
+
+          for Item in Filtros.Turmas do
+          begin
+            JsonItem := TJSONObject.Create;
+            JsonItem.AddPair('id', TJSONNumber.Create(Item.Id));
+            JsonItem.AddPair('nome', Item.Nome);
+            JsonItem.AddPair('id_curso', TJSONNumber.Create(Item.IdCurso));
+            Turmas.AddElement(JsonItem);
+          end;
+
+          Dados := TJSONObject.Create;
+          Dados.AddPair('cursos', Cursos);
+          Dados.AddPair('turmas', Turmas);
+
+          TAppResponse.Ok(
+            Res,
+            Dados,
+            'Filtros do relatório carregados com sucesso.'
+          );
+        finally
+          Filtros.Free;
+        end;
+      except
+        on E: Exception do
+          TAppErrors.HandleException(
+            Res,
+            E
+          );
+      end;
+    end
+  );
+
+  THorse.Get(
     '/v1/certifica/instituicao/relatorios/certificados',
     procedure(
       Req: THorseRequest;
