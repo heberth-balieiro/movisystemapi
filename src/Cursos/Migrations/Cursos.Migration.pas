@@ -84,6 +84,7 @@ type
     class procedure Migration_055_CertificadoNotificacao(const AConn: TUniConnection); static;
     class procedure Migration_056_InstituicaoAutoCadastro(const AConn: TUniConnection); static;
     class procedure Migration_057_CertificadoHistoricoEventos(const AConn: TUniConnection); static;
+    class procedure Migration_058_PlataformaIdentidade(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -352,6 +353,7 @@ begin
       Migration_055_CertificadoNotificacao(Conn);
       Migration_056_InstituicaoAutoCadastro(Conn);
       Migration_057_CertificadoHistoricoEventos(Conn);
+      Migration_058_PlataformaIdentidade(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -2897,6 +2899,44 @@ begin
     VERSION,
     DESCRIPTION
   );
+end;
+
+
+class procedure TCursosMigration.Migration_058_PlataformaIdentidade(
+  const AConn: TUniConnection);
+const
+  VERSION = '058';
+  DESCRIPTION = 'Identidade visual global da plataforma SaaS';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS plataforma_identidade_configuracao (' +
+    ' id TINYINT UNSIGNED NOT NULL,' +
+    ' nome_plataforma VARCHAR(120) NOT NULL DEFAULT ''MoviSystem'',' +
+    ' titulo_login VARCHAR(120) NOT NULL DEFAULT ''Administração'',' +
+    ' subtitulo_login VARCHAR(180) NOT NULL DEFAULT ''Acesso MoviSystem'',' +
+    ' titulo_destaque_login VARCHAR(300) NOT NULL DEFAULT ''Gerencie todos os clientes da plataforma em um único ambiente.'',' +
+    ' descricao_login VARCHAR(1000) NOT NULL DEFAULT ''Cadastre instituições, acompanhe implantação, utilização e situação operacional de cada tenant.'',' +
+    ' logo_url VARCHAR(1000) NULL,' +
+    ' atualizado_por BIGINT UNSIGNED NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' CONSTRAINT fk_plataforma_identidade_usuario FOREIGN KEY (atualizado_por) ' +
+    ' REFERENCES usuario(id) ON UPDATE RESTRICT ON DELETE SET NULL' +
+    ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+  );
+
+  ExecSQL(
+    AConn,
+    'INSERT INTO plataforma_identidade_configuracao (id) VALUES (1) ' +
+    'ON DUPLICATE KEY UPDATE id=id'
+  );
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
 
 
