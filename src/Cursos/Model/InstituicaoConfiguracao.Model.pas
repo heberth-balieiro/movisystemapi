@@ -51,6 +51,15 @@ type
     function ToJSON: TJSONObject;
   end;
 
+  TInstituicaoCertificacaoInput = record
+    PermitirTurmaSomenteCertificacao: Boolean;
+  end;
+
+  TInstituicaoCertificacaoConfig = record
+    PermitirTurmaSomenteCertificacao: Boolean;
+    function ToJSON: TJSONObject;
+  end;
+
   TInstituicaoAcessoEnvioInput = record
     EnviarEmail: Boolean;
     EnviarWhatsApp: Boolean;
@@ -102,6 +111,15 @@ function TInstituicaoAutoCadastroConfig.ToJSON: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('permitir_auto_cadastro', TJSONBool.Create(PermitirAutoCadastro));
+end;
+
+function TInstituicaoCertificacaoConfig.ToJSON: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair(
+    'permitir_turma_somente_certificacao',
+    TJSONBool.Create(PermitirTurmaSomenteCertificacao)
+  );
 end;
 
 function TInstituicaoAcessoEnvioConfig.ToJSON: TJSONObject;
