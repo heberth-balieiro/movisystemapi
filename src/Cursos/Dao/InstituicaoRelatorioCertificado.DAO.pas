@@ -24,6 +24,11 @@ type
       const AQry: TUniQuery
     ): TRelatorioCertificadoItem; static;
   public
+    class function ListarFiltros(
+      const AConn: TUniConnection;
+      const AIdInstituicao: Int64
+    ): TRelatorioCertificadoFiltros; static;
+
     class function Listar(
       const AConn: TUniConnection;
       const AIdInstituicao: Int64;
@@ -178,6 +183,71 @@ begin
 
   Result.CargaHorariaMinutos :=
     AQry.FieldByName('carga_horaria_minutos').AsInteger;
+end;
+
+class function TInstituicaoRelatorioCertificadoDAO.ListarFiltros(
+  const AConn: TUniConnection;
+  const AIdInstituicao: Int64
+): TRelatorioCertificadoFiltros;
+var
+  Qry: TUniQuery;
+  Item: TRelatorioCertificadoFiltroOpcao;
+begin
+  Result := TRelatorioCertificadoFiltros.Create;
+  Qry := TUniQuery.Create(nil);
+
+  try
+    try
+      Qry.Connection := AConn;
+
+      Qry.SQL.Text :=
+        'SELECT DISTINCT c.id_curso AS id, c.curso_nome AS nome ' +
+        'FROM certificado c ' +
+        'WHERE c.id_instituicao = :id_instituicao ' +
+        'ORDER BY c.curso_nome';
+
+      Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+      Qry.Open;
+
+      while not Qry.Eof do
+      begin
+        Item := TRelatorioCertificadoFiltroOpcao.Create;
+        Item.Id := Qry.FieldByName('id').AsLargeInt;
+        Item.Nome := Qry.FieldByName('nome').AsString;
+        Result.Cursos.Add(Item);
+        Qry.Next;
+      end;
+
+      Qry.Close;
+      Qry.SQL.Text :=
+        'SELECT DISTINCT t.id, t.nome, t.id_curso ' +
+        'FROM certificado c ' +
+        'JOIN turma t ' +
+        '  ON t.id_instituicao = c.id_instituicao ' +
+        ' AND t.id = c.id_turma ' +
+        'WHERE c.id_instituicao = :id_instituicao ' +
+        'ORDER BY t.nome';
+
+      Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+      Qry.Open;
+
+      while not Qry.Eof do
+      begin
+        Item := TRelatorioCertificadoFiltroOpcao.Create;
+        Item.Id := Qry.FieldByName('id').AsLargeInt;
+        Item.Nome := Qry.FieldByName('nome').AsString;
+        Item.IdCurso := Qry.FieldByName('id_curso').AsLargeInt;
+        Result.Turmas.Add(Item);
+        Qry.Next;
+      end;
+
+    except
+      Result.Free;
+      raise;
+    end;
+  finally
+    Qry.Free;
+  end;
 end;
 
 class function TInstituicaoRelatorioCertificadoDAO.Listar(
