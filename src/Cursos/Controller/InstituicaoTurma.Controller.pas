@@ -482,6 +482,8 @@ begin
     );
   end;
 
+  Result.AddPair('tipo_fluxo', ATurma.TipoFluxo);
+
   Result.AddPair(
     'permitir_inscricao_publica',
     TJSONBool.Create(
@@ -832,6 +834,13 @@ begin
               'modalidade'
             );
 
+          Cadastro.TipoFluxo :=
+            JsonString(
+              Body,
+              'tipo_fluxo',
+              'NORMAL'
+            );
+
           Cadastro.DataHoraInicio :=
             JsonDateTimeObrigatorio(
               Body,
@@ -1024,6 +1033,13 @@ begin
             JsonString(
               Body,
               'modalidade'
+            );
+
+          Alteracao.TipoFluxo :=
+            JsonString(
+              Body,
+              'tipo_fluxo',
+              'NORMAL'
             );
 
           Alteracao.DataHoraInicio :=
