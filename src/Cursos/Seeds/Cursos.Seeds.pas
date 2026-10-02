@@ -131,6 +131,8 @@ begin
       GarantirPermissao(Conn, 'relatorio.turmas.exportar', 'RELATORIO', 'Exportar relat' + #$00F3 + 'rio de turmas.');
       GarantirPermissao(Conn, 'relatorio.participantes.visualizar', 'RELATORIO', 'Visualizar relat' + #$00F3 + 'rio de participantes.');
       GarantirPermissao(Conn, 'relatorio.participantes.exportar', 'RELATORIO', 'Exportar relat' + #$00F3 + 'rio de participantes.');
+      GarantirPermissao(Conn, 'relatorio.inscricoes.visualizar', 'RELATORIO', 'Visualizar relat' + #$00F3 + 'rio de inscri' + #$00E7 + #$00F5 + 'es e conclus' + #$00F5 + 'es.');
+      GarantirPermissao(Conn, 'relatorio.inscricoes.exportar', 'RELATORIO', 'Exportar relat' + #$00F3 + 'rio de inscri' + #$00E7 + #$00F5 + 'es e conclus' + #$00F5 + 'es.');
       GarantirPermissao(Conn, 'auditoria.visualizar', 'AUDITORIA', 'Visualizar auditoria da institui' + #$00E7 + #$00E3 + 'o.');
       GarantirPermissao(Conn, 'lgpd.visualizar', 'LGPD', 'Visualizar solicita' + #$00E7 + #$00F5 + 'es LGPD da institui' + #$00E7 + #$00E3 + 'o.');
       GarantirPermissao(Conn, 'lgpd.gerenciar', 'LGPD', 'Analisar e responder solicita' + #$00E7 + #$00F5 + 'es LGPD.');
