@@ -51,6 +51,7 @@ uses
   PlataformaWhatsApp.Model,
   PlataformaWhatsApp.Service,
   PlataformaUsuarioWhatsApp.Service,
+  PlataformaIdentidade.Model,
   PlataformaIdentidade.Service,
   EvolutionApi.Service;
 
