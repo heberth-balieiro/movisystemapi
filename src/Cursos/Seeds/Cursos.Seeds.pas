@@ -93,6 +93,7 @@ begin
       GarantirPermissao(Conn, 'turma.cadastrar', 'TURMA', 'Cadastrar turmas.');
       GarantirPermissao(Conn, 'turma.editar', 'TURMA', 'Editar turmas.');
       GarantirPermissao(Conn, 'turma.inativar', 'TURMA', 'Inativar turmas.');
+      GarantirPermissao(Conn, 'turma.importar_participantes', 'TURMA', 'Importar participantes por CSV em turmas de certifica' + #$00E7 + #$00E3 + 'o.');
 
       GarantirPermissao(Conn, 'participante.visualizar', 'PARTICIPANTE', 'Visualizar participantes.');
       GarantirPermissao(Conn, 'participante.cadastrar', 'PARTICIPANTE', 'Cadastrar participantes.');
