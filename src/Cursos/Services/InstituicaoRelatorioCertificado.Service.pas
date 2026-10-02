@@ -93,8 +93,14 @@ class function TInstituicaoRelatorioCertificadoService.CsvCampo(
 var
   S: string;
 begin
+  S := AValor;
+
+  if (Length(S) > 0) and
+     CharInSet(S[1], ['=', '+', '-', '@']) then
+    S := '''' + S;
+
   S := StringReplace(
-    AValor,
+    S,
     '"',
     '""',
     [rfReplaceAll]
