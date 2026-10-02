@@ -416,7 +416,7 @@ begin
         '  ON u.id = ui.id_usuario ' +
         WhereSQL +
         'ORDER BY COALESCE(c.emitido_em, c.criado_em) DESC, c.id DESC ' +
-        'LIMIT 50000';
+        'LIMIT 50001';
 
       AplicarFiltro(Qry, AIdInstituicao, AFiltro);
       Qry.Open;
