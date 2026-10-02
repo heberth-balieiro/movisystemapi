@@ -4,6 +4,7 @@ interface
 
 uses
   Uni,
+  System.JSON,
   System.Generics.Collections,
   PlataformaInstituicao.Model;
 
@@ -17,6 +18,7 @@ type
     class function GerarSenhaTemporaria: string; static;
     class function EmailValido(const AEmail: string): Boolean; static;
     class function CorHexValida(const ACor: string): Boolean; static;
+    class function NormalizarWhatsApp(const AValor: string): string; static;
     class function GarantirAdministrador(const AConn: TUniConnection; const AModel: TPlataformaInstituicaoModel;
       out ASenhaTemporaria: string): Int64; static;
   public
@@ -26,19 +28,31 @@ type
       const AIP, AUserAgent: string; out ASenhaTemporaria: string): TPlataformaInstituicaoModel; static;
     class function Atualizar(const AIdInstituicao: Int64; const AModel: TPlataformaInstituicaoModel;
       const AIdUsuarioAcao: Int64; const AIP, AUserAgent: string; out ASenhaTemporaria: string): TPlataformaInstituicaoModel; static;
+
+    class function EnviarAcesso(
+      const AIdInstituicao, AIdUsuarioAcao: Int64;
+      const ACanal, AIP, AUserAgent: string
+    ): TJSONObject; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.NetEncoding,
   App.Config,
   APP.Errors,
   Auth.Passwords,
   Database.Connection,
   PlataformaInstituicao.DAO,
   PlataformaModulo.DAO,
-  InstituicaoPermissao.DAO;
+  InstituicaoPermissao.DAO,
+  PlataformaEmailEnvio.Service,
+  PlataformaWhatsApp.Model,
+  PlataformaWhatsApp.Service,
+  PlataformaUsuarioWhatsApp.Service,
+  PlataformaIdentidade.Service,
+  EvolutionApi.Service;
 
 class function TPlataformaInstituicaoService.SomenteNumeros(const AValue: string): string;
 var
@@ -72,6 +86,21 @@ var
 begin
   P := Pos('@', Trim(AEmail));
   Result := (P > 1) and (Pos('.', Copy(Trim(AEmail), P + 2, MaxInt)) > 0);
+end;
+
+class function TPlataformaInstituicaoService.NormalizarWhatsApp(
+  const AValor: string
+): string;
+var
+  C: Char;
+begin
+  Result := '';
+  for C in AValor do
+    if CharInSet(C, ['0'..'9']) then
+      Result := Result + C;
+
+  if (Length(Result) = 10) or (Length(Result) = 11) then
+    Result := '55' + Result;
 end;
 
 class function TPlataformaInstituicaoService.CorHexValida(const ACor: string): Boolean;
@@ -396,6 +425,181 @@ begin
       end;
     end;
   finally
+    Conn.Free;
+  end;
+end;
+
+
+class function TPlataformaInstituicaoService.EnviarAcesso(
+  const AIdInstituicao, AIdUsuarioAcao: Int64;
+  const ACanal, AIP, AUserAgent: string
+): TJSONObject;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  Instituicao: TPlataformaInstituicaoModel;
+  IdUsuarioAdmin: Int64;
+  Canal, SenhaTemporaria, UrlAcesso, Destinatario, NomePlataforma: string;
+  ApiUrl, ApiKey, Instancia, Numero, Mensagem, Html: string;
+  Identidade: TPlataformaIdentidadeConfig;
+  WhatsAppConfig: TPlataformaWhatsAppConfig;
+  RetornoEvolution: TJSONValue;
+begin
+  Result := nil;
+
+  if AIdInstituicao <= 0 then
+    TAppErrors.RaiseBadRequest('Instituição inválida.');
+
+  if AIdUsuarioAcao <= 0 then
+    TAppErrors.RaiseForbidden('Usuário responsável pela operação não identificado.');
+
+  Canal := UpperCase(Trim(ACanal));
+  if (Canal <> 'EMAIL') and (Canal <> 'WHATSAPP') then
+    TAppErrors.RaiseBadRequest('Canal inválido. Utilize EMAIL ou WHATSAPP.');
+
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+
+  UrlAcesso := Trim(Config.Web.PublicURL);
+  while UrlAcesso.EndsWith('/') do
+    Delete(UrlAcesso, Length(UrlAcesso), 1);
+
+  if UrlAcesso.IsEmpty then
+    TAppErrors.RaiseBadRequest('Configure WEB.PublicURL antes de enviar o acesso.');
+
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  Instituicao := nil;
+  try
+    Instituicao := TPlataformaInstituicaoDAO.BuscarPorId(Conn, AIdInstituicao);
+    if Instituicao = nil then
+      TAppErrors.RaiseNotFound('Instituição não encontrada.');
+
+    IdUsuarioAdmin := TPlataformaInstituicaoDAO.BuscarAdministradorPrincipalId(
+      Conn,
+      AIdInstituicao
+    );
+
+    if IdUsuarioAdmin <= 0 then
+      TAppErrors.RaiseBadRequest('A instituição não possui administrador principal ativo.');
+
+    UrlAcesso := UrlAcesso + '/' + Instituicao.Slug + '/login';
+    SenhaTemporaria := GerarSenhaTemporaria;
+
+    Identidade := TPlataformaIdentidadeService.Buscar;
+    NomePlataforma := Trim(Identidade.NomePlataforma);
+    if NomePlataforma.IsEmpty then
+      NomePlataforma := 'MoviSystem';
+
+    if Canal = 'EMAIL' then
+    begin
+      Destinatario := LowerCase(Trim(Instituicao.AdministradorEmail));
+      if not EmailValido(Destinatario) then
+        TAppErrors.RaiseBadRequest('O administrador principal não possui e-mail válido.');
+
+      Html :=
+        '<div style="font-family:Arial,sans-serif;color:#0f172a">' +
+        '<h2>Acesso à ' + TNetEncoding.HTML.Encode(NomePlataforma) + '</h2>' +
+        '<p>Olá, ' + TNetEncoding.HTML.Encode(Instituicao.AdministradorNome) + '.</p>' +
+        '<p>O acesso administrativo da instituição <strong>' +
+        TNetEncoding.HTML.Encode(Instituicao.NomeFantasia) + '</strong> está disponível.</p>' +
+        '<p><strong>URL:</strong> <a href="' + TNetEncoding.HTML.Encode(UrlAcesso) + '">' +
+        TNetEncoding.HTML.Encode(UrlAcesso) + '</a><br>' +
+        '<strong>E-mail:</strong> ' + TNetEncoding.HTML.Encode(Destinatario) + '<br>' +
+        '<strong>Senha temporária:</strong> ' + TNetEncoding.HTML.Encode(SenhaTemporaria) + '</p>' +
+        '<p>Por segurança, altere sua senha após o primeiro acesso.</p>' +
+        '</div>';
+    end
+    else
+    begin
+      Numero := NormalizarWhatsApp(Instituicao.Telefone);
+      if (Length(Numero) < 12) or (Length(Numero) > 13) then
+        TAppErrors.RaiseBadRequest(
+          'Informe um telefone/WhatsApp válido no cadastro da instituição antes de enviar o acesso.'
+        );
+
+      Destinatario := Numero;
+      Mensagem :=
+        'Acesso ' + NomePlataforma + sLineBreak +
+        'Instituição: ' + Instituicao.NomeFantasia + sLineBreak +
+        'URL: ' + UrlAcesso + sLineBreak +
+        'E-mail: ' + Instituicao.AdministradorEmail + sLineBreak +
+        'Senha temporária: ' + SenhaTemporaria + sLineBreak +
+        'Por segurança, altere sua senha após o primeiro acesso.';
+
+      WhatsAppConfig := TPlataformaWhatsAppService.Buscar;
+
+      if SameText(WhatsAppConfig.ModoInstancia, 'USUARIO') then
+      begin
+        if not TPlataformaUsuarioWhatsAppService.ObterInstanciaParaEnvio(
+          AIdUsuarioAcao,
+          ApiUrl,
+          ApiKey,
+          Instancia
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'Conecte o WhatsApp do seu usuário antes de enviar o acesso.'
+          );
+      end
+      else if not TPlataformaWhatsAppService.ObterCredenciais(
+        ApiUrl,
+        ApiKey,
+        Instancia
+      ) then
+        TAppErrors.RaiseBadRequest(
+          'Configuração global do WhatsApp da empresa indisponível.'
+        );
+    end;
+
+    Conn.StartTransaction;
+    try
+      TPlataformaInstituicaoDAO.AtualizarSenhaUsuario(
+        Conn,
+        IdUsuarioAdmin,
+        HashSenha(SenhaTemporaria)
+      );
+
+      if Canal = 'EMAIL' then
+        TPlataformaEmailEnvioService.Enviar(
+          Destinatario,
+          'Acesso à ' + NomePlataforma + ' - ' + Instituicao.NomeFantasia,
+          Html
+        )
+      else
+      begin
+        RetornoEvolution := TEvolutionApiService.EnviarTexto(
+          ApiUrl,
+          ApiKey,
+          Instancia,
+          Destinatario,
+          Mensagem
+        );
+        RetornoEvolution.Free;
+      end;
+
+      TPlataformaInstituicaoDAO.RegistrarAuditoria(
+        Conn,
+        AIdInstituicao,
+        AIdUsuarioAcao,
+        'INSTITUICAO_ACESSO_ENVIADO',
+        'Acesso do administrador principal enviado por ' + Canal + '.',
+        'POST',
+        '/v1/certifica/plataforma/instituicoes/' + AIdInstituicao.ToString + '/acesso/enviar',
+        AIP,
+        AUserAgent
+      );
+
+      Conn.Commit;
+    except
+      if Conn.InTransaction then
+        Conn.Rollback;
+      raise;
+    end;
+
+    Result := TJSONObject.Create;
+    Result.AddPair('canal', Canal);
+    Result.AddPair('destinatario', Destinatario);
+    Result.AddPair('url_acesso', UrlAcesso);
+  finally
+    Instituicao.Free;
     Conn.Free;
   end;
 end;
