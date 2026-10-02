@@ -57,6 +57,7 @@ Uses
   InstituicaoAuditoria.Controller,
   InstituicaoRelatorioCertificado.Controller,
   InstituicaoRelatorioTurma.Controller,
+  InstituicaoRelatorioParticipante.Controller,
   LgpdSolicitacao.Controller,
   PublicoPrimeiroAcesso.Controller,
   PublicoAutoCadastro.Controller;
@@ -111,6 +112,7 @@ begin
   TInstituicaoAuditoriaController.Registry;
   TInstituicaoRelatorioCertificadoController.Registry;
   TInstituicaoRelatorioTurmaController.Registry;
+  TInstituicaoRelatorioParticipanteController.Registry;
   TLgpdSolicitacaoController.Registry;
   TPublicoPrimeiroAcessoController.Registry;
   TPublicoAutoCadastroController.Registry;
