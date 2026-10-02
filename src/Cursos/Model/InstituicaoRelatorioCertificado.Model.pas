@@ -67,6 +67,29 @@ type
     Reemitidos: Integer;
   end;
 
+  TRelatorioCertificadoFiltroOpcao = class
+  private
+    FId: Int64;
+    FNome: string;
+    FIdCurso: Int64;
+  public
+    property Id: Int64 read FId write FId;
+    property Nome: string read FNome write FNome;
+    property IdCurso: Int64 read FIdCurso write FIdCurso;
+  end;
+
+  TRelatorioCertificadoFiltros = class
+  private
+    FCursos: TObjectList<TRelatorioCertificadoFiltroOpcao>;
+    FTurmas: TObjectList<TRelatorioCertificadoFiltroOpcao>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    property Cursos: TObjectList<TRelatorioCertificadoFiltroOpcao> read FCursos;
+    property Turmas: TObjectList<TRelatorioCertificadoFiltroOpcao> read FTurmas;
+  end;
+
   TRelatorioCertificadoResultado = class
   private
     FItens: TObjectList<TRelatorioCertificadoItem>;
@@ -86,6 +109,20 @@ type
   end;
 
 implementation
+
+constructor TRelatorioCertificadoFiltros.Create;
+begin
+  inherited;
+  FCursos := TObjectList<TRelatorioCertificadoFiltroOpcao>.Create(True);
+  FTurmas := TObjectList<TRelatorioCertificadoFiltroOpcao>.Create(True);
+end;
+
+destructor TRelatorioCertificadoFiltros.Destroy;
+begin
+  FTurmas.Free;
+  FCursos.Free;
+  inherited;
+end;
 
 constructor TRelatorioCertificadoResultado.Create;
 begin
