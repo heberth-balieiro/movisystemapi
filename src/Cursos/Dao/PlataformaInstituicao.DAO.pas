@@ -62,12 +62,11 @@ begin
   AModel.Tema.CorFundo := AQry.FieldByName('cor_fundo').AsString;
   AModel.Tema.CorTexto := AQry.FieldByName('cor_texto').AsString;
 
-  // Nesta primeira fase as tabelas de negócio ainda não estão liberadas no Run.
-  AModel.MetricasUsuarios := 0;
-  AModel.MetricasParticipantes := 0;
-  AModel.MetricasCursos := 0;
-  AModel.MetricasTurmas := 0;
-  AModel.MetricasCertificados := 0;
+  AModel.MetricasUsuarios := AQry.FieldByName('metricas_usuarios').AsInteger;
+  AModel.MetricasParticipantes := AQry.FieldByName('metricas_participantes').AsInteger;
+  AModel.MetricasCursos := AQry.FieldByName('metricas_cursos').AsInteger;
+  AModel.MetricasTurmas := AQry.FieldByName('metricas_turmas').AsInteger;
+  AModel.MetricasCertificados := AQry.FieldByName('metricas_certificados').AsInteger;
 end;
 
 class function TPlataformaInstituicaoDAO.Listar(const AConn: TUniConnection;
@@ -92,7 +91,13 @@ begin
       '       COALESCE(ic.cor_destaque, ''#F59E0B'') AS cor_destaque, ' +
       '       COALESCE(ic.cor_fundo, ''#F8FAFC'') AS cor_fundo, ' +
       '       COALESCE(ic.cor_texto, ''#0F172A'') AS cor_texto, ' +
-      '       COALESCE(u.nome, '''') AS administrador_nome, COALESCE(u.email, '''') AS administrador_email ' +
+      '       COALESCE(u.nome, '''') AS administrador_nome, COALESCE(u.email, '''') AS administrador_email, ' +
+      '       (SELECT COUNT(*) FROM usuario_instituicao ux WHERE ux.id_instituicao=i.id AND ux.situacao=''ATIVO'' ' +
+      '          AND (ux.principal=1 OR EXISTS (SELECT 1 FROM usuario_instituicao_perfil uip WHERE uip.id_instituicao=ux.id_instituicao AND uip.id_usuario_instituicao=ux.id))) AS metricas_usuarios, ' +
+      '       (SELECT COUNT(*) FROM participante p WHERE p.id_instituicao=i.id AND p.situacao<>''ANONIMIZADO'') AS metricas_participantes, ' +
+      '       (SELECT COUNT(*) FROM curso c WHERE c.id_instituicao=i.id) AS metricas_cursos, ' +
+      '       (SELECT COUNT(*) FROM turma t WHERE t.id_instituicao=i.id) AS metricas_turmas, ' +
+      '       (SELECT COUNT(*) FROM certificado ce WHERE ce.id_instituicao=i.id) AS metricas_certificados ' +
       'FROM instituicao i ' +
       'LEFT JOIN instituicao_configuracao ic ON ic.id_instituicao = i.id ' +
       'LEFT JOIN usuario_instituicao ui ON ui.id_instituicao = i.id AND ui.principal = 1 ' +
@@ -147,7 +152,13 @@ begin
       '       COALESCE(ic.cor_destaque, ''#F59E0B'') AS cor_destaque, ' +
       '       COALESCE(ic.cor_fundo, ''#F8FAFC'') AS cor_fundo, ' +
       '       COALESCE(ic.cor_texto, ''#0F172A'') AS cor_texto, ' +
-      '       COALESCE(u.nome, '''') AS administrador_nome, COALESCE(u.email, '''') AS administrador_email ' +
+      '       COALESCE(u.nome, '''') AS administrador_nome, COALESCE(u.email, '''') AS administrador_email, ' +
+      '       (SELECT COUNT(*) FROM usuario_instituicao ux WHERE ux.id_instituicao=i.id AND ux.situacao=''ATIVO'' ' +
+      '          AND (ux.principal=1 OR EXISTS (SELECT 1 FROM usuario_instituicao_perfil uip WHERE uip.id_instituicao=ux.id_instituicao AND uip.id_usuario_instituicao=ux.id))) AS metricas_usuarios, ' +
+      '       (SELECT COUNT(*) FROM participante p WHERE p.id_instituicao=i.id AND p.situacao<>''ANONIMIZADO'') AS metricas_participantes, ' +
+      '       (SELECT COUNT(*) FROM curso c WHERE c.id_instituicao=i.id) AS metricas_cursos, ' +
+      '       (SELECT COUNT(*) FROM turma t WHERE t.id_instituicao=i.id) AS metricas_turmas, ' +
+      '       (SELECT COUNT(*) FROM certificado ce WHERE ce.id_instituicao=i.id) AS metricas_certificados ' +
       'FROM instituicao i ' +
       'LEFT JOIN instituicao_configuracao ic ON ic.id_instituicao = i.id ' +
       'LEFT JOIN usuario_instituicao ui ON ui.id_instituicao = i.id AND ui.principal = 1 ' +
