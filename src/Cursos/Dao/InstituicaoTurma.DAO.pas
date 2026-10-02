@@ -183,6 +183,9 @@ begin
   Result.Modalidade :=
     AQry.FieldByName('modalidade').AsString;
 
+  Result.TipoFluxo :=
+    AQry.FieldByName('tipo_fluxo').AsString;
+
   Result.DataHoraInicio :=
     AQry.FieldByName('data_hora_inicio').AsDateTime;
 
@@ -305,6 +308,7 @@ begin
         't.codigo_interno, ' +
         't.nome, ' +
         't.modalidade, ' +
+        't.tipo_fluxo, ' +
         't.data_hora_inicio, ' +
         't.data_hora_fim, ' +
         't.inscricao_inicio, ' +
@@ -391,6 +395,7 @@ begin
       't.codigo_interno, ' +
       't.nome, ' +
       't.modalidade, ' +
+        't.tipo_fluxo, ' +
       't.data_hora_inicio, ' +
       't.data_hora_fim, ' +
       't.inscricao_inicio, ' +
@@ -626,6 +631,7 @@ begin
       'codigo_interno, ' +
       'nome, ' +
       'modalidade, ' +
+      'tipo_fluxo, ' +
       'data_hora_inicio, ' +
       'data_hora_fim, ' +
       'inscricao_inicio, ' +
@@ -650,6 +656,7 @@ begin
       ':codigo_interno, ' +
       ':nome, ' +
       ':modalidade, ' +
+      ':tipo_fluxo, ' +
       ':data_hora_inicio, ' +
       ':data_hora_fim, ' +
       ':inscricao_inicio, ' +
@@ -694,6 +701,9 @@ begin
 
     Qry.ParamByName('modalidade').AsString :=
       ADados.Modalidade;
+
+    Qry.ParamByName('tipo_fluxo').AsString :=
+      ADados.TipoFluxo;
 
     Qry.ParamByName('data_hora_inicio').AsDateTime :=
       ADados.DataHoraInicio;
@@ -786,6 +796,7 @@ begin
       'codigo_interno = :codigo_interno, ' +
       'nome = :nome, ' +
       'modalidade = :modalidade, ' +
+      'tipo_fluxo = :tipo_fluxo, ' +
       'data_hora_inicio = :data_hora_inicio, ' +
       'data_hora_fim = :data_hora_fim, ' +
       'inscricao_inicio = :inscricao_inicio, ' +
