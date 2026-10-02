@@ -41,6 +41,12 @@ type
       const ACodigoPublico: string
     ): Boolean; static;
 
+    class function TemInscricoes(
+      const AConn: TUniConnection;
+      const AIdInstituicao,
+            AIdTurma: Int64
+    ): Boolean; static;
+
     class function ExisteCodigoInterno(
       const AConn: TUniConnection;
       const AIdInstituicao: Int64;
@@ -466,6 +472,30 @@ begin
     Result :=
       not Qry.IsEmpty;
 
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TInstituicaoTurmaDAO.TemInscricoes(
+  const AConn: TUniConnection;
+  const AIdInstituicao,
+        AIdTurma: Int64
+): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT 1 FROM inscricao ' +
+      'WHERE id_instituicao = :id_instituicao ' +
+      'AND id_turma = :id_turma LIMIT 1';
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id_turma').AsLargeInt := AIdTurma;
+    Qry.Open;
+    Result := not Qry.IsEmpty;
   finally
     Qry.Free;
   end;
