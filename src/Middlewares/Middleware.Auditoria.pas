@@ -388,7 +388,7 @@ begin
         Mensagem :=
           'HTTP ' +
           IntToStr(StatusCode) +
-          ' - operação auditada sem persistir o corpo da requisição.';
+          ' - operacao auditada sem persistir o corpo da requisicao.';
 
         TAuditoriaService.TryRegistrarRequest(
           Req,
