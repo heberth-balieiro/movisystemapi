@@ -67,6 +67,36 @@ begin
     Result := V.Value;
 end;
 
+function JsonDateTimeOptional(
+  const AObj: TJSONObject;
+  const ANome: string;
+  out AValor: TDateTime
+): Boolean;
+var
+  S: string;
+  Ano, Mes, Dia, Hora, Minuto: Word;
+begin
+  Result := False;
+  AValor := 0;
+  S := Trim(JsonString(AObj, ANome));
+  if S.IsEmpty then Exit;
+
+  if (Length(S) < 16) or (S[5] <> '-') or (S[8] <> '-') or
+     not CharInSet(S[11], ['T',' ']) or (S[14] <> ':') then
+    TAppErrors.RaiseBadRequest('Data/hora de agendamento inválida.');
+
+  Ano := StrToIntDef(Copy(S,1,4),0);
+  Mes := StrToIntDef(Copy(S,6,2),0);
+  Dia := StrToIntDef(Copy(S,9,2),0);
+  Hora := StrToIntDef(Copy(S,12,2),99);
+  Minuto := StrToIntDef(Copy(S,15,2),99);
+
+  if not TryEncodeDateTime(Ano,Mes,Dia,Hora,Minuto,0,0,AValor) then
+    TAppErrors.RaiseBadRequest('Data/hora de agendamento inválida.');
+
+  Result := True;
+end;
+
 class procedure TPlataformaCampanhaController.Registry;
 begin
   THorse.Get(
@@ -79,6 +109,8 @@ begin
     var
       Claims: TJWTClaims;
       Dados: TJSONObject;
+      AgendadoPara: TDateTime;
+      TemAgendadoPara: Boolean;
     begin
       try
         if not AutorizarSuperAdmin(Req, Res, Claims) then
@@ -144,6 +176,8 @@ begin
       Raw: TJSONValue;
       Body: TJSONObject;
       Dados: TJSONObject;
+      AgendadoPara: TDateTime;
+      TemAgendadoPara: Boolean;
     begin
       try
         if not AutorizarSuperAdmin(Req, Res, Claims) then
@@ -163,6 +197,7 @@ begin
 
         Body := Raw as TJSONObject;
         try
+          TemAgendadoPara := JsonDateTimeOptional(Body, 'agendado_para', AgendadoPara);
           Dados :=
             TPlataformaCampanhaService.Salvar(
               Claims.UserId,
@@ -172,6 +207,9 @@ begin
               JsonString(Body, 'assunto_email'),
               JsonString(Body, 'corpo_email'),
               JsonString(Body, 'mensagem_whatsapp'),
+              JsonString(Body, 'tipo_envio'),
+              AgendadoPara,
+              TemAgendadoPara,
               TAppRequestInfo.GetIP(Req),
               TAppRequestInfo.GetUserAgent(Req)
             );
@@ -199,6 +237,8 @@ begin
       Raw: TJSONValue;
       Body: TJSONObject;
       Dados: TJSONObject;
+      AgendadoPara: TDateTime;
+      TemAgendadoPara: Boolean;
     begin
       try
         if not AutorizarSuperAdmin(Req, Res, Claims) then
@@ -213,6 +253,7 @@ begin
 
         Body := Raw as TJSONObject;
         try
+          TemAgendadoPara := JsonDateTimeOptional(Body, 'agendado_para', AgendadoPara);
           Dados :=
             TPlataformaCampanhaService.Salvar(
               Claims.UserId,
@@ -222,6 +263,9 @@ begin
               JsonString(Body, 'assunto_email'),
               JsonString(Body, 'corpo_email'),
               JsonString(Body, 'mensagem_whatsapp'),
+              JsonString(Body, 'tipo_envio'),
+              AgendadoPara,
+              TemAgendadoPara,
               TAppRequestInfo.GetIP(Req),
               TAppRequestInfo.GetUserAgent(Req)
             );
