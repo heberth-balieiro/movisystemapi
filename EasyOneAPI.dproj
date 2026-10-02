@@ -403,6 +403,9 @@
         <DCCReference Include="src\Cursos\Dao\InstituicaoTurma.DAO.pas"/>
         <DCCReference Include="src\Cursos\Services\InstituicaoTurma.Service.pas"/>
         <DCCReference Include="src\Cursos\Controller\InstituicaoTurma.Controller.pas"/>
+        <DCCReference Include="src\Cursos\Dao\InstituicaoTurmaImportacao.DAO.pas"/>
+        <DCCReference Include="src\Cursos\Services\InstituicaoTurmaImportacao.Service.pas"/>
+        <DCCReference Include="src\Cursos\Controller\InstituicaoTurmaImportacao.Controller.pas"/>
         <DCCReference Include="src\Cursos\Model\InstituicaoInstrutor.Model.pas"/>
         <DCCReference Include="src\Cursos\Dao\InstituicaoInstrutor.DAO.pas"/>
         <DCCReference Include="src\Cursos\Services\InstituicaoInstrutor.Service.pas"/>
