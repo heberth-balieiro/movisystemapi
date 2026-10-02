@@ -20,6 +20,13 @@ type
       const ACpfHash: string
     ): Int64; static;
 
+    class function BuscarInscricaoId(
+      const AConn: TUniConnection;
+      const AIdInstituicao,
+            AIdTurma,
+            AIdParticipante: Int64
+    ): Int64; static;
+
     class function CriarImportacao(
       const AConn: TUniConnection;
       const AIdInstituicao,
@@ -105,6 +112,36 @@ begin
       'LIMIT 1';
     Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
     Qry.ParamByName('cpf_hash').AsString := ACpfHash;
+    Qry.Open;
+    if not Qry.IsEmpty then
+      Result := Qry.FieldByName('id').AsLargeInt;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TInstituicaoTurmaImportacaoDAO.BuscarInscricaoId(
+  const AConn: TUniConnection;
+  const AIdInstituicao,
+        AIdTurma,
+        AIdParticipante: Int64
+): Int64;
+var
+  Qry: TUniQuery;
+begin
+  Result := 0;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT id FROM inscricao ' +
+      'WHERE id_instituicao = :id_instituicao ' +
+      'AND id_turma = :id_turma ' +
+      'AND id_participante = :id_participante ' +
+      'LIMIT 1';
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id_turma').AsLargeInt := AIdTurma;
+    Qry.ParamByName('id_participante').AsLargeInt := AIdParticipante;
     Qry.Open;
     if not Qry.IsEmpty then
       Result := Qry.FieldByName('id').AsLargeInt;
