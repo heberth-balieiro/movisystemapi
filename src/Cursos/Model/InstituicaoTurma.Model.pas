@@ -18,6 +18,7 @@ type
     FCodigoInterno: string;
     FNome: string;
     FModalidade: string;
+    FTipoFluxo: string;
     FDataHoraInicio: TDateTime;
     FDataHoraFim: TDateTime;
     FInscricaoInicio: TDateTime;
@@ -52,6 +53,7 @@ type
     property CodigoInterno: string read FCodigoInterno write FCodigoInterno;
     property Nome: string read FNome write FNome;
     property Modalidade: string read FModalidade write FModalidade;
+    property TipoFluxo: string read FTipoFluxo write FTipoFluxo;
 
     property DataHoraInicio: TDateTime read FDataHoraInicio write FDataHoraInicio;
     property DataHoraFim: TDateTime read FDataHoraFim write FDataHoraFim;
@@ -90,6 +92,7 @@ type
     CodigoInterno: string;
     Nome: string;
     Modalidade: string;
+    TipoFluxo: string;
 
     DataHoraInicio: TDateTime;
     DataHoraFim: TDateTime;
@@ -125,6 +128,7 @@ type
     CodigoInterno: string;
     Nome: string;
     Modalidade: string;
+    TipoFluxo: string;
 
     DataHoraInicio: TDateTime;
     DataHoraFim: TDateTime;
