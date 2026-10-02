@@ -22,6 +22,10 @@ type
       const ASituacao: string
     ); static;
 
+    class procedure ValidarTipoFluxo(
+      const ATipoFluxo: string
+    ); static;
+
     class procedure ValidarFluxo(
       const AAprovacaoInscricao,
             AControlePresenca: string;
@@ -93,7 +97,8 @@ uses
   App.Config,
   APP.Errors,
   Database.Connection,
-  InstituicaoTurma.DAO;
+  InstituicaoTurma.DAO,
+  InstituicaoConfiguracao.Service;
 
 class function TInstituicaoTurmaService.GerarCodigoPublico: string;
 var
@@ -181,6 +186,19 @@ begin
   ) then
     TAppErrors.RaiseBadRequest(
       'Situação da turma inválida.'
+    );
+end;
+
+class procedure TInstituicaoTurmaService.ValidarTipoFluxo(
+  const ATipoFluxo: string
+);
+begin
+  if not MatchText(
+    UpperCase(Trim(ATipoFluxo)),
+    ['NORMAL', 'CERTIFICACAO']
+  ) then
+    TAppErrors.RaiseBadRequest(
+      'Tipo de fluxo da turma inválido.'
     );
 end;
 
@@ -473,6 +491,27 @@ begin
   Dados.ControlePresenca := UpperCase(Trim(Dados.ControlePresenca));
   if Dados.ControlePresenca.IsEmpty then Dados.ControlePresenca := 'ENCONTRO';
 
+  Dados.TipoFluxo := UpperCase(Trim(Dados.TipoFluxo));
+  if Dados.TipoFluxo.IsEmpty then
+    Dados.TipoFluxo := 'NORMAL';
+
+  if SameText(Dados.TipoFluxo, 'CERTIFICACAO') then
+  begin
+    if not TInstituicaoConfiguracaoService.PermiteTurmaSomenteCertificacao(
+      AIdInstituicao
+    ) then
+      TAppErrors.RaiseBadRequest(
+        'A instituição não permite turmas somente para certificação.'
+      );
+
+    Dados.PermitirInscricaoPublica := False;
+    Dados.AprovacaoInscricao := 'MANUAL';
+    Dados.ControlePresenca := 'SEM_CONTROLE';
+    Dados.ExigirPresencaConclusao := False;
+    Dados.ConclusaoAutomatica := False;
+    Dados.CertificadoAutomatico := False;
+  end;
+
   if Dados.Situacao.IsEmpty then
     Dados.Situacao :=
       'PLANEJADA';
@@ -495,6 +534,10 @@ begin
 
   ValidarSituacao(
     Dados.Situacao
+  );
+
+  ValidarTipoFluxo(
+    Dados.TipoFluxo
   );
 
   ValidarFluxo(
@@ -681,6 +724,27 @@ begin
   Dados.ControlePresenca := UpperCase(Trim(Dados.ControlePresenca));
   if Dados.ControlePresenca.IsEmpty then Dados.ControlePresenca := 'ENCONTRO';
 
+  Dados.TipoFluxo := UpperCase(Trim(Dados.TipoFluxo));
+  if Dados.TipoFluxo.IsEmpty then
+    Dados.TipoFluxo := 'NORMAL';
+
+  if SameText(Dados.TipoFluxo, 'CERTIFICACAO') then
+  begin
+    if not TInstituicaoConfiguracaoService.PermiteTurmaSomenteCertificacao(
+      AIdInstituicao
+    ) then
+      TAppErrors.RaiseBadRequest(
+        'A instituição não permite turmas somente para certificação.'
+      );
+
+    Dados.PermitirInscricaoPublica := False;
+    Dados.AprovacaoInscricao := 'MANUAL';
+    Dados.ControlePresenca := 'SEM_CONTROLE';
+    Dados.ExigirPresencaConclusao := False;
+    Dados.ConclusaoAutomatica := False;
+    Dados.CertificadoAutomatico := False;
+  end;
+
   if Dados.IdCurso <= 0 then
     TAppErrors.RaiseBadRequest(
       'Informe o curso da turma.'
@@ -696,6 +760,10 @@ begin
 
   ValidarSituacao(
     Dados.Situacao
+  );
+
+  ValidarTipoFluxo(
+    Dados.TipoFluxo
   );
 
   ValidarFluxo(
