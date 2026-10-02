@@ -538,6 +538,104 @@ begin
 
   {$ENDREGION}
 
+  {$REGION 'Turmas somente certificacao'}
+
+  THorse.Get(
+    '/v1/certifica/configuracoes/certificacao',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Config: TInstituicaoCertificacaoConfig;
+    begin
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then
+          Exit;
+
+        if Claims.IdUsuarioInstituicao <= 0 then
+        begin
+          TAppResponse.Forbidden(
+            Res,
+            'Token sem vínculo de usuário com a instituição.'
+          );
+          Exit;
+        end;
+
+        Config := TInstituicaoConfiguracaoService.BuscarCertificacao(
+          Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao
+        );
+
+        TAppResponse.Ok(
+          Res,
+          Config.ToJSON,
+          'Configuração de certificação carregada com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  THorse.Put(
+    '/v1/certifica/configuracoes/certificacao',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      JsonValue: TJSONValue;
+      Body: TJSONObject;
+      Dados: TInstituicaoCertificacaoInput;
+      Config: TInstituicaoCertificacaoConfig;
+    begin
+      try
+        if not AutorizarInstituicao(Req, Res, Claims) then
+          Exit;
+
+        if Claims.IdUsuarioInstituicao <= 0 then
+        begin
+          TAppResponse.Forbidden(
+            Res,
+            'Token sem vínculo de usuário com a instituição.'
+          );
+          Exit;
+        end;
+
+        JsonValue := TJSONObject.ParseJSONValue(Req.Body);
+        if not (JsonValue is TJSONObject) then
+        begin
+          JsonValue.Free;
+          TAppErrors.RaiseBadRequest('JSON inválido.');
+        end;
+
+        Body := JsonValue as TJSONObject;
+        try
+          Dados := Default(TInstituicaoCertificacaoInput);
+          Dados.PermitirTurmaSomenteCertificacao :=
+            JsonBoolean(Body, 'permitir_turma_somente_certificacao', False);
+        finally
+          Body.Free;
+        end;
+
+        Config := TInstituicaoConfiguracaoService.AtualizarCertificacao(
+          Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao,
+          Dados
+        );
+
+        TAppResponse.Ok(
+          Res,
+          Config.ToJSON,
+          'Configuração de certificação atualizada com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  {$ENDREGION}
+
   {$REGION 'Configuração de E-mail'}
 
   THorse.Get(
