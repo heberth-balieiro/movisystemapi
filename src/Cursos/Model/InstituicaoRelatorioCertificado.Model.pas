@@ -60,7 +60,7 @@ type
 
   TRelatorioCertificadoResumo = record
     Total: Integer;
-    Valid0s: Integer;
+    Validos: Integer;
     Cancelados: Integer;
     Pendentes: Integer;
     Erros: Integer;
