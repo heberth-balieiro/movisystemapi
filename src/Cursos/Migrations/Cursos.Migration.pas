@@ -87,6 +87,7 @@ type
     class procedure Migration_058_PlataformaIdentidade(const AConn: TUniConnection); static;
     class procedure Migration_059_PlataformaCampanhaAgendamento(const AConn: TUniConnection); static;
     class procedure Migration_060_AuditoriaMensagemPadrao(const AConn: TUniConnection); static;
+    class procedure Migration_061_TurmaSomenteCertificacao(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -358,6 +359,7 @@ begin
       Migration_058_PlataformaIdentidade(Conn);
       Migration_059_PlataformaCampanhaAgendamento(Conn);
       Migration_060_AuditoriaMensagemPadrao(Conn);
+      Migration_061_TurmaSomenteCertificacao(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -3023,6 +3025,78 @@ begin
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
 
+
+
+
+class procedure TCursosMigration.Migration_061_TurmaSomenteCertificacao(
+  const AConn: TUniConnection);
+const
+  VERSION = '061';
+  DESCRIPTION = 'Turmas somente certificacao e importacao CSV de participantes';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  AddColumnIfMissing(
+    AConn,
+    'instituicao_configuracao',
+    'permitir_turma_somente_certificacao',
+    'TINYINT(1) NOT NULL DEFAULT 0 AFTER permitir_auto_cadastro'
+  );
+
+  AddColumnIfMissing(
+    AConn,
+    'turma',
+    'tipo_fluxo',
+    'VARCHAR(30) NOT NULL DEFAULT ''NORMAL'' AFTER modalidade'
+  );
+
+  AddConstraintIfMissing(
+    AConn,
+    'turma',
+    'ck_turma_tipo_fluxo',
+    'CHECK (tipo_fluxo IN (''NORMAL'',''CERTIFICACAO''))'
+  );
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS turma_importacao (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_instituicao BIGINT UNSIGNED NOT NULL,' +
+    ' id_turma BIGINT UNSIGNED NOT NULL,' +
+    ' nome_arquivo VARCHAR(255) NOT NULL,' +
+    ' total_registros INT NOT NULL DEFAULT 0,' +
+    ' total_importados INT NOT NULL DEFAULT 0,' +
+    ' total_erros INT NOT NULL DEFAULT 0,' +
+    ' importado_por BIGINT UNSIGNED NOT NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' KEY ix_turma_importacao_turma (id_instituicao,id_turma,criado_em),' +
+    ' CONSTRAINT fk_turma_importacao_turma FOREIGN KEY (id_instituicao,id_turma) ' +
+    '   REFERENCES turma(id_instituicao,id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT fk_turma_importacao_usuario FOREIGN KEY (id_instituicao,importado_por) ' +
+    '   REFERENCES usuario_instituicao(id_instituicao,id) ON UPDATE RESTRICT ON DELETE RESTRICT' +
+    ') ENGINE=InnoDB COMMENT=''Historico de importacoes CSV para turmas de certificacao.'';'
+  );
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS turma_importacao_erro (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_instituicao BIGINT UNSIGNED NOT NULL,' +
+    ' id_importacao BIGINT UNSIGNED NOT NULL,' +
+    ' linha INT NOT NULL,' +
+    ' mensagem VARCHAR(500) NOT NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' KEY ix_turma_importacao_erro (id_instituicao,id_importacao),' +
+    ' CONSTRAINT fk_turma_importacao_erro_importacao FOREIGN KEY (id_importacao) ' +
+    '   REFERENCES turma_importacao(id) ON UPDATE RESTRICT ON DELETE CASCADE' +
+    ') ENGINE=InnoDB COMMENT=''Erros encontrados em importacoes CSV.'';'
+  );
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
 
 {$ENDREGION}
 
