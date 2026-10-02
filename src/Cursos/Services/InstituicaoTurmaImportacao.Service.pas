@@ -181,7 +181,7 @@ begin
         'O CSV permite no máximo 5000 participantes por importação.'
       );
 
-    if Linhas[0].CountChar(';') >= Linhas[0].CountChar(',') then
+    if Pos(';', Linhas[0]) > 0 then
       Delimitador := ';'
     else
       Delimitador := ',';
