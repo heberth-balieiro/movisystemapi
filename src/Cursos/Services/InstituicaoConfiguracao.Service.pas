@@ -1035,11 +1035,30 @@ var
   Config: TAppApiConfig;
   Conn: TUniConnection;
 begin
-  TInstituicaoPermissaoService.Exigir(
+  if AIdInstituicao <= 0 then
+    TAppErrors.RaiseUnauthorized(
+      'Instituição não identificada.'
+    );
+
+  if AIdUsuarioInstituicao <= 0 then
+    TAppErrors.RaiseUnauthorized(
+      'Usuário da instituição não identificado.'
+    );
+
+  if not TInstituicaoPermissaoService.TemPermissao(
     AIdInstituicao,
     AIdUsuarioInstituicao,
-    'turma.visualizar'
-  );
+    'configuracao.visualizar'
+  ) and
+     not TInstituicaoPermissaoService.TemPermissao(
+       AIdInstituicao,
+       AIdUsuarioInstituicao,
+       'turma.visualizar'
+     ) then
+    TAppErrors.RaiseForbidden(
+      'Usuário sem permissão para visualizar esta configuração.'
+    );
+
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(Config.Database);
   try
