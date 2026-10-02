@@ -16,6 +16,11 @@ type
       const AValor: string
     ): string; static;
   public
+    class function ListarFiltros(
+      const AIdInstituicao,
+            AIdUsuarioInstituicao: Int64
+    ): TRelatorioCertificadoFiltros; static;
+
     class function Listar(
       const AIdInstituicao,
             AIdUsuarioInstituicao: Int64;
@@ -107,6 +112,44 @@ begin
   );
 
   Result := '"' + S + '"';
+end;
+
+class function TInstituicaoRelatorioCertificadoService.ListarFiltros(
+  const AIdInstituicao,
+        AIdUsuarioInstituicao: Int64
+): TRelatorioCertificadoFiltros;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  Result := nil;
+
+  TInstituicaoPermissaoService.Exigir(
+    AIdInstituicao,
+    AIdUsuarioInstituicao,
+    'relatorio.certificados.visualizar'
+  );
+
+  Config :=
+    TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) +
+      'Config.ini'
+    );
+
+  Conn :=
+    TDatabaseConnection.NewConnection(
+      Config.Database
+    );
+
+  try
+    Result :=
+      TInstituicaoRelatorioCertificadoDAO.ListarFiltros(
+        Conn,
+        AIdInstituicao
+      );
+  finally
+    Conn.Free;
+  end;
 end;
 
 class function TInstituicaoRelatorioCertificadoService.Listar(
