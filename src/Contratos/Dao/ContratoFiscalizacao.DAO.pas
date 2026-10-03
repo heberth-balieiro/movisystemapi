@@ -43,7 +43,8 @@ begin
   Result := TContratoFiscalizacaoLista.Create(True);
   Qry := TUniQuery.Create(nil);
   try
-    Qry.Connection := AConn;
+    try
+      Qry.Connection := AConn;
     Qry.SQL.Text :=
       'SELECT id,data_ocorrencia,tipo,descricao,providencia,situacao,registrado_por,criado_em,atualizado_em ' +
       'FROM contrato_fiscalizacao ' +
@@ -68,9 +69,10 @@ begin
       Result.Add(Item);
       Qry.Next;
     end;
-  except
-    Result.Free;
-    raise;
+    except
+      Result.Free;
+      raise;
+    end;
   finally
     Qry.Free;
   end;
