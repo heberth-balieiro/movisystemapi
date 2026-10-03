@@ -37,7 +37,8 @@ begin
   Result := TContratoAditivoLista.Create(True);
   Qry := TUniQuery.Create(nil);
   try
-    Qry.Connection := AConn;
+    try
+      Qry.Connection := AConn;
     Qry.SQL.Text :=
       'SELECT id,numero,tipo,data_assinatura,nova_data_fim,valor_acrescimo,valor_supressao,justificativa,criado_em ' +
       'FROM contrato_aditivo ' +
@@ -64,9 +65,10 @@ begin
       Result.Add(Item);
       Qry.Next;
     end;
-  except
-    Result.Free;
-    raise;
+    except
+      Result.Free;
+      raise;
+    end;
   finally
     Qry.Free;
   end;
