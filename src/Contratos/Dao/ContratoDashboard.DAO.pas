@@ -14,6 +14,7 @@ type
     ValorContratado: Double;
     ValorRealizado: Double;
     SaldoProjetado: Double;
+    PodeVisualizarValores: Boolean;
   end;
 
   TContratoDashboardDAO = class
