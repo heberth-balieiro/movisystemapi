@@ -89,6 +89,11 @@ begin
       GarantirPermissao(Conn, 'curso.editar', 'CURSO', 'Editar cursos, categorias e instrutores.');
       GarantirPermissao(Conn, 'curso.inativar', 'CURSO', 'Inativar cursos, categorias e instrutores.');
 
+      GarantirPermissao(Conn, 'entidade_atendida.visualizar', 'ENTIDADE_ATENDIDA', 'Visualizar clientes e entidades atendidas.');
+      GarantirPermissao(Conn, 'entidade_atendida.criar', 'ENTIDADE_ATENDIDA', 'Cadastrar clientes e entidades atendidas.');
+      GarantirPermissao(Conn, 'entidade_atendida.editar', 'ENTIDADE_ATENDIDA', 'Editar clientes e entidades atendidas.');
+      GarantirPermissao(Conn, 'entidade_atendida.inativar', 'ENTIDADE_ATENDIDA', 'Inativar clientes e entidades atendidas.');
+
       GarantirPermissao(Conn, 'turma.visualizar', 'TURMA', 'Visualizar turmas.');
       GarantirPermissao(Conn, 'turma.cadastrar', 'TURMA', 'Cadastrar turmas.');
       GarantirPermissao(Conn, 'turma.editar', 'TURMA', 'Editar turmas.');
