@@ -26,6 +26,7 @@ uses
   APP.Errors in 'src\Core\APP.Errors.pas',
   App.JWT in 'src\Core\App.JWT.pas',
   App.Response in 'src\Core\App.Response.pas',
+  App.TextEncoding in 'src\Core\App.TextEncoding.pas',
   App.RateLimit in 'src\Core\App.RateLimit.pas',
   Auditoria.DAO in 'src\Cursos\Dao\Auditoria.DAO.pas',
   Auditoria.Service in 'src\Cursos\Services\Auditoria.Service.pas',
