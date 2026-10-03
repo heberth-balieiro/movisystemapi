@@ -1,6 +1,5 @@
 unit InstituicaoEmail.Service;
 
-{$CODEPAGE UTF8}
 
 interface
 
