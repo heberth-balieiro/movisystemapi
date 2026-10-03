@@ -11,8 +11,11 @@ type
   private
     class procedure ExecSQL(const AConn: TUniConnection; const ASQL: string); static;
     class function MigrationExists(const AConn: TUniConnection; const AVersion: string): Boolean; static;
+    class function ColumnExists(const AConn: TUniConnection; const ATable, AColumn: string): Boolean; static;
+    class procedure AddColumnIfMissing(const AConn: TUniConnection; const ATable, AColumn, ADefinition: string); static;
     class procedure RegisterMigration(const AConn: TUniConnection; const AVersion, ADescription: string); static;
     class procedure Migration_001_Core(const AConn: TUniConnection); static;
+    class procedure Migration_002_DocumentosHistoricoSituacao(const AConn: TUniConnection); static;
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
   end;
@@ -50,6 +53,42 @@ begin
   finally
     Qry.Free;
   end;
+end;
+
+
+class function TContratosMigration.ColumnExists(
+  const AConn: TUniConnection;
+  const ATable, AColumn: string
+): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT 1 FROM information_schema.columns ' +
+      'WHERE table_schema=DATABASE() AND table_name=:tabela AND column_name=:coluna LIMIT 1';
+    Qry.ParamByName('tabela').AsString := ATable;
+    Qry.ParamByName('coluna').AsString := AColumn;
+    Qry.Open;
+    Result := not Qry.IsEmpty;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class procedure TContratosMigration.AddColumnIfMissing(
+  const AConn: TUniConnection;
+  const ATable, AColumn, ADefinition: string
+);
+begin
+  if not ColumnExists(AConn, ATable, AColumn) then
+    ExecSQL(
+      AConn,
+      'ALTER TABLE ' + ATable +
+      ' ADD COLUMN ' + AColumn + ' ' + ADefinition
+    );
 end;
 
 class procedure TContratosMigration.RegisterMigration(const AConn: TUniConnection; const AVersion, ADescription: string);
@@ -294,6 +333,39 @@ begin
   RegisterMigration(AConn, VERSION, 'Nucleo inicial do MoviSystem Contratos');
 end;
 
+
+class procedure TContratosMigration.Migration_002_DocumentosHistoricoSituacao(
+  const AConn: TUniConnection
+);
+const
+  VERSION = 'CONTRATOS_002';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  AddColumnIfMissing(AConn,'contrato_documento','storage_key','VARCHAR(1000) NULL AFTER arquivo_url');
+  AddColumnIfMissing(AConn,'contrato_documento','mime_type','VARCHAR(120) NULL AFTER storage_key');
+  AddColumnIfMissing(AConn,'contrato_documento','tamanho_bytes','BIGINT UNSIGNED NULL AFTER mime_type');
+  AddColumnIfMissing(AConn,'contrato_documento','sha256','CHAR(64) NULL AFTER tamanho_bytes');
+  AddColumnIfMissing(AConn,'contrato_documento','ativo','TINYINT(1) NOT NULL DEFAULT 1 AFTER sha256');
+  AddColumnIfMissing(AConn,'contrato_documento','excluido_em','DATETIME(3) NULL AFTER ativo');
+  AddColumnIfMissing(AConn,'contrato_documento','excluido_por','BIGINT UNSIGNED NULL AFTER excluido_em');
+
+  AddColumnIfMissing(AConn,'contrato_historico','referencia_tipo','VARCHAR(40) NULL AFTER descricao');
+  AddColumnIfMissing(AConn,'contrato_historico','referencia_id','BIGINT UNSIGNED NULL AFTER referencia_tipo');
+  AddColumnIfMissing(AConn,'contrato_historico','detalhes_json','LONGTEXT NULL AFTER referencia_id');
+
+  AddColumnIfMissing(AConn,'contrato','motivo_encerramento','VARCHAR(1000) NULL AFTER encerrado_em');
+  AddColumnIfMissing(AConn,'contrato','cancelado_em','DATETIME(3) NULL AFTER motivo_encerramento');
+  AddColumnIfMissing(AConn,'contrato','motivo_cancelamento','VARCHAR(1000) NULL AFTER cancelado_em');
+
+  RegisterMigration(
+    AConn,
+    VERSION,
+    'Documentos privados, historico detalhado e encerramento/cancelamento de contratos'
+  );
+end;
+
 class procedure TContratosMigration.Run(const ACfg: TAppDatabaseConfig);
 var
   Conn: TUniConnection;
@@ -303,6 +375,7 @@ begin
     Conn.StartTransaction;
     try
       Migration_001_Core(Conn);
+      Migration_002_DocumentosHistoricoSituacao(Conn);
       Conn.Commit;
     except
       if Conn.InTransaction then
