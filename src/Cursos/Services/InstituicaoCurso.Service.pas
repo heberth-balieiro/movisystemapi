@@ -320,7 +320,8 @@ begin
         );
     end;
 
-    if Dados.IdEntidadeAtendida > 0 then
+    if Dados.TemEntidadeAtendidaInformada and
+       (Dados.IdEntidadeAtendida > 0) then
     begin
       if not TInstituicaoEntidadeAtendidaDAO.ExisteAtiva(
         Conn,
@@ -502,6 +503,14 @@ begin
         TAppErrors.RaiseBadRequest(
           'Curso não encontrado.'
         );
+
+      if not Dados.TemEntidadeAtendidaInformada then
+      begin
+        if CursoAtual.TemEntidadeAtendida then
+          Dados.IdEntidadeAtendida := CursoAtual.IdEntidadeAtendida
+        else
+          Dados.IdEntidadeAtendida := 0;
+      end;
 
       // Categoria já vinculada pode permanecer mesmo se foi inativada depois.
       // Ao trocar de categoria, a nova precisa estar ATIVA no mesmo tenant.
