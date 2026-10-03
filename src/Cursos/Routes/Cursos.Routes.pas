@@ -59,6 +59,7 @@ Uses
   InstituicaoRelatorioTurma.Controller,
   InstituicaoRelatorioParticipante.Controller,
   InstituicaoRelatorioInscricao.Controller,
+  InstituicaoRelatorioPresenca.Controller,
   LgpdSolicitacao.Controller,
   PublicoPrimeiroAcesso.Controller,
   PublicoAutoCadastro.Controller;
@@ -115,6 +116,7 @@ begin
   TInstituicaoRelatorioTurmaController.Registry;
   TInstituicaoRelatorioParticipanteController.Registry;
   TInstituicaoRelatorioInscricaoController.Registry;
+  TInstituicaoRelatorioPresencaController.Registry;
   TLgpdSolicitacaoController.Registry;
   TPublicoPrimeiroAcessoController.Registry;
   TPublicoAutoCadastroController.Registry;
