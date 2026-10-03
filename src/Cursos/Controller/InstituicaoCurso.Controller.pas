@@ -486,6 +486,9 @@ begin
             'id_categoria'
           );
 
+          Cadastro.TemEntidadeAtendidaInformada :=
+            Body.GetValue('id_entidade_atendida') <> nil;
+
           Cadastro.IdEntidadeAtendida := JsonInt64(
             Body,
             'id_entidade_atendida'
@@ -647,6 +650,9 @@ begin
             Body,
             'id_categoria'
           );
+
+          Alteracao.TemEntidadeAtendidaInformada :=
+            Body.GetValue('id_entidade_atendida') <> nil;
 
           Alteracao.IdEntidadeAtendida := JsonInt64(
             Body,
