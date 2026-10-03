@@ -63,7 +63,11 @@ begin
     (Pos('/v1/certifica/instituicao/perfis', Caminho) = 1) or
     (Pos('/v1/certifica/instituicao/permissoes', Caminho) = 1) or
     (Pos('/v1/certifica/instituicao/ajudas', Caminho) = 1) or
-    (Pos('/v1/certifica/instituicao/auditoria', Caminho) = 1);
+    (Pos('/v1/certifica/instituicao/auditoria', Caminho) = 1) or
+    (
+      (Pos('/v1/certifica/configuracoes/', Caminho) = 1) and
+      (Pos('/v1/certifica/configuracoes/certificacao', Caminho) <> 1)
+    );
 end;
 
 class function TAppModuloAccess.InstituicaoPossuiModulo(
