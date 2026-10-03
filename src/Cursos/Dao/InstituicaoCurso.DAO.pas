@@ -243,6 +243,7 @@ begin
       'INSERT INTO curso (' +
       'id_instituicao, ' +
       'id_categoria, ' +
+      'id_entidade_atendida, ' +
       'codigo_publico, ' +
       'codigo_interno, ' +
       'slug, ' +
@@ -260,6 +261,7 @@ begin
       ') VALUES (' +
       ':id_instituicao, ' +
       ':id_categoria, ' +
+      ':id_entidade_atendida, ' +
       ':codigo_publico, ' +
       ':codigo_interno, ' +
       ':slug, ' +
@@ -282,6 +284,11 @@ begin
       Qry.ParamByName('id_categoria').AsLargeInt := ADados.IdCategoria
     else
       Qry.ParamByName('id_categoria').Clear;
+
+    if ADados.IdEntidadeAtendida > 0 then
+      Qry.ParamByName('id_entidade_atendida').AsLargeInt := ADados.IdEntidadeAtendida
+    else
+      Qry.ParamByName('id_entidade_atendida').Clear;
 
     Qry.ParamByName('codigo_publico').AsString := ADados.CodigoPublico;
 
@@ -353,6 +360,8 @@ begin
       'SELECT ' +
       'c.id, ' +
       'c.id_categoria, ' +
+      'c.id_entidade_atendida, ' +
+      'ea.nome AS entidade_atendida_nome, ' +
       'c.codigo_publico, ' +
       'c.codigo_interno, ' +
       'c.slug, ' +
@@ -366,6 +375,9 @@ begin
       'c.permitir_inscricao_publica, ' +
       'c.situacao ' +
       'FROM curso c ' +
+      'LEFT JOIN entidade_atendida ea ' +
+      '  ON ea.id_instituicao = c.id_instituicao ' +
+      ' AND ea.id = c.id_entidade_atendida ' +
       'WHERE c.id_instituicao = :id_instituicao ' +
       'AND c.id = :id ' +
       'LIMIT 1';
@@ -383,6 +395,11 @@ begin
 
     if not Qry.FieldByName('id_categoria').IsNull then
       Result.IdCategoria := Qry.FieldByName('id_categoria').AsLargeInt;
+
+    Result.TemEntidadeAtendida := not Qry.FieldByName('id_entidade_atendida').IsNull;
+    if Result.TemEntidadeAtendida then
+      Result.IdEntidadeAtendida := Qry.FieldByName('id_entidade_atendida').AsLargeInt;
+    Result.EntidadeAtendidaNome := Qry.FieldByName('entidade_atendida_nome').AsString;
 
     Result.CodigoPublico := Qry.FieldByName('codigo_publico').AsString;
     Result.CodigoInterno := Qry.FieldByName('codigo_interno').AsString;
@@ -416,6 +433,7 @@ begin
     Qry.SQL.Text :=
       'UPDATE curso SET ' +
       'id_categoria = :id_categoria, ' +
+      'id_entidade_atendida = :id_entidade_atendida, ' +
       'codigo_interno = :codigo_interno, ' +
       'slug = :slug, ' +
       'nome = :nome, ' +
@@ -438,6 +456,11 @@ begin
       Qry.ParamByName('id_categoria').AsLargeInt := ADados.IdCategoria
     else
       Qry.ParamByName('id_categoria').Clear;
+
+    if ADados.IdEntidadeAtendida > 0 then
+      Qry.ParamByName('id_entidade_atendida').AsLargeInt := ADados.IdEntidadeAtendida
+    else
+      Qry.ParamByName('id_entidade_atendida').Clear;
 
     if not ADados.CodigoInterno.IsEmpty then
       Qry.ParamByName('codigo_interno').AsString := ADados.CodigoInterno
@@ -575,6 +598,8 @@ begin
         'SELECT ' +
         'c.id, ' +
         'c.id_categoria, ' +
+        'c.id_entidade_atendida, ' +
+        'ea.nome AS entidade_atendida_nome, ' +
         'c.codigo_publico, ' +
         'c.codigo_interno, ' +
         'c.slug, ' +
@@ -584,6 +609,9 @@ begin
         'c.permitir_inscricao_publica, ' +
         'c.situacao ' +
         'FROM curso c ' +
+        'LEFT JOIN entidade_atendida ea ' +
+        '  ON ea.id_instituicao = c.id_instituicao ' +
+        ' AND ea.id = c.id_entidade_atendida ' +
         WhereSQL +
         'ORDER BY c.nome, c.id ' +
         'LIMIT :limite OFFSET :offset';
@@ -601,6 +629,11 @@ begin
 
         if not Qry.FieldByName('id_categoria').IsNull then
           Item.IdCategoria := Qry.FieldByName('id_categoria').AsLargeInt;
+
+        Item.TemEntidadeAtendida := not Qry.FieldByName('id_entidade_atendida').IsNull;
+        if Item.TemEntidadeAtendida then
+          Item.IdEntidadeAtendida := Qry.FieldByName('id_entidade_atendida').AsLargeInt;
+        Item.EntidadeAtendidaNome := Qry.FieldByName('entidade_atendida_nome').AsString;
 
         Item.CodigoPublico := Qry.FieldByName('codigo_publico').AsString;
         Item.CodigoInterno := Qry.FieldByName('codigo_interno').AsString;
