@@ -151,6 +151,23 @@ begin
       TJSONNull.Create
     );
 
+  if ACurso.TemEntidadeAtendida then
+  begin
+    Result.AddPair(
+      'id_entidade_atendida',
+      TJSONNumber.Create(ACurso.IdEntidadeAtendida)
+    );
+    Result.AddPair(
+      'entidade_atendida_nome',
+      ACurso.EntidadeAtendidaNome
+    );
+  end
+  else
+  begin
+    Result.AddPair('id_entidade_atendida', TJSONNull.Create);
+    Result.AddPair('entidade_atendida_nome', TJSONNull.Create);
+  end;
+
   Result.AddPair(
     'codigo_publico',
     ACurso.CodigoPublico
@@ -289,6 +306,17 @@ begin
                 'id_categoria',
                 TJSONNull.Create
               );
+
+            if Item.TemEntidadeAtendida then
+            begin
+              ItemJson.AddPair('id_entidade_atendida', TJSONNumber.Create(Item.IdEntidadeAtendida));
+              ItemJson.AddPair('entidade_atendida_nome', Item.EntidadeAtendidaNome);
+            end
+            else
+            begin
+              ItemJson.AddPair('id_entidade_atendida', TJSONNull.Create);
+              ItemJson.AddPair('entidade_atendida_nome', TJSONNull.Create);
+            end;
 
             ItemJson.AddPair('codigo_publico', Item.CodigoPublico);
             ItemJson.AddPair('codigo_interno', Item.CodigoInterno);
@@ -458,6 +486,11 @@ begin
             'id_categoria'
           );
 
+          Cadastro.IdEntidadeAtendida := JsonInt64(
+            Body,
+            'id_entidade_atendida'
+          );
+
           Cadastro.CodigoInterno := JsonString(
             Body,
             'codigo_interno'
@@ -613,6 +646,11 @@ begin
           Alteracao.IdCategoria := JsonInt64(
             Body,
             'id_categoria'
+          );
+
+          Alteracao.IdEntidadeAtendida := JsonInt64(
+            Body,
+            'id_entidade_atendida'
           );
 
           Alteracao.CodigoInterno := JsonString(
