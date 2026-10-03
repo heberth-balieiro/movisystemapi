@@ -55,6 +55,12 @@ type
       const AIdInstituicao, AIdContrato, AIdUsuario: Int64;
       const AEvento, ADescricao: string
     ); static;
+
+    class procedure AlterarSituacaoFinal(
+      const AConn: TUniConnection;
+      const AIdInstituicao, AIdContrato, AIdUsuario: Int64;
+      const ASituacao, AMotivo: string
+    ); static;
   end;
 
 implementation
@@ -393,6 +399,45 @@ begin
     Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
     Qry.ParamByName('id').AsLargeInt := AIdContrato;
     Qry.ExecSQL;
+  finally
+    Qry.Free;
+  end;
+end;
+
+
+class procedure TContratoDAO.AlterarSituacaoFinal(
+  const AConn: TUniConnection;
+  const AIdInstituicao, AIdContrato, AIdUsuario: Int64;
+  const ASituacao, AMotivo: string
+);
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+
+    if SameText(ASituacao,'ENCERRADO') then
+      Qry.SQL.Text :=
+        'UPDATE contrato SET situacao=''ENCERRADO'',encerrado_em=CURRENT_TIMESTAMP(3),' +
+        'motivo_encerramento=:motivo,atualizado_por=:usuario ' +
+        'WHERE id_instituicao=:id_instituicao AND id=:id ' +
+        'AND situacao NOT IN (''ENCERRADO'',''CANCELADO'')'
+    else
+      Qry.SQL.Text :=
+        'UPDATE contrato SET situacao=''CANCELADO'',cancelado_em=CURRENT_TIMESTAMP(3),' +
+        'motivo_cancelamento=:motivo,atualizado_por=:usuario ' +
+        'WHERE id_instituicao=:id_instituicao AND id=:id ' +
+        'AND situacao NOT IN (''ENCERRADO'',''CANCELADO'')';
+
+    Qry.ParamByName('motivo').AsString := Copy(Trim(AMotivo),1,1000);
+    Qry.ParamByName('usuario').AsLargeInt := AIdUsuario;
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id').AsLargeInt := AIdContrato;
+    Qry.ExecSQL;
+
+    if Qry.RowsAffected=0 then
+      raise Exception.Create('Contrato não encontrado ou já finalizado.');
   finally
     Qry.Free;
   end;
