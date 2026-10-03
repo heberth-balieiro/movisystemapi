@@ -27,6 +27,7 @@ Uses
   InstituicaoAuth.Controller,
   InstituicaoDashboard.Controller,
   InstituicaoCurso.Controller,
+  InstituicaoEntidadeAtendida.Controller,
   InstituicaoCursoCategoria.Controller,
   InstituicaoCertificadoModelo.Controller,
   InstituicaoTurma.Controller,
@@ -84,6 +85,7 @@ begin
   TInstituicaoAuthController.Registry;
   TInstituicaoDashboardController.Registry;
   TInstituicaoCursoController.Registry;
+  TInstituicaoEntidadeAtendidaController.Registry;
   TInstituicaoCursoCategoriaController.Registry;
   TInstituicaoCertificadoModeloController.Registry;
   TInstituicaoTurmaController.Registry;
