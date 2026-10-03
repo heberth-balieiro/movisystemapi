@@ -14,7 +14,9 @@ uses
   Contrato.Controller,
   ContratoProjecao.Controller,
   ContratoResponsavel.Controller,
-  ContratoDashboard.Controller;
+  ContratoDashboard.Controller,
+  ContratoAditivo.Controller,
+  ContratoFiscalizacao.Controller;
 
 class procedure TContratosRoutes.Registry;
 begin
@@ -22,6 +24,8 @@ begin
   TContratoProjecaoController.Registry;
   TContratoResponsavelController.Registry;
   TContratoDashboardController.Registry;
+  TContratoAditivoController.Registry;
+  TContratoFiscalizacaoController.Registry;
 end;
 
 end.
