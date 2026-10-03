@@ -70,6 +70,7 @@ var
   Conn: TUniConnection;
   Contrato: TContratoItem;
   Situacao: string;
+  Dados: TContratoFiscalizacaoCadastro;
 begin
   Result := nil;
   TInstituicaoPermissaoService.Exigir(AIdInstituicao,AIdUsuario,'contrato.fiscalizacao.gerenciar');
@@ -91,7 +92,7 @@ begin
 
       Conn.StartTransaction;
       try
-        var Dados := ADados;
+        Dados := ADados;
         Dados.Situacao := Situacao;
         TContratoFiscalizacaoDAO.Inserir(Conn,AIdInstituicao,AIdContrato,AIdUsuario,Dados);
         TContratoDAO.InserirHistorico(Conn,AIdInstituicao,AIdContrato,AIdUsuario,'FISCALIZACAO_REGISTRADA','Ocorrência de fiscalização registrada.');
