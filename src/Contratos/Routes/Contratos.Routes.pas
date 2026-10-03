@@ -11,11 +11,17 @@ type
 implementation
 
 uses
-  Contrato.Controller;
+  Contrato.Controller,
+  ContratoProjecao.Controller,
+  ContratoResponsavel.Controller,
+  ContratoDashboard.Controller;
 
 class procedure TContratosRoutes.Registry;
 begin
   TContratoController.Registry;
+  TContratoProjecaoController.Registry;
+  TContratoResponsavelController.Registry;
+  TContratoDashboardController.Registry;
 end;
 
 end.
