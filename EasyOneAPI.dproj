@@ -182,6 +182,10 @@
         <DCCReference Include="src\Cursos\Dao\InstituicaoRelatorioPresenca.DAO.pas"/>
         <DCCReference Include="src\Cursos\Services\InstituicaoRelatorioPresenca.Service.pas"/>
         <DCCReference Include="src\Cursos\Controller\InstituicaoRelatorioPresenca.Controller.pas"/>
+        <DCCReference Include="src\Cursos\Model\InstituicaoEntidadeAtendida.Model.pas"/>
+        <DCCReference Include="src\Cursos\Dao\InstituicaoEntidadeAtendida.DAO.pas"/>
+        <DCCReference Include="src\Cursos\Services\InstituicaoEntidadeAtendida.Service.pas"/>
+        <DCCReference Include="src\Cursos\Controller\InstituicaoEntidadeAtendida.Controller.pas"/>
         <DCCReference Include="src\Cursos\Dao\PlataformaCampanha.DAO.pas"/>
         <DCCReference Include="src\Cursos\Services\PlataformaCampanha.Service.pas"/>
         <DCCReference Include="src\Cursos\Services\PlataformaCampanha.Worker.pas"/>
