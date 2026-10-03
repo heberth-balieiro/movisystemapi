@@ -505,6 +505,8 @@ begin
 
           //Roda tabelas
           TCursosMigration.Run(LConfig.Database);
+          TContratosMigration.Run(LConfig.Database);
+          Writeln('Migrations do MoviSystem Contratos executadas com sucesso.');
 
           if SameText(LConfig.Ambiente, 'PRODUCAO') then
           begin
@@ -522,6 +524,9 @@ begin
 
           TCursosSeeds.Run;
           Writeln('Seeds de permissoes e perfis executadas com sucesso.');
+
+          TContratosSeeds.Run;
+          Writeln('Seeds do MoviSystem Contratos executadas com sucesso.');
 
           if LConfig.RunDemoSeeds then
           begin
@@ -589,6 +594,9 @@ begin
           //registro das rotas
           TCursosRoutes.Registry;
             Writeln('Rotas MoviSystem registrada com sucesso.');
+
+          TContratosRoutes.Registry;
+            Writeln('Rotas MoviSystem Contratos registradas com sucesso.');
         end;
 
       {$ENDREGION}
