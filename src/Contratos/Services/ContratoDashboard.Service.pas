@@ -39,6 +39,11 @@ begin
   Conn := TDatabaseConnection.NewConnection(Config.Database);
   try
     Result := TContratoDashboardDAO.Buscar(Conn,AIdInstituicao);
+    Result.PodeVisualizarValores := TInstituicaoPermissaoService.TemPermissao(
+      AIdInstituicao,
+      AIdUsuario,
+      'contrato.visualizar_valores'
+    );
   finally
     Conn.Free;
   end;
