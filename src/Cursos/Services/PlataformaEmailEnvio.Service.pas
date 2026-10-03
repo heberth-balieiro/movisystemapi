@@ -33,8 +33,8 @@ uses
   IdText,
   IdAttachmentFile,
   IdSSL,
-  IdSSLOpenSSL,
   IdExplicitTLSClientServerBase,
+  TaurusTLS,
   PlataformaEmail.Model,
   PlataformaEmail.Service;
 
@@ -74,7 +74,7 @@ var
   Config: TPlataformaEmailConfig;
   Senha: string;
   SMTP: TIdSMTP;
-  SSL: TIdSSLIOHandlerSocketOpenSSL;
+  SSL: TTaurusTLSIOHandlerSocket;
   Mensagem: TIdMessage;
   HtmlPart: TIdText;
   I: Integer;
@@ -88,13 +88,8 @@ begin
       'Configuração global de e-mail indisponível.'
     );
 
-  if not LoadOpenSSLLibrary then
-    raise Exception.Create(
-      'Biblioteca OpenSSL não disponível para envio SMTP.'
-    );
-
   SMTP := TIdSMTP.Create(nil);
-  SSL := TIdSSLIOHandlerSocketOpenSSL.Create(nil);
+  SSL := TTaurusTLSIOHandlerSocket.Create(nil);
   Mensagem := TIdMessage.Create(nil);
   try
     SMTP.Host := Config.SmtpHost;
@@ -105,7 +100,7 @@ begin
     SMTP.ReadTimeout := 20000;
 
     SSL.SSLOptions.Mode := sslmClient;
-    SSL.SSLOptions.SSLVersions := [sslvTLSv1_2];
+    SSL.SSLOptions.MinTLSVersion := TLSv1_2;
 
     if SameText(Config.Seguranca, 'SSL_TLS') then
     begin
