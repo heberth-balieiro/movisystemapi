@@ -1,6 +1,5 @@
 unit PlataformaInstituicao.Service;
 
-{$CODEPAGE UTF8}
 
 interface
 
