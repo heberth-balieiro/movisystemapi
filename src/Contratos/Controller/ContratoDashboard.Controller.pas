@@ -50,9 +50,20 @@ begin
         Json.AddPair('a_vencer_30_dias',TJSONNumber.Create(Dados.AVencer30Dias));
         Json.AddPair('vencidos',TJSONNumber.Create(Dados.Vencidos));
         Json.AddPair('fiscalizacoes_pendentes',TJSONNumber.Create(Dados.FiscalizacoesPendentes));
-        Json.AddPair('valor_contratado',TJSONNumber.Create(Dados.ValorContratado));
-        Json.AddPair('valor_realizado',TJSONNumber.Create(Dados.ValorRealizado));
-        Json.AddPair('saldo_projetado',TJSONNumber.Create(Dados.SaldoProjetado));
+        if Dados.PodeVisualizarValores then
+        begin
+          Json.AddPair('valor_contratado',TJSONNumber.Create(Dados.ValorContratado));
+          Json.AddPair('valor_realizado',TJSONNumber.Create(Dados.ValorRealizado));
+          Json.AddPair('saldo_projetado',TJSONNumber.Create(Dados.SaldoProjetado));
+        end
+        else
+        begin
+          Json.AddPair('valor_contratado',TJSONNull.Create);
+          Json.AddPair('valor_realizado',TJSONNull.Create);
+          Json.AddPair('saldo_projetado',TJSONNull.Create);
+        end;
+
+        Json.AddPair('pode_visualizar_valores',TJSONBool.Create(Dados.PodeVisualizarValores));
 
         TAppResponse.Ok(Res,Json,'Dashboard de contratos carregado com sucesso.');
       except
