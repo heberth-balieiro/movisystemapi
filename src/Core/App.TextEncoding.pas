@@ -1,6 +1,5 @@
 unit App.TextEncoding;
 
-{$CODEPAGE UTF8}
 
 interface
 
