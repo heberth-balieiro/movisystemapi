@@ -368,6 +368,107 @@ begin
       end;
     end
   );
+
+  THorse.Post(
+    '/v1/contratos/instituicao/contratos/:id/encerrar',
+    procedure(Req:THorseRequest; Res:THorseResponse; Next:TProc)
+    var
+      Claims:TJWTClaims;
+      IdContrato:Int64;
+      JsonValue:TJSONValue;
+      Body:TJSONObject;
+      Motivo:string;
+      Contrato:TContratoItem;
+    begin
+      try
+        if not AutorizarInstituicao(Req,Res,Claims) then Exit;
+        IdContrato:=StrToInt64Def(Req.Params.Items['id'],0);
+
+        JsonValue:=TJSONObject.ParseJSONValue(Req.Body);
+        if not (JsonValue is TJSONObject) then
+        begin
+          JsonValue.Free;
+          TAppErrors.RaiseBadRequest('JSON inválido.');
+        end;
+
+        Body:=JsonValue as TJSONObject;
+        try
+          Motivo:=JsonString(Body,'motivo');
+        finally
+          Body.Free;
+        end;
+
+        Contrato:=TContratoService.Encerrar(
+          Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao,
+          IdContrato,
+          Motivo
+        );
+        try
+          TAppResponse.Ok(
+            Res,
+            ContratoParaJson(Contrato),
+            'Contrato encerrado com sucesso.'
+          );
+        finally
+          Contrato.Free;
+        end;
+      except
+        on E:Exception do TAppErrors.HandleException(Res,E);
+      end;
+    end
+  );
+
+  THorse.Post(
+    '/v1/contratos/instituicao/contratos/:id/cancelar',
+    procedure(Req:THorseRequest; Res:THorseResponse; Next:TProc)
+    var
+      Claims:TJWTClaims;
+      IdContrato:Int64;
+      JsonValue:TJSONValue;
+      Body:TJSONObject;
+      Motivo:string;
+      Contrato:TContratoItem;
+    begin
+      try
+        if not AutorizarInstituicao(Req,Res,Claims) then Exit;
+        IdContrato:=StrToInt64Def(Req.Params.Items['id'],0);
+
+        JsonValue:=TJSONObject.ParseJSONValue(Req.Body);
+        if not (JsonValue is TJSONObject) then
+        begin
+          JsonValue.Free;
+          TAppErrors.RaiseBadRequest('JSON inválido.');
+        end;
+
+        Body:=JsonValue as TJSONObject;
+        try
+          Motivo:=JsonString(Body,'motivo');
+        finally
+          Body.Free;
+        end;
+
+        Contrato:=TContratoService.Cancelar(
+          Claims.IdInstituicao,
+          Claims.IdUsuarioInstituicao,
+          IdContrato,
+          Motivo
+        );
+        try
+          TAppResponse.Ok(
+            Res,
+            ContratoParaJson(Contrato),
+            'Contrato cancelado com sucesso.'
+          );
+        finally
+          Contrato.Free;
+        end;
+      except
+        on E:Exception do TAppErrors.HandleException(Res,E);
+      end;
+    end
+  );
+
 end;
 
 end.
