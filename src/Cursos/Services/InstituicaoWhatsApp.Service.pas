@@ -1,6 +1,5 @@
 unit InstituicaoWhatsApp.Service;
 
-{$CODEPAGE UTF8}
 
 interface
 
