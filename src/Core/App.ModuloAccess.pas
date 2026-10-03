@@ -58,7 +58,12 @@ begin
     SameText(
       Caminho,
       '/v1/certifica/instituicao/auth/contexto'
-    );
+    ) or
+    (Pos('/v1/certifica/instituicao/usuarios', Caminho) = 1) or
+    (Pos('/v1/certifica/instituicao/perfis', Caminho) = 1) or
+    (Pos('/v1/certifica/instituicao/permissoes', Caminho) = 1) or
+    (Pos('/v1/certifica/instituicao/ajudas', Caminho) = 1) or
+    (Pos('/v1/certifica/instituicao/auditoria', Caminho) = 1);
 end;
 
 class function TAppModuloAccess.InstituicaoPossuiModulo(
