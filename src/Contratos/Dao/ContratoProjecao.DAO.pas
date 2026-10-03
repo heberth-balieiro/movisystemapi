@@ -56,7 +56,8 @@ begin
   Result := TContratoProjecaoLista.Create(True);
   Qry := TUniQuery.Create(nil);
   try
-    Qry.Connection := AConn;
+    try
+      Qry.Connection := AConn;
     Qry.SQL.Text :=
       'SELECT id,competencia,valor_previsto,valor_realizado,origem,observacao ' +
       'FROM contrato_projecao ' +
@@ -79,9 +80,10 @@ begin
       Result.Add(Item);
       Qry.Next;
     end;
-  except
-    Result.Free;
-    raise;
+    except
+      Result.Free;
+      raise;
+    end;
   finally
     Qry.Free;
   end;
