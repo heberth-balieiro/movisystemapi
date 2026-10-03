@@ -98,7 +98,8 @@ uses
   APP.Errors,
   Database.Connection,
   InstituicaoTurma.DAO,
-  InstituicaoConfiguracao.Service;
+  InstituicaoConfiguracao.Service,
+  InstituicaoEntidadeAtendida.DAO;
 
 class function TInstituicaoTurmaService.GerarCodigoPublico: string;
 var
@@ -588,6 +589,25 @@ begin
         'Curso não encontrado, não pertence à instituição ou está inativo.'
       );
 
+    if not Dados.TemEntidadeAtendidaInformada then
+      Dados.IdEntidadeAtendida :=
+        TInstituicaoTurmaDAO.BuscarEntidadeAtendidaAtivaCurso(
+          Conn,
+          AIdInstituicao,
+          Dados.IdCurso
+        )
+    else if Dados.IdEntidadeAtendida > 0 then
+    begin
+      if not TInstituicaoEntidadeAtendidaDAO.ExisteAtiva(
+        Conn,
+        AIdInstituicao,
+        Dados.IdEntidadeAtendida
+      ) then
+        TAppErrors.RaiseBadRequest(
+          'Cliente/entidade atendida não encontrado, não pertence à instituição ou está inativo.'
+        );
+    end;
+
     if Dados.IdModeloCertificado > 0 then
     begin
       if not TInstituicaoTurmaDAO.ExisteModeloCertificadoAtivo(
@@ -811,6 +831,21 @@ begin
           'Turma não encontrada.'
         );
 
+      if not Dados.TemEntidadeAtendidaInformada then
+      begin
+        if Dados.IdCurso <> TurmaAtual.IdCurso then
+          Dados.IdEntidadeAtendida :=
+            TInstituicaoTurmaDAO.BuscarEntidadeAtendidaAtivaCurso(
+              Conn,
+              AIdInstituicao,
+              Dados.IdCurso
+            )
+        else if TurmaAtual.TemEntidadeAtendida then
+          Dados.IdEntidadeAtendida := TurmaAtual.IdEntidadeAtendida
+        else
+          Dados.IdEntidadeAtendida := 0;
+      end;
+
       if not SameText(Dados.TipoFluxo, TurmaAtual.TipoFluxo) then
       begin
         if TInstituicaoTurmaDAO.TemInscricoes(
@@ -840,6 +875,20 @@ begin
         ) then
           TAppErrors.RaiseBadRequest(
             'Curso não encontrado, não pertence à instituição ou está inativo.'
+          );
+      end;
+
+      if (Dados.IdEntidadeAtendida > 0) and
+         ((not TurmaAtual.TemEntidadeAtendida) or
+          (Dados.IdEntidadeAtendida <> TurmaAtual.IdEntidadeAtendida)) then
+      begin
+        if not TInstituicaoEntidadeAtendidaDAO.ExisteAtiva(
+          Conn,
+          AIdInstituicao,
+          Dados.IdEntidadeAtendida
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'Cliente/entidade atendida não encontrado, não pertence à instituição ou está inativo.'
           );
       end;
 
