@@ -11,6 +11,9 @@ type
     FId: Int64;
     FIdCurso: Int64;
     FCursoNome: string;
+    FIdEntidadeAtendida: Int64;
+    FTemEntidadeAtendida: Boolean;
+    FEntidadeAtendidaNome: string;
     FIdModeloCertificado: Int64;
     FTemModeloCertificado: Boolean;
     FModeloCertificadoNome: string;
@@ -44,6 +47,9 @@ type
     property Id: Int64 read FId write FId;
     property IdCurso: Int64 read FIdCurso write FIdCurso;
     property CursoNome: string read FCursoNome write FCursoNome;
+    property IdEntidadeAtendida: Int64 read FIdEntidadeAtendida write FIdEntidadeAtendida;
+    property TemEntidadeAtendida: Boolean read FTemEntidadeAtendida write FTemEntidadeAtendida;
+    property EntidadeAtendidaNome: string read FEntidadeAtendidaNome write FEntidadeAtendidaNome;
 
     property IdModeloCertificado: Int64 read FIdModeloCertificado write FIdModeloCertificado;
     property TemModeloCertificado: Boolean read FTemModeloCertificado write FTemModeloCertificado;
@@ -87,6 +93,7 @@ type
 
   TInstituicaoTurmaCadastro = record
     IdCurso: Int64;
+    IdEntidadeAtendida: Int64;
     IdModeloCertificado: Int64;
     CodigoPublico: string;
     CodigoInterno: string;
@@ -124,6 +131,7 @@ type
 
   TInstituicaoTurmaAlteracao = record
     IdCurso: Int64;
+    IdEntidadeAtendida: Int64;
     IdModeloCertificado: Int64;
     CodigoInterno: string;
     Nome: string;
