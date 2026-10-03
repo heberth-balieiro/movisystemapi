@@ -42,7 +42,8 @@ uses
   APP.Errors,
   Database.Connection,
   InstituicaoPermissao.Service,
-  Contrato.DAO;
+  Contrato.DAO,
+  ContratoProjecao.DAO;
 
 class function TContratoService.GerarCodigoPublico: string;
 var
@@ -192,6 +193,17 @@ begin
         'CRIADO', 'Contrato criado.'
       );
 
+      TContratoProjecaoDAO.GerarAutomaticas(
+        Conn,
+        AIdInstituicao,
+        IdContrato,
+        AIdUsuario,
+        Dados.DataInicio,
+        Dados.DataFim,
+        Dados.ValorAtual,
+        False
+      );
+
       Result := TContratoDAO.BuscarPorId(Conn, AIdInstituicao, IdContrato);
       Conn.Commit;
     except
@@ -253,6 +265,20 @@ begin
           Conn, AIdInstituicao, AIdContrato, AIdUsuario,
           'ALTERADO', 'Dados gerais do contrato atualizados.'
         );
+
+        if (Atual.DataInicio <> Dados.DataInicio) or
+           (Atual.DataFim <> Dados.DataFim) or
+           (Atual.ValorAtual <> Dados.ValorAtual) then
+          TContratoProjecaoDAO.GerarAutomaticas(
+            Conn,
+            AIdInstituicao,
+            AIdContrato,
+            AIdUsuario,
+            Dados.DataInicio,
+            Dados.DataFim,
+            Dados.ValorAtual,
+            True
+          );
 
         Result := TContratoDAO.BuscarPorId(Conn, AIdInstituicao, AIdContrato);
         Conn.Commit;
