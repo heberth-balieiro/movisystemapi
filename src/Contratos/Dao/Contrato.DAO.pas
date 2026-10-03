@@ -81,8 +81,7 @@ begin
   Documento := Trim(ADocumento);
   Qry := TUniQuery.Create(nil);
   try
-    try
-      Qry.Connection := AConn;
+    Qry.Connection := AConn;
 
     if not Documento.IsEmpty then
     begin
@@ -231,7 +230,8 @@ begin
   Result := TContratoLista.Create;
   Qry := TUniQuery.Create(nil);
   try
-    Qry.Connection := AConn;
+    try
+      Qry.Connection := AConn;
     Result.Pagina := AFiltro.Pagina;
     Result.PorPagina := AFiltro.PorPagina;
     WhereSQL := MontarWhere(AFiltro);
