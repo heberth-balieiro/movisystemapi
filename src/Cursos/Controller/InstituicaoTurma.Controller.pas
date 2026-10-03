@@ -339,6 +339,23 @@ begin
     ATurma.CursoNome
   );
 
+  if ATurma.TemEntidadeAtendida then
+  begin
+    Result.AddPair(
+      'id_entidade_atendida',
+      TJSONNumber.Create(ATurma.IdEntidadeAtendida)
+    );
+    Result.AddPair(
+      'entidade_atendida_nome',
+      ATurma.EntidadeAtendidaNome
+    );
+  end
+  else
+  begin
+    Result.AddPair('id_entidade_atendida', TJSONNull.Create);
+    Result.AddPair('entidade_atendida_nome', TJSONNull.Create);
+  end;
+
   if ATurma.TemModeloCertificado then
   begin
     Result.AddPair(
@@ -810,6 +827,15 @@ begin
               'id_curso'
             );
 
+          Cadastro.TemEntidadeAtendidaInformada :=
+            Body.GetValue('id_entidade_atendida') <> nil;
+
+          Cadastro.IdEntidadeAtendida :=
+            JsonInt64(
+              Body,
+              'id_entidade_atendida'
+            );
+
           Cadastro.IdModeloCertificado :=
             JsonInt64(
               Body,
@@ -1009,6 +1035,15 @@ begin
             JsonInt64(
               Body,
               'id_curso'
+            );
+
+          Alteracao.TemEntidadeAtendidaInformada :=
+            Body.GetValue('id_entidade_atendida') <> nil;
+
+          Alteracao.IdEntidadeAtendida :=
+            JsonInt64(
+              Body,
+              'id_entidade_atendida'
             );
 
           Alteracao.IdModeloCertificado :=
