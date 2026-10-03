@@ -133,6 +133,7 @@ type
   TInstituicaoTurmaAlteracao = record
     IdCurso: Int64;
     IdEntidadeAtendida: Int64;
+    TemEntidadeAtendidaInformada: Boolean;
     IdModeloCertificado: Int64;
     CodigoInterno: string;
     Nome: string;
