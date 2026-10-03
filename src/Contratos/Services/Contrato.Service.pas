@@ -30,6 +30,16 @@ type
       const AIdInstituicao, AIdUsuario, AIdContrato: Int64;
       const ADados: TContratoCadastro
     ): TContratoItem; static;
+
+    class function Encerrar(
+      const AIdInstituicao, AIdUsuario, AIdContrato: Int64;
+      const AMotivo: string
+    ): TContratoItem; static;
+
+    class function Cancelar(
+      const AIdInstituicao, AIdUsuario, AIdContrato: Int64;
+      const AMotivo: string
+    ): TContratoItem; static;
   end;
 
 implementation
@@ -211,6 +221,97 @@ begin
       Result.Free;
       Result := nil;
       raise;
+    end;
+  finally
+    Conn.Free;
+  end;
+end;
+
+
+class function TContratoService.Encerrar(
+  const AIdInstituicao, AIdUsuario, AIdContrato: Int64;
+  const AMotivo: string
+): TContratoItem;
+var
+  Config:TAppApiConfig;
+  Conn:TUniConnection;
+  Atual:TContratoItem;
+begin
+  Result:=nil;
+  if Trim(AMotivo).IsEmpty then
+    TAppErrors.RaiseBadRequest('Informe o motivo do encerramento.');
+
+  TInstituicaoPermissaoService.Exigir(AIdInstituicao,AIdUsuario,'contrato.encerrar');
+
+  Config:=TAppConfig.Carregar(ExtractFilePath(ParamStr(0))+'Config.ini');
+  Conn:=TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Atual:=TContratoDAO.BuscarPorId(Conn,AIdInstituicao,AIdContrato);
+    try
+      if Atual=nil then TAppErrors.RaiseBadRequest('Contrato não encontrado.');
+      if SameText(Atual.Situacao,'ENCERRADO') or SameText(Atual.Situacao,'CANCELADO') then
+        TAppErrors.RaiseBadRequest('Contrato já finalizado.');
+
+      Conn.StartTransaction;
+      try
+        TContratoDAO.AlterarSituacaoFinal(Conn,AIdInstituicao,AIdContrato,AIdUsuario,'ENCERRADO',AMotivo);
+        TContratoDAO.InserirHistorico(
+          Conn,AIdInstituicao,AIdContrato,AIdUsuario,
+          'ENCERRADO','Contrato encerrado. Motivo: '+Trim(AMotivo)
+        );
+        Result:=TContratoDAO.BuscarPorId(Conn,AIdInstituicao,AIdContrato);
+        Conn.Commit;
+      except
+        if Conn.InTransaction then Conn.Rollback;
+        Result.Free; Result:=nil; raise;
+      end;
+    finally
+      Atual.Free;
+    end;
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TContratoService.Cancelar(
+  const AIdInstituicao, AIdUsuario, AIdContrato: Int64;
+  const AMotivo: string
+): TContratoItem;
+var
+  Config:TAppApiConfig;
+  Conn:TUniConnection;
+  Atual:TContratoItem;
+begin
+  Result:=nil;
+  if Trim(AMotivo).IsEmpty then
+    TAppErrors.RaiseBadRequest('Informe o motivo do cancelamento.');
+
+  TInstituicaoPermissaoService.Exigir(AIdInstituicao,AIdUsuario,'contrato.cancelar');
+
+  Config:=TAppConfig.Carregar(ExtractFilePath(ParamStr(0))+'Config.ini');
+  Conn:=TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Atual:=TContratoDAO.BuscarPorId(Conn,AIdInstituicao,AIdContrato);
+    try
+      if Atual=nil then TAppErrors.RaiseBadRequest('Contrato não encontrado.');
+      if SameText(Atual.Situacao,'ENCERRADO') or SameText(Atual.Situacao,'CANCELADO') then
+        TAppErrors.RaiseBadRequest('Contrato já finalizado.');
+
+      Conn.StartTransaction;
+      try
+        TContratoDAO.AlterarSituacaoFinal(Conn,AIdInstituicao,AIdContrato,AIdUsuario,'CANCELADO',AMotivo);
+        TContratoDAO.InserirHistorico(
+          Conn,AIdInstituicao,AIdContrato,AIdUsuario,
+          'CANCELADO','Contrato cancelado. Motivo: '+Trim(AMotivo)
+        );
+        Result:=TContratoDAO.BuscarPorId(Conn,AIdInstituicao,AIdContrato);
+        Conn.Commit;
+      except
+        if Conn.InTransaction then Conn.Rollback;
+        Result.Free; Result:=nil; raise;
+      end;
+    finally
+      Atual.Free;
     end;
   finally
     Conn.Free;
