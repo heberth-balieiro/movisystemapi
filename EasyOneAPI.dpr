@@ -444,6 +444,14 @@ uses
   ContratoFiscalizacao.Model in 'src\Contratos\Model\ContratoFiscalizacao.Model.pas',
   ContratoFiscalizacao.DAO in 'src\Contratos\Dao\ContratoFiscalizacao.DAO.pas',
   ContratoFiscalizacao.Service in 'src\Contratos\Services\ContratoFiscalizacao.Service.pas',
+  ContratoDocumento.Model in 'src\Contratos\Model\ContratoDocumento.Model.pas',
+  ContratoDocumento.DAO in 'src\Contratos\Dao\ContratoDocumento.DAO.pas',
+  ContratoDocumento.Service in 'src\Contratos\Services\ContratoDocumento.Service.pas',
+  ContratoDocumento.Controller in 'src\Contratos\Controller\ContratoDocumento.Controller.pas',
+  ContratoHistorico.Model in 'src\Contratos\Model\ContratoHistorico.Model.pas',
+  ContratoHistorico.DAO in 'src\Contratos\Dao\ContratoHistorico.DAO.pas',
+  ContratoHistorico.Service in 'src\Contratos\Services\ContratoHistorico.Service.pas',
+  ContratoHistorico.Controller in 'src\Contratos\Controller\ContratoHistorico.Controller.pas',
   ContratoFiscalizacao.Controller in 'src\Contratos\Controller\ContratoFiscalizacao.Controller.pas',
   CertificadoNotificacao.Worker in 'src\Cursos\Services\CertificadoNotificacao.Worker.pas';
 
