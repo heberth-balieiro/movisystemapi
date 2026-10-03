@@ -128,6 +128,8 @@ begin
     Qry.ParamByName('id_contrato').AsLargeInt := AIdContrato;
     Qry.ParamByName('id').AsLargeInt := AIdFiscalizacao;
     Qry.ExecSQL;
+    if Qry.RowsAffected = 0 then
+      raise Exception.Create('Fiscalização não encontrada para o contrato informado.');
   finally
     Qry.Free;
   end;
