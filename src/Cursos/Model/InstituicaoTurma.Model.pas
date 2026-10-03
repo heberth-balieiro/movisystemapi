@@ -94,6 +94,7 @@ type
   TInstituicaoTurmaCadastro = record
     IdCurso: Int64;
     IdEntidadeAtendida: Int64;
+    TemEntidadeAtendidaInformada: Boolean;
     IdModeloCertificado: Int64;
     CodigoPublico: string;
     CodigoInterno: string;
