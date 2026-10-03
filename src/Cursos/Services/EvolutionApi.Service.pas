@@ -1,5 +1,7 @@
 unit EvolutionApi.Service;
 
+{$CODEPAGE UTF8}
+
 interface
 
 uses
@@ -91,7 +93,8 @@ uses
   System.Net.URLClient,
   System.NetEncoding,
   System.IOUtils,
-  APP.Errors;
+  APP.Errors,
+  App.TextEncoding;
 
 class function TEvolutionApiService.Request(
   const AMethod,
@@ -126,7 +129,7 @@ begin
     if Length(Headers) = 3 then
     begin
       Headers[2].Name := 'Content-Type';
-      Headers[2].Value := 'application/json';
+      Headers[2].Value := 'application/json; charset=utf-8';
     end;
 
     if SameText(AMethod, 'GET') then
@@ -336,7 +339,7 @@ begin
 
     Body.AddPair(
       'text',
-      AMensagem
+      TAppTextEncoding.NormalizarUtf8Legado(AMensagem)
     );
 
     Result :=
@@ -391,7 +394,10 @@ begin
     Body.AddPair('number', ANumero);
     Body.AddPair('mediatype', MediaType);
     Body.AddPair('mimetype', AMimeType);
-    Body.AddPair('caption', ALegenda);
+    Body.AddPair(
+      'caption',
+      TAppTextEncoding.NormalizarUtf8Legado(ALegenda)
+    );
     Body.AddPair('fileName', ANomeArquivo);
     MediaBase64 :=
       TNetEncoding.Base64.EncodeBytesToString(

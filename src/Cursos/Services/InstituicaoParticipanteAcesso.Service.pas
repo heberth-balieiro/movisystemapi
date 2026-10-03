@@ -1,5 +1,7 @@
 unit InstituicaoParticipanteAcesso.Service;
 
+{$CODEPAGE UTF8}
+
 interface
 
 uses

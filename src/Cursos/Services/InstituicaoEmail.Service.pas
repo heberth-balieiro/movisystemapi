@@ -1,5 +1,7 @@
 unit InstituicaoEmail.Service;
 
+{$CODEPAGE UTF8}
+
 interface
 
 type
@@ -41,7 +43,8 @@ uses
   InstituicaoConfiguracao.Model,
   InstituicaoConfiguracao.DAO,
   InstituicaoConfiguracao.Service,
-  InstituicaoPermissao.Service;
+  InstituicaoPermissao.Service,
+  App.TextEncoding;
 
 class function TInstituicaoEmailService.EmailValido(
   const AEmail: string
@@ -130,17 +133,17 @@ begin
     if not Trim(Config.ResponderPara).IsEmpty then
       Mensagem.ReplyTo.Add.Address := Config.ResponderPara;
 
-    Mensagem.Subject := AAssunto;
+    Mensagem.Subject := TAppTextEncoding.NormalizarUtf8Legado(AAssunto);
 
     HtmlPart := TIdText.Create(
       Mensagem.MessageParts,
       nil
     );
 
-    HtmlPart.ContentType := 'text/html';
+    HtmlPart.ContentType := 'text/html; charset=UTF-8';
     HtmlPart.CharSet := 'UTF-8';
     HtmlPart.ContentTransfer := 'quoted-printable';
-    HtmlPart.Body.Text := AHtml;
+    HtmlPart.Body.Text := TAppTextEncoding.NormalizarUtf8Legado(AHtml);
 
     try
       SMTP.Connect;

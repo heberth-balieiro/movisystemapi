@@ -1,5 +1,7 @@
 unit PlataformaCampanha.DAO;
 
+{$CODEPAGE UTF8}
+
 interface
 
 uses
@@ -172,7 +174,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  App.TextEncoding;
 
 class function TPlataformaCampanhaDAO.Listar(
   const AConn: TUniConnection;
@@ -352,7 +355,12 @@ begin
       J.AddPair('destinatario', Q.FieldByName('destinatario').AsString);
       J.AddPair('situacao', Q.FieldByName('situacao').AsString);
       J.AddPair('tentativas', TJSONNumber.Create(Q.FieldByName('tentativas').AsInteger));
-      J.AddPair('ultimo_erro', Q.FieldByName('ultimo_erro').AsString);
+      J.AddPair(
+        'ultimo_erro',
+        TAppTextEncoding.NormalizarUtf8Legado(
+          Q.FieldByName('ultimo_erro').AsString
+        )
+      );
       if Q.FieldByName('enviado_em').IsNull then J.AddPair('enviado_em', TJSONNull.Create)
       else J.AddPair('enviado_em', FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', Q.FieldByName('enviado_em').AsDateTime));
       Envios.AddElement(J);
@@ -802,7 +810,14 @@ var Q:TUniQuery; begin Q:=TUniQuery.Create(nil); try Q.Connection:=AConn;
 class procedure TPlataformaCampanhaDAO.MarcarFalha(const AConn:TUniConnection; const AIdEnvio:Int64; const AErro:string);
 var Q:TUniQuery; begin Q:=TUniQuery.Create(nil); try Q.Connection:=AConn;
  Q.SQL.Text:='UPDATE plataforma_campanha_envio SET situacao=''FALHA'',ultimo_erro=:erro,proxima_tentativa_em=NULL WHERE id=:id';
- Q.ParamByName('erro').AsString:=Copy(Trim(AErro),1,1000); Q.ParamByName('id').AsLargeInt:=AIdEnvio; Q.Execute; finally Q.Free; end; end;
+ Q.ParamByName('erro').AsString :=
+    Copy(
+      TAppTextEncoding.NormalizarUtf8Legado(Trim(AErro)),
+      1,
+      1000
+    );
+  Q.ParamByName('id').AsLargeInt := AIdEnvio;
+  Q.Execute; finally Q.Free; end; end;
 
 class procedure TPlataformaCampanhaDAO.AtualizarTotaisCampanha(const AConn:TUniConnection; const AIdCampanha:Int64);
 var Q:TUniQuery;
