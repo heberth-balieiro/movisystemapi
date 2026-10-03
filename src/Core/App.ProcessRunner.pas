@@ -23,9 +23,16 @@ uses
   , Winapi.Windows
 {$ENDIF}
 {$IFDEF POSIX}
-  , Posix.Stdlib
+  , Posix.Base
 {$ENDIF}
   ;
+
+{$IFDEF POSIX}
+function PosixSystem(
+  const ACommand: PAnsiChar
+): Integer; cdecl;
+  external libc name _PU + 'system';
+{$ENDIF}
 
 class function TAppProcessRunner.QuoteArg(
   const AValue: string
@@ -177,7 +184,7 @@ begin
     );
 
   ExitCodePosix :=
-    Posix.Stdlib.system(
+    PosixSystem(
       PAnsiChar(
         Utf8Command
       )
