@@ -1,6 +1,5 @@
 unit PlataformaCampanha.DAO;
 
-{$CODEPAGE UTF8}
 
 interface
 
