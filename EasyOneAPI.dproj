@@ -156,6 +156,7 @@
         <DCCReference Include="src\Core\APP.Errors.pas"/>
         <DCCReference Include="src\Core\App.JWT.pas"/>
         <DCCReference Include="src\Core\App.Response.pas"/>
+        <DCCReference Include="src\Core\App.TextEncoding.pas"/>
         <DCCReference Include="src\Core\App.RateLimit.pas"/>
         <DCCReference Include="src\Cursos\Dao\Auditoria.DAO.pas"/>
         <DCCReference Include="src\Cursos\Services\Auditoria.Service.pas"/>
