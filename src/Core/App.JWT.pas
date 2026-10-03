@@ -8,8 +8,11 @@ uses
   System.DateUtils,
   JOSE.Core.JWT,
   JOSE.Core.Builder,
-  App.Config,
-  Winapi.ActiveX;
+  App.Config
+{$IFDEF MSWINDOWS}
+  , Winapi.ActiveX
+{$ENDIF}
+  ;
 
 type
   TJWTClaims = record
@@ -35,7 +38,7 @@ type
     ): string; static;
 
   public
-    // Token dos módulos legados
+    // Token dos mÃ³dulos legados
     class function GerarToken(
       const ACfg: TAppJWTConfig;
       const AUserId, AIdEmpresa: Int64;
@@ -52,7 +55,7 @@ type
       const ATtlMinutos: Integer = 0
     ): string; static;
 
-    // Token de usuário vinculado a uma instituição
+    // Token de usuÃ¡rio vinculado a uma instituiÃ§Ã£o
     class function GerarTokenInstituicao(
       const ACfg: TAppJWTConfig;
       const AUserId, AIdInstituicao: Int64;
@@ -111,17 +114,21 @@ var
 begin
   Result := '';
 
+{$IFDEF MSWINDOWS}
   CoInitialize(nil);
   try
+{$ENDIF}
     CreateGUID(NewGUID);
 
     Result :=
       RemoverChaves(
         GUIDToString(NewGUID)
       );
+{$IFDEF MSWINDOWS}
   finally
     CoUninitialize;
   end;
+{$ENDIF}
 end;
 
 class function TAppJWT.RemoverChaves(
@@ -181,7 +188,7 @@ begin
   if (AUserId <= 0) or
      (AIdEmpresa <= 0) then
     raise Exception.Create(
-      'Usuário/empresa inválido para geração do token.'
+      'UsuÃ¡rio/empresa invÃ¡lido para geraÃ§Ã£o do token.'
     );
 
   LJWT := TJWT.Create;
@@ -282,7 +289,7 @@ begin
 
   if AUserId <= 0 then
     raise Exception.Create(
-      'Usuário inválido para geração do token.'
+      'UsuÃ¡rio invÃ¡lido para geraÃ§Ã£o do token.'
     );
 
   LJWT := TJWT.Create;
@@ -332,7 +339,7 @@ begin
   end;
 end;
 
-{ Token da instituição }
+{ Token da instituiÃ§Ã£o }
 
 class function TAppJWT.GerarTokenInstituicao(
   const ACfg: TAppJWTConfig;
@@ -370,7 +377,7 @@ begin
      (AIdUsuarioInstituicao <= 0) then
   begin
     raise Exception.Create(
-      'Usuário/instituição/vínculo inválido para geração do token.'
+      'UsuÃ¡rio/instituiÃ§Ã£o/vÃ­nculo invÃ¡lido para geraÃ§Ã£o do token.'
     );
   end;
 
@@ -392,7 +399,7 @@ begin
       );
 
     // Tenant da plataforma Cursos.
-    // Não reutilizar id_empresa.
+    // NÃ£o reutilizar id_empresa.
     LJWT.Claims.JSON.AddPair(
       'id_instituicao',
       TJSONNumber.Create(
@@ -400,7 +407,7 @@ begin
       )
     );
 
-    // Vínculo do usuário com a instituição.
+    // VÃ­nculo do usuÃ¡rio com a instituiÃ§Ã£o.
     LJWT.Claims.JSON.AddPair(
       'id_usuario_instituicao',
       TJSONNumber.Create(
@@ -438,7 +445,7 @@ begin
   end;
 end;
 
-{ Validação }
+{ ValidaÃ§Ã£o }
 
 class function TAppJWT.ValidarEExtrair(
   const ACfg: TAppJWTConfig;
@@ -457,7 +464,7 @@ var
 begin
   Result := False;
 
-  // Inicialização completa das claims.
+  // InicializaÃ§Ã£o completa das claims.
   AClaims.UserId := 0;
   AClaims.IdEmpresa := 0;
   AClaims.IdInstituicao := 0;
@@ -515,7 +522,7 @@ begin
       then
         Exit(False);
 
-      { Usuário }
+      { UsuÃ¡rio }
 
       SubStr :=
         Obj.GetValue<string>(
@@ -666,7 +673,7 @@ begin
       Result := True;
 
     except
-      // Token inválido, assinatura incorreta,
+      // Token invÃ¡lido, assinatura incorreta,
       // token malformado etc.
       Result := False;
     end;
