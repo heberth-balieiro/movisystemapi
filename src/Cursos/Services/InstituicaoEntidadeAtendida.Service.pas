@@ -129,7 +129,8 @@ begin
     TAppErrors.RaiseBadRequest('Tipo de cliente/entidade inválido.');
 
   if not ADados.Documento.IsEmpty then
-    if not MatchText(IntToStr(Length(ADados.Documento)), ['11','14']) then
+    if (Length(ADados.Documento) <> 11) and
+       (Length(ADados.Documento) <> 14) then
       TAppErrors.RaiseBadRequest('CPF/CNPJ deve possuir 11 ou 14 dígitos.');
 
   if not MatchText(ADados.Situacao, ['ATIVO','INATIVO']) then
@@ -462,6 +463,7 @@ var
   Config: TAppApiConfig;
   Conn: TUniConnection;
   Situacao: string;
+  Atual: TInstituicaoEntidadeAtendidaItem;
 begin
   Result := nil;
 
@@ -482,34 +484,44 @@ begin
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(Config.Database);
   try
-    if TInstituicaoEntidadeAtendidaDAO.BuscarPorId(
+    Atual := TInstituicaoEntidadeAtendidaDAO.BuscarPorId(
       Conn,
       AIdInstituicao,
       AId
-    ) = nil then
-      TAppErrors.RaiseBadRequest('Cliente/entidade não encontrado.');
-
-    Conn.StartTransaction;
+    );
     try
-      TInstituicaoEntidadeAtendidaDAO.AlterarSituacao(
-        Conn,
-        AIdInstituicao,
-        AId,
-        Situacao
-      );
+      if Atual = nil then
+        TAppErrors.RaiseBadRequest('Cliente/entidade não encontrado.');
 
-      Result := TInstituicaoEntidadeAtendidaDAO.BuscarPorId(
-        Conn,
-        AIdInstituicao,
-        AId
-      );
+      Conn.StartTransaction;
+      try
+        TInstituicaoEntidadeAtendidaDAO.AlterarSituacao(
+          Conn,
+          AIdInstituicao,
+          AId,
+          Situacao
+        );
 
-      Conn.Commit;
-    except
-      if Conn.InTransaction then Conn.Rollback;
-      Result.Free;
-      Result := nil;
-      raise;
+        Result := TInstituicaoEntidadeAtendidaDAO.BuscarPorId(
+          Conn,
+          AIdInstituicao,
+          AId
+        );
+
+        if Result = nil then
+          raise Exception.Create(
+            'Situação atualizada, mas não foi possível recuperar o cliente/entidade.'
+          );
+
+        Conn.Commit;
+      except
+        if Conn.InTransaction then Conn.Rollback;
+        Result.Free;
+        Result := nil;
+        raise;
+      end;
+    finally
+      Atual.Free;
     end;
   finally
     Conn.Free;
