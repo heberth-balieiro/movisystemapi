@@ -81,7 +81,8 @@ begin
   Documento := Trim(ADocumento);
   Qry := TUniQuery.Create(nil);
   try
-    Qry.Connection := AConn;
+    try
+      Qry.Connection := AConn;
 
     if not Documento.IsEmpty then
     begin
@@ -260,9 +261,10 @@ begin
       Result.Itens.Add(PreencherItem(Qry));
       Qry.Next;
     end;
-  except
-    Result.Free;
-    raise;
+    except
+      Result.Free;
+      raise;
+    end;
   finally
     Qry.Free;
   end;
