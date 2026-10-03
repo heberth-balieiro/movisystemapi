@@ -1,6 +1,5 @@
 unit PlataformaEmailEnvio.Service;
 
-{$CODEPAGE UTF8}
 
 interface
 
