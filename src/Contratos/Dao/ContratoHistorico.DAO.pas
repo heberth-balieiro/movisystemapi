@@ -28,7 +28,8 @@ begin
   Result := TContratoHistoricoLista.Create(True);
   Qry := TUniQuery.Create(nil);
   try
-    Qry.Connection := AConn;
+    try
+      Qry.Connection := AConn;
     Qry.SQL.Text :=
       'SELECT h.id,h.evento,h.descricao,h.referencia_tipo,h.referencia_id,h.detalhes_json,' +
       'h.usuario,h.criado_em,COALESCE(u.nome,'''') usuario_nome ' +
@@ -56,9 +57,10 @@ begin
       Result.Add(Item);
       Qry.Next;
     end;
-  except
-    Result.Free;
-    raise;
+    except
+      Result.Free;
+      raise;
+    end;
   finally
     Qry.Free;
   end;
