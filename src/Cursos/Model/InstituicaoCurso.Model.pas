@@ -8,6 +8,7 @@ uses
 type
   TInstituicaoCursoCadastro = record
     IdCategoria: Int64;
+    IdEntidadeAtendida: Int64;
 
     CodigoPublico: string;
     CodigoInterno: string;
@@ -31,6 +32,7 @@ type
 
   TInstituicaoCursoAlteracao = record
     IdCategoria: Int64;
+    IdEntidadeAtendida: Int64;
     CodigoInterno: string;
     Slug: string;
 
@@ -51,6 +53,9 @@ type
   private
     FId: Int64;
     FIdCategoria: Int64;
+    FIdEntidadeAtendida: Int64;
+    FTemEntidadeAtendida: Boolean;
+    FEntidadeAtendidaNome: string;
     FCodigoPublico: string;
     FCodigoInterno: string;
     FSlug: string;
@@ -66,6 +71,9 @@ type
   public
     property Id: Int64 read FId write FId;
     property IdCategoria: Int64 read FIdCategoria write FIdCategoria;
+    property IdEntidadeAtendida: Int64 read FIdEntidadeAtendida write FIdEntidadeAtendida;
+    property TemEntidadeAtendida: Boolean read FTemEntidadeAtendida write FTemEntidadeAtendida;
+    property EntidadeAtendidaNome: string read FEntidadeAtendidaNome write FEntidadeAtendidaNome;
     property CodigoPublico: string read FCodigoPublico write FCodigoPublico;
     property CodigoInterno: string read FCodigoInterno write FCodigoInterno;
     property Slug: string read FSlug write FSlug;
