@@ -19,7 +19,8 @@ type
       const AIdInstituicao, AIdContrato, AIdUsuario: Int64;
       const ADataInicio, ADataFim: TDateTime;
       const AValorTotal: Double;
-      const APreservarManuais: Boolean
+      const APreservarManuais: Boolean;
+      const AOrigem: string = 'AUTOMATICA'
     ); static;
 
     class procedure AtualizarManual(
@@ -119,7 +120,8 @@ class procedure TContratoProjecaoDAO.GerarAutomaticas(
   const AIdInstituicao, AIdContrato, AIdUsuario: Int64;
   const ADataInicio, ADataFim: TDateTime;
   const AValorTotal: Double;
-  const APreservarManuais: Boolean
+  const APreservarManuais: Boolean;
+  const AOrigem: string
 );
 var
   Qry: TUniQuery;
@@ -180,16 +182,17 @@ begin
       Qry.SQL.Text :=
         'INSERT INTO contrato_projecao ' +
         '(id_instituicao,id_contrato,competencia,valor_previsto,valor_realizado,origem,atualizado_por) ' +
-        'VALUES(:id_instituicao,:id_contrato,:competencia,:valor_previsto,0,''AUTOMATICA'',:usuario) ' +
+        'VALUES(:id_instituicao,:id_contrato,:competencia,:valor_previsto,0,:origem,:usuario) ' +
         'ON DUPLICATE KEY UPDATE ' +
         'valor_previsto=IF(origem=''MANUAL'',valor_previsto,VALUES(valor_previsto)),' +
-        'origem=IF(origem=''MANUAL'',origem,''AUTOMATICA''),' +
+        'origem=IF(origem=''MANUAL'',origem,VALUES(origem)),' +
         'atualizado_por=:usuario';
 
       Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
       Qry.ParamByName('id_contrato').AsLargeInt := AIdContrato;
       Qry.ParamByName('competencia').AsDateTime := Competencia;
       Qry.ParamByName('valor_previsto').AsFloat := ValorAtual;
+      Qry.ParamByName('origem').AsString := UpperCase(Trim(AOrigem));
       Qry.ParamByName('usuario').AsLargeInt := AIdUsuario;
       Qry.ExecSQL;
 
