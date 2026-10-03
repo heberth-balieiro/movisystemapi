@@ -88,6 +88,7 @@ type
     class procedure Migration_059_PlataformaCampanhaAgendamento(const AConn: TUniConnection); static;
     class procedure Migration_060_AuditoriaMensagemPadrao(const AConn: TUniConnection); static;
     class procedure Migration_061_TurmaSomenteCertificacao(const AConn: TUniConnection); static;
+    class procedure Migration_062_EntidadesAtendidas(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -360,6 +361,7 @@ begin
       Migration_059_PlataformaCampanhaAgendamento(Conn);
       Migration_060_AuditoriaMensagemPadrao(Conn);
       Migration_061_TurmaSomenteCertificacao(Conn);
+      Migration_062_EntidadesAtendidas(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -3094,6 +3096,90 @@ begin
     ' CONSTRAINT fk_turma_importacao_erro_importacao FOREIGN KEY (id_instituicao,id_importacao) ' +
     '   REFERENCES turma_importacao(id_instituicao,id) ON UPDATE RESTRICT ON DELETE CASCADE' +
     ') ENGINE=InnoDB COMMENT=''Erros encontrados em importacoes CSV.'';'
+  );
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+class procedure TCursosMigration.Migration_062_EntidadesAtendidas(
+  const AConn: TUniConnection);
+const
+  VERSION = '062';
+  DESCRIPTION = 'Clientes e entidades atendidas vinculados a cursos e turmas';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(
+    AConn,
+    'CREATE TABLE IF NOT EXISTS entidade_atendida (' +
+    ' id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,' +
+    ' id_instituicao BIGINT UNSIGNED NOT NULL,' +
+    ' nome VARCHAR(180) NOT NULL,' +
+    ' nome_fantasia VARCHAR(180) NULL,' +
+    ' tipo VARCHAR(20) NOT NULL DEFAULT ''EMPRESA'',' +
+    ' documento VARCHAR(14) NULL,' +
+    ' situacao VARCHAR(20) NOT NULL DEFAULT ''ATIVO'',' +
+    ' observacao VARCHAR(1000) NULL,' +
+    ' criado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),' +
+    ' atualizado_em DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),' +
+    ' PRIMARY KEY (id),' +
+    ' UNIQUE KEY uq_entidade_atendida_tenant_id (id_instituicao,id),' +
+    ' UNIQUE KEY uq_entidade_atendida_documento (id_instituicao,documento),' +
+    ' KEY ix_entidade_atendida_nome (id_instituicao,nome),' +
+    ' KEY ix_entidade_atendida_situacao (id_instituicao,situacao),' +
+    ' CONSTRAINT fk_entidade_atendida_instituicao FOREIGN KEY (id_instituicao) ' +
+    '   REFERENCES instituicao(id) ON UPDATE RESTRICT ON DELETE CASCADE,' +
+    ' CONSTRAINT ck_entidade_atendida_tipo CHECK (tipo IN ' +
+    '   (''EMPRESA'',''PREFEITURA'',''SECRETARIA'',''AUTARQUIA'',''ASSOCIACAO'',''OUTRO'')),' +
+    ' CONSTRAINT ck_entidade_atendida_situacao CHECK (situacao IN (''ATIVO'',''INATIVO''))' +
+    ') ENGINE=InnoDB COMMENT=''Clientes e entidades atendidas pela instituicao prestadora.'';'
+  );
+
+  AddColumnIfMissing(
+    AConn,
+    'curso',
+    'id_entidade_atendida',
+    'BIGINT UNSIGNED NULL AFTER id_categoria'
+  );
+
+  AddIndexIfMissing(
+    AConn,
+    'curso',
+    'ix_curso_entidade_atendida',
+    'KEY ix_curso_entidade_atendida (id_instituicao,id_entidade_atendida)'
+  );
+
+  AddConstraintIfMissing(
+    AConn,
+    'curso',
+    'fk_curso_entidade_atendida',
+    'FOREIGN KEY (id_instituicao,id_entidade_atendida) ' +
+    'REFERENCES entidade_atendida(id_instituicao,id) ' +
+    'ON UPDATE RESTRICT ON DELETE RESTRICT'
+  );
+
+  AddColumnIfMissing(
+    AConn,
+    'turma',
+    'id_entidade_atendida',
+    'BIGINT UNSIGNED NULL AFTER id_curso'
+  );
+
+  AddIndexIfMissing(
+    AConn,
+    'turma',
+    'ix_turma_entidade_atendida',
+    'KEY ix_turma_entidade_atendida (id_instituicao,id_entidade_atendida)'
+  );
+
+  AddConstraintIfMissing(
+    AConn,
+    'turma',
+    'fk_turma_entidade_atendida',
+    'FOREIGN KEY (id_instituicao,id_entidade_atendida) ' +
+    'REFERENCES entidade_atendida(id_instituicao,id) ' +
+    'ON UPDATE RESTRICT ON DELETE RESTRICT'
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
