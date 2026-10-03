@@ -60,6 +60,12 @@ type
             AIdCurso: Int64
     ): Boolean; static;
 
+    class function BuscarEntidadeAtendidaAtivaCurso(
+      const AConn: TUniConnection;
+      const AIdInstituicao,
+            AIdCurso: Int64
+    ): Int64; static;
+
     class function ExisteModeloCertificadoAtivo(
       const AConn: TUniConnection;
       const AIdInstituicao,
@@ -166,6 +172,16 @@ begin
 
   Result.CursoNome :=
     AQry.FieldByName('curso_nome').AsString;
+
+  Result.TemEntidadeAtendida :=
+    not AQry.FieldByName('id_entidade_atendida').IsNull;
+
+  if Result.TemEntidadeAtendida then
+    Result.IdEntidadeAtendida :=
+      AQry.FieldByName('id_entidade_atendida').AsLargeInt;
+
+  Result.EntidadeAtendidaNome :=
+    AQry.FieldByName('entidade_atendida_nome').AsString;
 
   Result.TemModeloCertificado :=
     not AQry.FieldByName('id_modelo_certificado').IsNull;
@@ -308,6 +324,8 @@ begin
         't.id, ' +
         't.id_curso, ' +
         'c.nome AS curso_nome, ' +
+        't.id_entidade_atendida, ' +
+        'ea.nome AS entidade_atendida_nome, ' +
         't.id_modelo_certificado, ' +
         'cm.nome AS modelo_certificado_nome, ' +
         't.codigo_publico, ' +
@@ -339,6 +357,9 @@ begin
         'LEFT JOIN certificado_modelo cm ' +
         '  ON cm.id_instituicao = t.id_instituicao ' +
         ' AND cm.id = t.id_modelo_certificado ' +
+        'LEFT JOIN entidade_atendida ea ' +
+        '  ON ea.id_instituicao = t.id_instituicao ' +
+        ' AND ea.id = t.id_entidade_atendida ' +
         WhereSQL +
         'ORDER BY t.data_hora_inicio DESC, t.id DESC ' +
         'LIMIT :limite OFFSET :offset';
@@ -395,6 +416,8 @@ begin
       't.id, ' +
       't.id_curso, ' +
       'c.nome AS curso_nome, ' +
+      't.id_entidade_atendida, ' +
+      'ea.nome AS entidade_atendida_nome, ' +
       't.id_modelo_certificado, ' +
       'cm.nome AS modelo_certificado_nome, ' +
       't.codigo_publico, ' +
@@ -426,6 +449,9 @@ begin
       'LEFT JOIN certificado_modelo cm ' +
       '  ON cm.id_instituicao = t.id_instituicao ' +
       ' AND cm.id = t.id_modelo_certificado ' +
+      'LEFT JOIN entidade_atendida ea ' +
+      '  ON ea.id_instituicao = t.id_instituicao ' +
+      ' AND ea.id = t.id_entidade_atendida ' +
       'WHERE t.id_instituicao = :id_instituicao ' +
       'AND t.id = :id ' +
       'LIMIT 1';
@@ -596,6 +622,44 @@ begin
   end;
 end;
 
+class function TInstituicaoTurmaDAO.BuscarEntidadeAtendidaAtivaCurso(
+  const AConn: TUniConnection;
+  const AIdInstituicao,
+        AIdCurso: Int64
+): Int64;
+var
+  Qry: TUniQuery;
+begin
+  Result := 0;
+
+  if (AIdInstituicao <= 0) or (AIdCurso <= 0) then
+    Exit;
+
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT c.id_entidade_atendida ' +
+      'FROM curso c ' +
+      'JOIN entidade_atendida e ' +
+      '  ON e.id_instituicao=c.id_instituicao ' +
+      ' AND e.id=c.id_entidade_atendida ' +
+      ' AND e.situacao=''ATIVO'' ' +
+      'WHERE c.id_instituicao=:id_instituicao ' +
+      'AND c.id=:id_curso LIMIT 1';
+
+    Qry.ParamByName('id_instituicao').AsLargeInt := AIdInstituicao;
+    Qry.ParamByName('id_curso').AsLargeInt := AIdCurso;
+    Qry.Open;
+
+    if not Qry.IsEmpty and
+       not Qry.FieldByName('id_entidade_atendida').IsNull then
+      Result := Qry.FieldByName('id_entidade_atendida').AsLargeInt;
+  finally
+    Qry.Free;
+  end;
+end;
+
 class function TInstituicaoTurmaDAO.ExisteModeloCertificadoAtivo(
   const AConn: TUniConnection;
   const AIdInstituicao,
@@ -656,6 +720,7 @@ begin
       'INSERT INTO turma (' +
       'id_instituicao, ' +
       'id_curso, ' +
+      'id_entidade_atendida, ' +
       'id_modelo_certificado, ' +
       'codigo_publico, ' +
       'codigo_interno, ' +
@@ -681,6 +746,7 @@ begin
       ') VALUES (' +
       ':id_instituicao, ' +
       ':id_curso, ' +
+      ':id_entidade_atendida, ' +
       ':id_modelo_certificado, ' +
       ':codigo_publico, ' +
       ':codigo_interno, ' +
@@ -710,6 +776,12 @@ begin
 
     Qry.ParamByName('id_curso').AsLargeInt :=
       ADados.IdCurso;
+
+    if ADados.IdEntidadeAtendida > 0 then
+      Qry.ParamByName('id_entidade_atendida').AsLargeInt :=
+        ADados.IdEntidadeAtendida
+    else
+      Qry.ParamByName('id_entidade_atendida').Clear;
 
     if ADados.IdModeloCertificado > 0 then
       Qry.ParamByName('id_modelo_certificado').AsLargeInt :=
@@ -822,6 +894,7 @@ begin
     Qry.SQL.Text :=
       'UPDATE turma SET ' +
       'id_curso = :id_curso, ' +
+      'id_entidade_atendida = :id_entidade_atendida, ' +
       'id_modelo_certificado = :id_modelo_certificado, ' +
       'codigo_interno = :codigo_interno, ' +
       'nome = :nome, ' +
@@ -847,6 +920,12 @@ begin
 
     Qry.ParamByName('id_curso').AsLargeInt :=
       ADados.IdCurso;
+
+    if ADados.IdEntidadeAtendida > 0 then
+      Qry.ParamByName('id_entidade_atendida').AsLargeInt :=
+        ADados.IdEntidadeAtendida
+    else
+      Qry.ParamByName('id_entidade_atendida').Clear;
 
     if ADados.IdModeloCertificado > 0 then
       Qry.ParamByName('id_modelo_certificado').AsLargeInt :=
