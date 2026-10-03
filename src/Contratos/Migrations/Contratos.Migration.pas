@@ -200,7 +200,7 @@ begin
     ' PRIMARY KEY(id),' +
     ' KEY ix_contrato_responsavel(id_instituicao,id_contrato,funcao,ativo),' +
     ' CONSTRAINT fk_contrato_responsavel_contrato FOREIGN KEY(id_instituicao,id_contrato) REFERENCES contrato(id_instituicao,id) ON DELETE CASCADE,' +
-    ' CONSTRAINT fk_contrato_responsavel_usuario FOREIGN KEY(id_instituicao,id_usuario_instituicao) REFERENCES usuario_instituicao(id_instituicao,id) ON DELETE SET NULL,' +
+    ' CONSTRAINT fk_contrato_responsavel_usuario FOREIGN KEY(id_instituicao,id_usuario_instituicao) REFERENCES usuario_instituicao(id_instituicao,id) ON DELETE RESTRICT,' +
     ' CONSTRAINT ck_contrato_responsavel_funcao CHECK(funcao IN(''GESTOR'',''FISCAL'',''SUPLENTE''))' +
     ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
 
