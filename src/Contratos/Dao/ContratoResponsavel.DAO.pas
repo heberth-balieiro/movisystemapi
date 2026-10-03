@@ -42,7 +42,8 @@ begin
   Result := TContratoResponsavelLista.Create(True);
   Qry := TUniQuery.Create(nil);
   try
-    Qry.Connection := AConn;
+    try
+      Qry.Connection := AConn;
     Qry.SQL.Text :=
       'SELECT id,id_usuario_instituicao,nome,funcao,numero_designacao,data_inicio,data_fim,ativo ' +
       'FROM contrato_responsavel ' +
@@ -69,9 +70,10 @@ begin
       Result.Add(Item);
       Qry.Next;
     end;
-  except
-    Result.Free;
-    raise;
+    except
+      Result.Free;
+      raise;
+    end;
   finally
     Qry.Free;
   end;
