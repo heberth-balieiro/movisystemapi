@@ -1,6 +1,5 @@
 unit EvolutionApi.Service;
 
-{$CODEPAGE UTF8}
 
 interface
 
