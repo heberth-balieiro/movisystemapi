@@ -9,6 +9,7 @@ type
   TInstituicaoCursoCadastro = record
     IdCategoria: Int64;
     IdEntidadeAtendida: Int64;
+    TemEntidadeAtendidaInformada: Boolean;
 
     CodigoPublico: string;
     CodigoInterno: string;
@@ -33,6 +34,7 @@ type
   TInstituicaoCursoAlteracao = record
     IdCategoria: Int64;
     IdEntidadeAtendida: Int64;
+    TemEntidadeAtendidaInformada: Boolean;
     CodigoInterno: string;
     Slug: string;
 
