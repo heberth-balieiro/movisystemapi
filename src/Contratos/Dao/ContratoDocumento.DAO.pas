@@ -48,7 +48,8 @@ begin
   Result := TContratoDocumentoLista.Create(True);
   Qry := TUniQuery.Create(nil);
   try
-    Qry.Connection := AConn;
+    try
+      Qry.Connection := AConn;
     Qry.SQL.Text :=
       'SELECT id,tipo,nome,storage_key,mime_type,tamanho_bytes,sha256,observacao,enviado_por,criado_em ' +
       'FROM contrato_documento ' +
@@ -75,9 +76,10 @@ begin
       Result.Add(Item);
       Qry.Next;
     end;
-  except
-    Result.Free;
-    raise;
+    except
+      Result.Free;
+      raise;
+    end;
   finally
     Qry.Free;
   end;
