@@ -41,7 +41,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.DateUtils;
+  System.DateUtils,
+  System.Math;
 
 class function TContratoProjecaoDAO.Listar(
   const AConn: TUniConnection;
