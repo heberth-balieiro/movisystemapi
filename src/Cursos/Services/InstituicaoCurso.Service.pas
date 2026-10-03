@@ -48,7 +48,8 @@ uses
   APP.Errors,
   Database.Connection,
   InstituicaoCurso.DAO,
-  InstituicaoCursoCategoria.DAO;
+  InstituicaoCursoCategoria.DAO,
+  InstituicaoEntidadeAtendida.DAO;
 
 class function TInstituicaoCursoService.AlterarSituacao(
   const AIdInstituicao,
@@ -319,6 +320,18 @@ begin
         );
     end;
 
+    if Dados.IdEntidadeAtendida > 0 then
+    begin
+      if not TInstituicaoEntidadeAtendidaDAO.ExisteAtiva(
+        Conn,
+        AIdInstituicao,
+        Dados.IdEntidadeAtendida
+      ) then
+        TAppErrors.RaiseBadRequest(
+          'Cliente/entidade atendida não encontrado, não pertence à instituição ou está inativo.'
+        );
+    end;
+
     if TInstituicaoCursoDAO.ExisteCodigoInterno(
       Conn,
       AIdInstituicao,
@@ -502,6 +515,20 @@ begin
         ) then
           TAppErrors.RaiseBadRequest(
             'Categoria não encontrada, não pertence à instituição ou está inativa.'
+          );
+      end;
+
+      if (Dados.IdEntidadeAtendida > 0) and
+         ((not CursoAtual.TemEntidadeAtendida) or
+          (Dados.IdEntidadeAtendida <> CursoAtual.IdEntidadeAtendida)) then
+      begin
+        if not TInstituicaoEntidadeAtendidaDAO.ExisteAtiva(
+          Conn,
+          AIdInstituicao,
+          Dados.IdEntidadeAtendida
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'Cliente/entidade atendida não encontrado, não pertence à instituição ou está inativo.'
           );
       end;
 
