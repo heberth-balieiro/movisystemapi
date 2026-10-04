@@ -105,7 +105,7 @@ begin
         if Slug.IsEmpty then
           TAppErrors.RaiseBadRequest('Eleição não informada.');
 
-        if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
+        if not TAppToken.PodeAdministrarEleicao(Claims.Roles) then
         TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
         if not TAppToken.PertenceEleicao(Claims, Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
@@ -186,7 +186,7 @@ begin
 
 
 
-      if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
+      if not TAppToken.PodeAdministrarEleicao(Claims.Roles) then
         TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
       if not TAppToken.PertenceEleicao(Claims, Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
@@ -225,7 +225,7 @@ begin
       if Slug.IsEmpty then
         TAppErrors.RaiseBadRequest('Eleição não informada.');
 
-      if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
+      if not TAppToken.PodeAdministrarEleicao(Claims.Roles) then
         TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
         if not TAppToken.PertenceEleicao(Claims, Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
@@ -266,7 +266,7 @@ begin
       if Slug.IsEmpty then
         TAppErrors.RaiseBadRequest('Eleição não informada.');
 
-      if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
+      if not TAppToken.PodeAdministrarEleicao(Claims.Roles) then
         TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
       if not TAppToken.PertenceEleicao(Claims, Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
@@ -310,7 +310,7 @@ begin
       if Slug.IsEmpty then
         TAppErrors.RaiseBadRequest('Eleição não informada.');
 
-      if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
+      if not TAppToken.PodeAdministrarEleicao(Claims.Roles) then
         TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
         if not TAppToken.PertenceEleicao(Claims, Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
@@ -384,7 +384,7 @@ begin
       if Slug.IsEmpty then
         TAppErrors.RaiseBadRequest('Eleição não informada.');
 
-      if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
+      if not TAppToken.PodeAdministrarEleicao(Claims.Roles) then
         TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
       if not TAppToken.PertenceEleicao(Claims, Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
@@ -432,7 +432,7 @@ begin
       if Slug.IsEmpty then
         TAppErrors.RaiseBadRequest('Eleição não informada.');
 
-      if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
+      if not TAppToken.PodeAdministrarEleicao(Claims.Roles) then
         TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
         if not TAppToken.PertenceEleicao(Claims, Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
