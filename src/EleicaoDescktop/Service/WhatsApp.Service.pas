@@ -37,6 +37,17 @@ type
       const AAPIKEY: string
     ): Boolean; static;
 
+    class function EnviarDocumentoBase64(
+      const AURL: string;
+      const AInstancia: string;
+      const AAPIKey: string;
+      const ANumero: string;
+      const ABase64: string;
+      const ANomeArquivo: string;
+      const ALegenda: string;
+      out AMensagemRetorno: string
+    ): Boolean; static;
+
     class function EnviarComprovanteVotacao(
       const AURL: string;
       const AInstancia: string;
@@ -287,6 +298,93 @@ begin
 
   finally
     JSON.Free;
+    Body.Free;
+  end;
+end;
+
+class function TWhatsAppService.EnviarDocumentoBase64(
+  const AURL: string;
+  const AInstancia: string;
+  const AAPIKey: string;
+  const ANumero: string;
+  const ABase64: string;
+  const ANomeArquivo: string;
+  const ALegenda: string;
+  out AMensagemRetorno: string): Boolean;
+var
+  NumeroEnvio: string;
+  Body: TJSONObject;
+  Resposta: IResponse;
+begin
+  Result := False;
+  AMensagemRetorno := '';
+
+  NumeroEnvio := FormatarNumeroWhatsApp(ANumero);
+
+  if not (Length(NumeroEnvio) in [12, 13]) then
+  begin
+    AMensagemRetorno := 'Número inválido: ' + NumeroEnvio;
+    Exit;
+  end;
+
+  if Trim(AURL).IsEmpty then
+  begin
+    AMensagemRetorno := 'URL do WhatsApp não informada.';
+    Exit;
+  end;
+
+  if Trim(AInstancia).IsEmpty then
+  begin
+    AMensagemRetorno := 'Instância do WhatsApp não informada.';
+    Exit;
+  end;
+
+  if Trim(AAPIKey).IsEmpty then
+  begin
+    AMensagemRetorno := 'Token do WhatsApp não informado.';
+    Exit;
+  end;
+
+  if Trim(ABase64).IsEmpty then
+  begin
+    AMensagemRetorno := 'Conteúdo do documento não informado.';
+    Exit;
+  end;
+
+  Body := TJSONObject.Create;
+  try
+    Body.AddPair('number', Trim(NumeroEnvio));
+    Body.AddPair('mediatype', 'document');
+    Body.AddPair('mimetype', 'application/pdf');
+    Body.AddPair('media', Trim(ABase64));
+    Body.AddPair('fileName', Trim(ANomeArquivo));
+    if not Trim(ALegenda).IsEmpty then
+      Body.AddPair('caption', ALegenda);
+
+    try
+      Resposta := TRequest.New
+        .BaseURL(AURL)
+        .Resource('message/sendMedia/' + Trim(AInstancia))
+        .Accept('application/json')
+        .ContentType('application/json')
+        .AddHeader('apikey', AAPIKey)
+        .AddBody(Body.ToJSON, TRESTContentType.ctAPPLICATION_JSON)
+        .Timeout(10000)
+        .Post;
+
+      Result := RespostaSucesso(Resposta);
+      if Result then
+        AMensagemRetorno := 'Comprovante em PDF enviado com sucesso.'
+      else
+        AMensagemRetorno := MensagemResposta(Resposta);
+    except
+      on E: Exception do
+      begin
+        Result := False;
+        AMensagemRetorno := E.ClassName + ': ' + E.Message;
+      end;
+    end;
+  finally
     Body.Free;
   end;
 end;
