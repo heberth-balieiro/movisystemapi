@@ -39,6 +39,7 @@ TEleicaoService = Class
 
     //Questao
     class procedure ValidarCadastroQuestao(const ADoc: TEleicaoQuestaoModel); static;
+    class procedure ValidarCadastroQuestaoOpcao(const ADoc: TEleicaoQuestaoOpcaoModel); static;
 
   public
     //Eleicao
@@ -60,6 +61,7 @@ TEleicaoService = Class
 
     //Questao
     class function InserirEleicaoQuestao(const AEmpresaId:Integer; const ADoc: TEleicaoQuestaoModel): Boolean; static;
+    class function InserirEleicaoQuestaoOpcao(const AEmpresaId:Integer; const ADoc: TEleicaoQuestaoOpcaoModel): Boolean; static;
 
 End;
 
@@ -473,6 +475,78 @@ begin
       Conn.Commit;
     except
       if Conn.InTransaction then Conn.Rollback;
+      raise;
+    end;
+  finally
+    Conn.Free;
+  end;
+end;
+
+
+class procedure TEleicaoService.ValidarCadastroQuestaoOpcao(const ADoc: TEleicaoQuestaoOpcaoModel);
+begin
+  if ADoc = nil then
+    TAppErrors.RaiseBadRequest('Dados da opção da questão não informados.');
+
+  if ADoc.id_opcao_int <= 0 then
+    TAppErrors.RaiseBadRequest('ID da opção não informado.');
+
+  if ADoc.id_questao_int <= 0 then
+    TAppErrors.RaiseBadRequest('ID da questão não informado.');
+
+  if ADoc.id_eleicao_int <= 0 then
+    TAppErrors.RaiseBadRequest('ID da eleição não informado.');
+
+  if Trim(ADoc.descricao).IsEmpty then
+    TAppErrors.RaiseBadRequest('Descrição da opção não informada.');
+
+  ADoc.ativo := TAppClasses.NormalizarSN(ADoc.ativo,'S');
+end;
+
+class function TEleicaoService.InserirEleicaoQuestaoOpcao(const AEmpresaId: Integer;
+  const ADoc: TEleicaoQuestaoOpcaoModel): Boolean;
+var
+  Conn: TUniConnection;
+  Config: TAppApiConfig;
+  IdEleicao, IdQuestao: Integer;
+  AId: Int64;
+begin
+  Result := False;
+
+  if AEmpresaId <= 0 then
+    TAppErrors.RaiseBadRequest('Empresa não informada.');
+
+  ValidarCadastroQuestaoOpcao(ADoc);
+
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Conn.StartTransaction;
+    try
+      IdEleicao := TEleicaoDao.RetornoIDeleicaoAPI(Conn, AEmpresaId, ADoc.id_eleicao_int);
+      if IdEleicao <= 0 then
+        TAppErrors.RaiseBadRequest('Eleição não encontrada para a empresa informada.');
+
+      IdQuestao := TEleicaoDao.RetornoIDQuestaoAPI(Conn, AEmpresaId, ADoc.id_questao_int);
+      if IdQuestao <= 0 then
+        TAppErrors.RaiseBadRequest('Questão não encontrada para a empresa informada.');
+
+      ADoc.eleicao_id := IdEleicao;
+      ADoc.questao_id := IdQuestao;
+
+      if TEleicaoDao.ExisteQuestaoOpcao(
+        Conn, AEmpresaId, ADoc.id_eleicao_int, ADoc.id_questao_int, ADoc.id_opcao_int) then
+        Result := TEleicaoDao.AtualizarQuestaoOpcao(Conn, AEmpresaId, ADoc)
+      else
+      begin
+        AId := TEleicaoDao.InserirQuestaoOpcao(Conn, AEmpresaId, ADoc);
+        Result := AId > 0;
+      end;
+
+      Conn.Commit;
+    except
+      if Conn.InTransaction then
+        Conn.Rollback;
       raise;
     end;
   finally
