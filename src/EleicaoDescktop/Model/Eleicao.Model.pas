@@ -31,7 +31,7 @@ type
     property ano            : Integer   read FAno             write FAno;
     property ativo          : string    read FAtivo           write FAtivo;
     property ano_fim        : Integer   read Fano_fim         write Fano_fim;
-    // E = Eleição, A = Assembleia
+    // E = EleiÃ§Ã£o, A = Assembleia
     property Tipo           : string    read FTipo            write FTipo;
     property situacao       : string    read Fsituacao        write Fsituacao;
     property operacao       : String    read Foperacao        write Foperacao;
@@ -234,6 +234,37 @@ type
       property ativo: string read Fativo write Fativo;
 
 end;
+
+
+type
+  TEleicaoComissaoModel = class
+  private
+    FEmpresaId: Integer;
+    FEleicaoId: Integer;
+    FIdEleicaoInt: Integer;
+    FIdComissaoInt: Integer;
+    FUsuarioId: Integer;
+    FNome: string;
+    FCPF: string;
+    FTelefone: string;
+    FEmail: string;
+    FCargo: string;
+    FAtivo: string;
+    FSenhaHash: string;
+  public
+    property EmpresaId: Integer read FEmpresaId write FEmpresaId;
+    property EleicaoId: Integer read FEleicaoId write FEleicaoId;
+    property IdEleicaoInt: Integer read FIdEleicaoInt write FIdEleicaoInt;
+    property IdComissaoInt: Integer read FIdComissaoInt write FIdComissaoInt;
+    property UsuarioId: Integer read FUsuarioId write FUsuarioId;
+    property Nome: string read FNome write FNome;
+    property CPF: string read FCPF write FCPF;
+    property Telefone: string read FTelefone write FTelefone;
+    property Email: string read FEmail write FEmail;
+    property Cargo: string read FCargo write FCargo;
+    property Ativo: string read FAtivo write FAtivo;
+    property SenhaHash: string read FSenhaHash write FSenhaHash;
+  end;
 
 implementation
 
