@@ -174,7 +174,7 @@ begin
       'FROM eleicao '+
       'WHERE empresa_id= :idempresa '+
       'AND COALESCE(id_eleicao_int,0) > 0 '+
-      'AND situacao IN (''ABERTA'',''ENCERRADA'',''EM_APURACAO'',''APURADA'',''PUBLICADA'') '+
+      'AND situacao IN (''AGENDADA'',''ABERTA'',''ENCERRADA'',''EM_APURACAO'',''APURADA'',''PUBLICADA'') '+
       'ORDER BY id';
     Qry.ParamByName('idempresa').AsInteger := AIdEmpresa;
     Qry.Open;
