@@ -13,6 +13,7 @@ type
     class procedure RegistryConfig;
     class procedure RegistryChapa;
     class procedure RegistryMembros;
+    class procedure RegistryComissao;
     class procedure RegistryQuestao;
   end;
 
@@ -72,7 +73,7 @@ begin
         Body := Req.Body<TJSONObject>;
 
         if Body = nil then
-          TAppErrors.RaiseBadRequest('JSON inv�lido ou n�o informado.');
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
 
         ADoc                := TEleicaoModel.Create;
         try
@@ -83,7 +84,7 @@ begin
           if Resultado.IdEleicao > 0 then
           Retorno.AddPair('id', TJSONNumber.Create(Resultado.IdEleicao));
 
-          TAppResponse.Created(Res, Retorno, 'Elei��o sincronizada com sucesso.');
+          TAppResponse.Created(Res, Retorno, 'Eleição sincronizada com sucesso.');
         finally
           Adoc.Free;
         end;
@@ -196,7 +197,7 @@ begin
         Body    := Req.Body<TJSONObject>;
 
         if Body = nil then
-          TAppErrors.RaiseBadRequest('JSON inv�lido ou n�o informado.');
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
 
         ADoc              := TEleicaoConfigModel.Create;
         try
@@ -205,7 +206,7 @@ begin
           Retorno           := TJSONObject.Create;
           Retorno.AddPair('', '');
 
-          TAppResponse.Created(Res, Retorno, 'Elei��o sincronizada com sucesso.');
+          TAppResponse.Created(Res, Retorno, 'Eleição sincronizada com sucesso.');
         finally
           Adoc.Free;
         end;
@@ -260,7 +261,7 @@ begin
         Body    := Req.Body<TJSONObject>;
 
         if Body = nil then
-          TAppErrors.RaiseBadRequest('JSON inv�lido ou n�o informado.');
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
 
         ADoc              := TEleicaoChapaModel.Create;
         try
@@ -332,7 +333,7 @@ begin
         Body    := Req.Body<TJSONObject>;
 
         if Body = nil then
-          TAppErrors.RaiseBadRequest('JSON inv�lido ou n�o informado.');
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
 
         ADoc              := TEleicaoChapaMembrosModel.Create;
         try
@@ -357,6 +358,63 @@ end;
 
 
 
+
+{$ENDREGION}
+
+
+{$REGION 'Comissao'}
+
+procedure PreencherEleicaoComissaoFromJson(const AJson: TJSONObject; const ADoc: TEleicaoComissaoModel);
+begin
+  ADoc.IdComissaoInt := TAppClasses.GetJsonInt(AJson, 'id_comissao_int',0);
+  ADoc.IdEleicaoInt  := TAppClasses.GetJsonInt(AJson, 'id_eleicao_int',0);
+  ADoc.Nome          := TAppClasses.GetJsonString(AJson, 'nome');
+  ADoc.CPF           := TAppClasses.GetJsonString(AJson, 'cpf');
+  ADoc.Telefone      := TAppClasses.GetJsonString(AJson, 'telefone');
+  ADoc.Email         := TAppClasses.GetJsonString(AJson, 'email');
+  ADoc.Cargo         := TAppClasses.GetJsonString(AJson, 'cargo');
+  ADoc.Ativo         := TAppClasses.GetJsonString(AJson, 'ativo','S');
+  ADoc.SenhaHash     := TAppClasses.GetJsonString(AJson, 'senha_hash');
+end;
+
+class procedure TEleicaoController.RegistryComissao;
+begin
+  THorse.Post('/v1/integracao/eleicao/comissao',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Body: TJSONObject;
+      ADoc: TEleicaoComissaoModel;
+      Retorno: TJSONObject;
+      Contexto: TEasyOneIntegracaoContexto;
+      UUID, APIKey: string;
+    begin
+      try
+        UUID := Trim(Req.Headers['X-EasyOne-Empresa']);
+        APIKey := Trim(Req.Headers['X-EasyOne-Key']);
+        Contexto := TEasyOneIntegracaoService.Autenticar(UUID,APIKey);
+
+        Body := Req.Body<TJSONObject>;
+        if Body = nil then
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
+
+        ADoc := TEleicaoComissaoModel.Create;
+        try
+          PreencherEleicaoComissaoFromJson(Body, ADoc);
+
+          if not TEleicaoService.InserirEleicaoComissao(Contexto.IdEmpresaAPI, ADoc) then
+            TAppErrors.RaiseBadRequest('Não foi possível sincronizar a comissão eleitoral.');
+
+          Retorno := TJSONObject.Create;
+          TAppResponse.Created(Res, Retorno, 'Comissão eleitoral sincronizada com sucesso.');
+        finally
+          ADoc.Free;
+        end;
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res,E);
+      end;
+    end);
+end;
 
 {$ENDREGION}
 
@@ -398,7 +456,7 @@ begin
         Body      := Req.Body<TJSONObject>;
 
         if Body = nil then
-          TAppErrors.RaiseBadRequest('JSON inv�lido ou n�o informado.');
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
 
         ADoc              := TEleicaoQuestaoModel.Create;
 
@@ -409,7 +467,7 @@ begin
           Retorno           := TJSONObject.Create;
           Retorno.AddPair('', '');
 
-          TAppResponse.Created(Res, Retorno, '[API] Quest�o sincronizado com sucesso.');
+          TAppResponse.Created(Res, Retorno, '[API] Questão sincronizado com sucesso.');
         finally
           Adoc.Free;
         end;
