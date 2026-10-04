@@ -56,6 +56,11 @@ TEleicaoDao = Class
     class function ExisteQuestao(const AConn: TUniConnection; const AIdEmpresa: Int64; const AIDEleicaoQuestao: Integer): Boolean; static;
     class function RetornoIDQuestaoAPI(const AConn: TUniConnection; const AEmpresaId:Integer; const AIDQuestaoRetaguarda: Integer):integer; static;
 
+    //Opcao Questao
+    class function InserirQuestaoOpcao(const AConn: TUniConnection; const AEmpresaId:Integer; const ADoc: TEleicaoQuestaoOpcaoModel): Int64; static;
+    class function AtualizarQuestaoOpcao(const AConn: TUniConnection; const AEmpresaId:Integer; const ADoc: TEleicaoQuestaoOpcaoModel): Boolean; static;
+    class function ExisteQuestaoOpcao(const AConn: TUniConnection; const AEmpresaId, AIdEleicaoInt, AIdQuestaoInt, AIdOpcaoInt: Integer): Boolean; static;
+
 End;
 
 
@@ -950,6 +955,93 @@ begin
 
     if not Qry.IsEmpty then
       Result := Qry.FieldByName('id').AsInteger;
+  finally
+    Qry.Free;
+  end;
+end;
+
+
+class function TEleicaoDao.ExisteQuestaoOpcao(const AConn: TUniConnection;
+  const AEmpresaId, AIdEleicaoInt, AIdQuestaoInt, AIdOpcaoInt: Integer): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Result := False;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT 1 FROM eleicao_questao_opcao '+
+      'WHERE empresa_id=:empresa_id AND id_eleicao_int=:id_eleicao_int '+
+      'AND id_questao_int=:id_questao_int AND id_opcao_int=:id_opcao_int LIMIT 1';
+    Qry.ParamByName('empresa_id').AsInteger := AEmpresaId;
+    Qry.ParamByName('id_eleicao_int').AsInteger := AIdEleicaoInt;
+    Qry.ParamByName('id_questao_int').AsInteger := AIdQuestaoInt;
+    Qry.ParamByName('id_opcao_int').AsInteger := AIdOpcaoInt;
+    Qry.Open;
+    Result := not Qry.IsEmpty;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TEleicaoDao.InserirQuestaoOpcao(const AConn: TUniConnection;
+  const AEmpresaId: Integer; const ADoc: TEleicaoQuestaoOpcaoModel): Int64;
+var
+  Qry: TUniQuery;
+begin
+  Result := 0;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'INSERT INTO eleicao_questao_opcao('+
+      'id_opcao_int,questao_id,id_questao_int,eleicao_id,id_eleicao_int,empresa_id,ordem,descricao,ativo) '+
+      'VALUES(:id_opcao_int,:questao_id,:id_questao_int,:eleicao_id,:id_eleicao_int,:empresa_id,:ordem,:descricao,:ativo)';
+    Qry.ParamByName('id_opcao_int').AsInteger := ADoc.id_opcao_int;
+    Qry.ParamByName('questao_id').AsInteger := ADoc.questao_id;
+    Qry.ParamByName('id_questao_int').AsInteger := ADoc.id_questao_int;
+    Qry.ParamByName('eleicao_id').AsInteger := ADoc.eleicao_id;
+    Qry.ParamByName('id_eleicao_int').AsInteger := ADoc.id_eleicao_int;
+    Qry.ParamByName('empresa_id').AsInteger := AEmpresaId;
+    Qry.ParamByName('ordem').AsInteger := ADoc.ordem;
+    Qry.ParamByName('descricao').AsString := ADoc.descricao;
+    Qry.ParamByName('ativo').AsString := ADoc.ativo;
+    Qry.Execute;
+    Qry.Close;
+    Qry.SQL.Text := 'SELECT LAST_INSERT_ID() AS ID';
+    Qry.Open;
+    Result := Qry.FieldByName('ID').AsLargeInt;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TEleicaoDao.AtualizarQuestaoOpcao(const AConn: TUniConnection;
+  const AEmpresaId: Integer; const ADoc: TEleicaoQuestaoOpcaoModel): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Result := False;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'UPDATE eleicao_questao_opcao SET questao_id=:questao_id,eleicao_id=:eleicao_id,'+
+      'ordem=:ordem,descricao=:descricao,ativo=:ativo '+
+      'WHERE empresa_id=:empresa_id AND id_eleicao_int=:id_eleicao_int '+
+      'AND id_questao_int=:id_questao_int AND id_opcao_int=:id_opcao_int';
+    Qry.ParamByName('questao_id').AsInteger := ADoc.questao_id;
+    Qry.ParamByName('eleicao_id').AsInteger := ADoc.eleicao_id;
+    Qry.ParamByName('ordem').AsInteger := ADoc.ordem;
+    Qry.ParamByName('descricao').AsString := ADoc.descricao;
+    Qry.ParamByName('ativo').AsString := ADoc.ativo;
+    Qry.ParamByName('empresa_id').AsInteger := AEmpresaId;
+    Qry.ParamByName('id_eleicao_int').AsInteger := ADoc.id_eleicao_int;
+    Qry.ParamByName('id_questao_int').AsInteger := ADoc.id_questao_int;
+    Qry.ParamByName('id_opcao_int').AsInteger := ADoc.id_opcao_int;
+    Qry.Execute;
+    Result := Qry.RowsAffected > 0;
   finally
     Qry.Free;
   end;
