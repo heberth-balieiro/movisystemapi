@@ -132,8 +132,8 @@ begin
       Migration_009_CreateEleicao_RateLimit(Conn);
       Migration_010_AlterEleicaoConfirmacao(Conn);
       Migration_011_AlterEleicaoConfirmacao(Conn);
-      //Migration_012_CreateEleicaoQuestao(Conn);
-      //Migration_013_CreateEleicaoQuestaoOpcao(Conn);
+      Migration_012_CreateEleicaoQuestao(Conn);
+      Migration_013_CreateEleicaoQuestaoOpcao(Conn);
       Migration_014_CreateEleicaoComissao(Conn);
       Conn.Commit;
     except
