@@ -45,7 +45,8 @@ uses
   App.Errors,
   Database.Connection,
   EleicaoAPIPublic,
-  EleicaoVotacaoAPI.Dao;
+  EleicaoVotacaoAPI.Dao,
+  EleicaoComprovantePDF.Service;
 
 { TEleicaoVotacaoAPIService }
 
@@ -59,7 +60,7 @@ begin
     (Result = 'NULO')
   ) then
     TAppErrors.RaiseBadRequest(
-      'Tipo de voto inv·lido.'
+      'Tipo de voto inv√°lido.'
     );
 end;
 
@@ -87,12 +88,16 @@ class function TEleicaoVotacaoAPIService.RegistrarVoto(
 var
   Config: TAppApiConfig;
   Conn: TUniConnection;
+  QryEleicao: TUniQuery;
 
   Contexto: TEleicaoConfirmacaoContexto;
 
   Slug: string;
   TipoVoto: string;
   Comprovante: string;
+  NomeEleicao: string;
+  PDFBase64: string;
+  NomeArquivoPDF: string;
 begin
   Result := Default(TVotacaoResult);
 
@@ -100,13 +105,13 @@ begin
 
   if Slug.IsEmpty then
     TAppErrors.RaiseBadRequest(
-      'EleiÁ„o n„o informada.'
+      'Elei√ß√£o n√£o informada.'
     );
 
   if (AIdUsuario <= 0) or
      (AIdEmpresa <= 0) then
     TAppErrors.RaiseUnauthorized(
-      'Acesso ‡ votaÁ„o n„o autorizado.'
+      'Acesso √† vota√ß√£o n√£o autorizado.'
     );
 
   TipoVoto :=
@@ -115,12 +120,12 @@ begin
     );
 
   //
-  // CHAPA exige uma chapa v·lida
+  // CHAPA exige uma chapa v√°lida
   //
   if (TipoVoto = 'CHAPA') and
      (AIdChapa <= 0) then
     TAppErrors.RaiseBadRequest(
-      'Chapa n„o informada.'
+      'Chapa n√£o informada.'
     );
 
   Config :=
@@ -137,7 +142,7 @@ begin
   try
 
     //
-    // Valida eleiÁ„o + usu·rio + empresa
+    // Valida elei√ß√£o + usu√°rio + empresa
     //
     if not TEleicaoAPIPublicDao.BuscarContextoConfirmacao(
       Conn,
@@ -147,11 +152,29 @@ begin
       Contexto
     ) then
       TAppErrors.RaiseUnauthorized(
-        'N„o foi possÌvel acessar esta votaÁ„o.'
+        'N√£o foi poss√≠vel acessar esta vota√ß√£o.'
       );
 
+    // Nome da elei√ß√£o usado somente no comprovante visual.
+    NomeEleicao := Slug;
+    QryEleicao := TUniQuery.Create(nil);
+    try
+      QryEleicao.Connection := Conn;
+      QryEleicao.SQL.Text :=
+        'SELECT nome FROM eleicao ' +
+        'WHERE id = :id AND empresa_id = :idempresa LIMIT 1';
+      QryEleicao.ParamByName('id').AsInteger := Contexto.IdEleicao;
+      QryEleicao.ParamByName('idempresa').AsInteger := AIdEmpresa;
+      QryEleicao.Open;
+
+      if not QryEleicao.IsEmpty then
+        NomeEleicao := QryEleicao.FieldByName('nome').AsString;
+    finally
+      QryEleicao.Free;
+    end;
+
     //
-    // ValidaÁ„o da chapa antes de iniciar a gravaÁ„o
+    // Valida√ß√£o da chapa antes de iniciar a grava√ß√£o
     //
     if TipoVoto = 'CHAPA' then
     begin
@@ -162,12 +185,12 @@ begin
         AIdChapa
       ) then
         TAppErrors.RaiseBadRequest(
-          'Chapa inv·lida para esta eleiÁ„o.'
+          'Chapa inv√°lida para esta elei√ß√£o.'
         );
     end;
 
     //
-    // Inicia transaÁ„o
+    // Inicia transa√ß√£o
     //
     Conn.StartTransaction;
 
@@ -182,14 +205,14 @@ begin
         AIdUsuario
       ) then
         TAppErrors.RaiseBadRequest(
-          'Seu voto j· foi registrado nesta eleiÁ„o.'
+          'Seu voto j√° foi registrado nesta elei√ß√£o.'
         );
 
       Comprovante :=
         GerarComprovante;
 
       //
-      // Registrar voto sem usu·rio
+      // Registrar voto sem usu√°rio
       //
       TEleicaoVotacaoAPIDao.RegistrarVoto(
         Conn,
@@ -201,7 +224,7 @@ begin
       );
 
       //
-      // Registrar que o usu·rio j· votou
+      // Registrar que o usu√°rio j√° votou
       //
       TEleicaoVotacaoAPIDao.RegistrarVotante(
         Conn,
@@ -210,7 +233,6 @@ begin
         AIdUsuario
       );
 
-      //Auditoria
       // Auditoria sem identificar o eleitor
       TEleicaoAuditoriaAPIService.RegistrarEvento(
         Conn, AIdEmpresa, Contexto.IdEleicao, 0,
@@ -224,7 +246,10 @@ begin
       Result.TipoVoto := TipoVoto;
       Result.Comprovante := Comprovante;
 
-      // Enviar comprovante apÛs o voto estar definitivamente registrado
+      //
+      // WhatsApp √© p√≥s-commit. Qualquer falha aqui n√£o invalida o voto.
+      // Envia a mensagem textual j√° existente e, em seguida, o PDF.
+      //
       try
         WhatsConfig := TWhatsAppConfigAPIService.BuscarConfiguracao(AIdEmpresa);
 
@@ -237,12 +262,33 @@ begin
           Comprovante,
           MsgWhatsApp
         );
+
+        PDFBase64 := TEleicaoComprovantePDFService.GerarBase64(
+          NomeEleicao,
+          Contexto.Nome,
+          Comprovante,
+          Now
+        );
+
+        NomeArquivoPDF :=
+          'comprovante_votacao_' +
+          LowerCase(Copy(Comprovante, 1, 12)) +
+          '.pdf';
+
+        TWhatsAppService.EnviarDocumentoBase64(
+          WhatsConfig.URL,
+          WhatsConfig.Instancia,
+          WhatsConfig.Token,
+          Contexto.Whatsapp,
+          PDFBase64,
+          NomeArquivoPDF,
+          'Comprovante de vota√ß√£o - MoviSystem',
+          MsgWhatsApp
+        );
       except
-        // O voto j· foi confirmado.
-        // Falha no WhatsApp n„o pode desfazer nem invalidar o voto.
+        // O voto j√° foi confirmado.
+        // Falha no PDF ou WhatsApp n√£o pode desfazer nem invalidar o voto.
       end;
-
-
 
     except
       if Conn.InTransaction then
