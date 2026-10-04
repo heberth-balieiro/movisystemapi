@@ -28,6 +28,7 @@ type
     class procedure Migration_011_AlterEleicaoConfirmacao(const AConn: TUniConnection);static;
     class procedure Migration_012_CreateEleicaoQuestao(const AConn: TUniConnection);static;
     class procedure Migration_013_CreateEleicaoQuestaoOpcao(const AConn: TUniConnection);static;
+    class procedure Migration_014_CreateEleicaoComissao(const AConn: TUniConnection);static;
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
 end;
@@ -133,6 +134,7 @@ begin
       Migration_011_AlterEleicaoConfirmacao(Conn);
       //Migration_012_CreateEleicaoQuestao(Conn);
       //Migration_013_CreateEleicaoQuestaoOpcao(Conn);
+      Migration_014_CreateEleicaoComissao(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -672,6 +674,45 @@ begin
     ' KEY `idx_eleicao_questao_opcao_ativo` (`questao_id`,`ativo`),'+
     ' CONSTRAINT `fk_eleicao_questao_opcao_questao` FOREIGN KEY (`questao_id`) REFERENCES `eleicao_questao` (`id`) ON DELETE CASCADE,'+
     ' CONSTRAINT `fk_eleicao_questao_opcao_eleicao` FOREIGN KEY (`eleicao_id`) REFERENCES `eleicao` (`id`) ON DELETE CASCADE'+
+    ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;'
+  );
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+
+class procedure TEleicaoMigration.Migration_014_CreateEleicaoComissao(const AConn: TUniConnection);
+const
+  VERSION = '014_E';
+  DESCRIPTION = 'Criar tabela eleicao_comissao';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(AConn,
+    'CREATE TABLE IF NOT EXISTS eleicao_comissao ('+
+    ' id INT NOT NULL AUTO_INCREMENT,'+
+    ' empresa_id INT NOT NULL,'+
+    ' eleicao_id INT NOT NULL,'+
+    ' id_eleicao_int INT NOT NULL,'+
+    ' id_comissao_int INT NOT NULL,'+
+    ' usuario_id INT NOT NULL,'+
+    ' nome VARCHAR(180) NOT NULL,'+
+    ' cpf VARCHAR(20) NOT NULL,'+
+    ' telefone VARCHAR(20) NULL,'+
+    ' email VARCHAR(180) NULL,'+
+    ' cargo VARCHAR(100) NULL,'+
+    ' ativo CHAR(1) NOT NULL DEFAULT ''S'','+
+    ' criadoem DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,'+
+    ' atualizadoem DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,'+
+    ' PRIMARY KEY (id),'+
+    ' UNIQUE KEY uk_eleicao_comissao_int (empresa_id,id_eleicao_int,id_comissao_int),'+
+    ' KEY idx_eleicao_comissao_eleicao (eleicao_id),'+
+    ' KEY idx_eleicao_comissao_usuario (usuario_id),'+
+    ' KEY idx_eleicao_comissao_ativo (eleicao_id,ativo),'+
+    ' CONSTRAINT fk_eleicao_comissao_empresa FOREIGN KEY (empresa_id) REFERENCES empresa(id),'+
+    ' CONSTRAINT fk_eleicao_comissao_eleicao FOREIGN KEY (eleicao_id) REFERENCES eleicao(id) ON DELETE CASCADE,'+
+    ' CONSTRAINT fk_eleicao_comissao_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id)'+
     ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;'
   );
 
