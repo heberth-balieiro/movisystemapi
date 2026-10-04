@@ -21,6 +21,7 @@ type
     class procedure Migration_004_AlterEmpresa(const AConn: TUniConnection); static;
     class procedure Migration_005_AlterUsuario(const AConn: TUniConnection); static;
     class procedure Migration_006_AlterUsuarioIdExterno(const AConn: TUniConnection); static;
+    class procedure Migration_007_AlterUsuarioPessoaOpcional(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -120,6 +121,7 @@ begin
       Migration_004_AlterEmpresa(Conn);
       Migration_005_AlterUsuario(Conn);
       Migration_006_AlterUsuarioIdExterno(Conn);
+      Migration_007_AlterUsuarioPessoaOpcional(Conn);
 
       Conn.Commit;
     except
@@ -310,6 +312,21 @@ begin
     'ALTER TABLE usuario '+
     'ADD COLUMN id_usuario_int INT NULL, '+
     'ADD UNIQUE KEY uk_usuario_empresa_usuario_int (empresa_id, id_usuario_int)');
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+class procedure TEasyOneMigration.Migration_007_AlterUsuarioPessoaOpcional(const AConn: TUniConnection);
+const
+  VERSION = '007';
+  DESCRIPTION = 'Permitir usuario administrativo sem pessoa associada';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(AConn,
+    'ALTER TABLE usuario '+
+    'MODIFY COLUMN pessoa_id INT NULL');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
