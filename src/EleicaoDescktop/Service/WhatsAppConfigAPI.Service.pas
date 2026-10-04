@@ -30,26 +30,26 @@ begin
   Result := Default(TWhatsAppConfigDados);
 
   if AIdEmpresa <= 0 then
-    TAppErrors.RaiseBadRequest('Empresa não informada.');
+    TAppErrors.RaiseBadRequest('Empresa nÃ£o informada.');
 
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(Config.Database);
 
   try
     if not TWhatsAppConfigAPIDao.BuscarConfiguracao(Conn, AIdEmpresa, Result) then
-      TAppErrors.RaiseBadRequest('Configuração do WhatsApp não encontrada.');
+      TAppErrors.RaiseBadRequest('ConfiguraÃ§Ã£o do WhatsApp nÃ£o encontrada.');
 
     if not SameText(Result.Ativo, 'S') then
       TAppErrors.RaiseBadRequest('Empresa inativa para envio de WhatsApp.');
 
     if Trim(Result.URL).IsEmpty then
-      TAppErrors.RaiseBadRequest('URL do WhatsApp não configurada.');
+      TAppErrors.RaiseBadRequest('URL do WhatsApp nÃ£o configurada.');
 
     if Trim(Result.Instancia).IsEmpty then
-      TAppErrors.RaiseBadRequest('Instância do WhatsApp não configurada.');
+      TAppErrors.RaiseBadRequest('InstÃ¢ncia do WhatsApp nÃ£o configurada.');
 
     if Trim(Result.Token).IsEmpty then
-      TAppErrors.RaiseBadRequest('Token do WhatsApp não configurado.');
+      TAppErrors.RaiseBadRequest('Token do WhatsApp nÃ£o configurado.');
 
   finally
     Conn.Free;
