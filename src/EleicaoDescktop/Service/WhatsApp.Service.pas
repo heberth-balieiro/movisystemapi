@@ -79,34 +79,34 @@ begin
 
   if Numero.IsEmpty then
   begin
-    AMensagemRetorno := 'N˙mero de WhatsApp n„o informado.';
+    AMensagemRetorno := 'N√∫mero de WhatsApp n√£o informado.';
     Exit(False);
   end;
 
   if Trim(AURL).IsEmpty then
   begin
-    AMensagemRetorno := 'URL do WhatsApp n„o informada.';
+    AMensagemRetorno := 'URL do WhatsApp n√£o informada.';
     Exit(False);
   end;
 
   if Trim(AInstancia).IsEmpty then
   begin
-    AMensagemRetorno := 'Inst‚ncia do WhatsApp n„o informada.';
+    AMensagemRetorno := 'Inst√¢ncia do WhatsApp n√£o informada.';
     Exit(False);
   end;
 
   if Trim(AAPIKey).IsEmpty then
   begin
-    AMensagemRetorno := 'Token do WhatsApp n„o informado.';
+    AMensagemRetorno := 'Token do WhatsApp n√£o informado.';
     Exit(False);
   end;
 
   Mensagem :=
-    'Ol·, ' + Trim(ANome) + '.' + sLineBreak + sLineBreak +
-    'Seu cÛdigo de confirmaÁ„o para acessar a votaÁ„o È:' + sLineBreak + sLineBreak +
+    'Ol√°, ' + Trim(ANome) + '.' + sLineBreak + sLineBreak +
+    'Seu c√≥digo de confirma√ß√£o para acessar a vota√ß√£o √©:' + sLineBreak + sLineBreak +
     '*' + Trim(ACodigo) + '*' + sLineBreak + sLineBreak +
-    'Este cÛdigo È v·lido por 1 minuto.' + sLineBreak +
-    'N„o compartilhe este cÛdigo com outras pessoas.';
+    'Este c√≥digo √© v√°lido por 1 minuto.' + sLineBreak +
+    'N√£o compartilhe este c√≥digo com outras pessoas.';
 
   Result := MessageText(
     AMensagemRetorno,
@@ -149,7 +149,7 @@ end;
 class function TWhatsAppService.MensagemResposta(const Resposta: IResponse): string;
 begin
   if not Assigned(Resposta) then
-    Exit('A Evolution API n„o retornou uma resposta.');
+    Exit('A Evolution API n√£o retornou uma resposta.');
 
   Result := JSONTexto(Resposta.Content, 'response.message');
 
@@ -163,7 +163,7 @@ begin
     Result := Trim(Resposta.Content);
 
   if Result = '' then
-    Result := Format('HTTP %d sem conte˙do de resposta.', [Resposta.StatusCode]);
+    Result := Format('HTTP %d sem conte√∫do de resposta.', [Resposta.StatusCode]);
 end;
 
 class function TWhatsAppService.RespostaSucesso(const Resposta: IResponse): Boolean;
@@ -185,7 +185,7 @@ end;
 function TWhatsAppService.RecursoInstancia(const Prefixo, NomeInstancia: string): string;
 begin
   if Trim(NomeInstancia) = '' then
-    raise EArgumentException.Create('Nome da inst‚ncia n„o informado.');
+    raise EArgumentException.Create('Nome da inst√¢ncia n√£o informado.');
 
   Result := Prefixo + Trim(NomeInstancia);
 end;
@@ -230,7 +230,7 @@ begin
 
     if not (Length(NumeroEnvio) in [12, 13]) then
     begin
-      AMsg := 'N˙mero inv·lido: ' + NumeroEnvio;
+      AMsg := 'N√∫mero inv√°lido: ' + NumeroEnvio;
       Exit;
     end;
 
@@ -257,7 +257,7 @@ begin
         if Assigned(Resposta) then
           AMsg := Format('HTTP %d - %s', [Resposta.StatusCode, Resposta.Content])
         else
-          AMsg := 'A Evolution API n„o retornou uma resposta.';
+          AMsg := 'A Evolution API n√£o retornou uma resposta.';
 
         Exit;
       end;
@@ -307,39 +307,39 @@ begin
 
   if Numero.IsEmpty then
   begin
-    AMensagemRetorno := 'N˙mero de WhatsApp n„o informado.';
+    AMensagemRetorno := 'N√∫mero de WhatsApp n√£o informado.';
     Exit(False);
   end;
 
   if Trim(AURL).IsEmpty then
   begin
-    AMensagemRetorno := 'URL do WhatsApp n„o informada.';
+    AMensagemRetorno := 'URL do WhatsApp n√£o informada.';
     Exit(False);
   end;
 
   if Trim(AInstancia).IsEmpty then
   begin
-    AMensagemRetorno := 'Inst‚ncia do WhatsApp n„o informada.';
+    AMensagemRetorno := 'Inst√¢ncia do WhatsApp n√£o informada.';
     Exit(False);
   end;
 
   if Trim(AAPIKey).IsEmpty then
   begin
-    AMensagemRetorno := 'Token do WhatsApp n„o informado.';
+    AMensagemRetorno := 'Token do WhatsApp n√£o informado.';
     Exit(False);
   end;
 
   Mensagem :=
-    'Ol·, ' + Trim(ANome) + '.' + sLineBreak +
+    'Ol√°, ' + Trim(ANome) + '.' + sLineBreak +
     sLineBreak +
     'Seu voto foi registrado com sucesso.' + sLineBreak +
     sLineBreak +
     'Comprovante:' + sLineBreak +
     '*' + Trim(AComprovante) + '*' + sLineBreak +
     sLineBreak +
-    'Guarde este cÛdigo para eventual conferÍncia.' + sLineBreak +
+    'Guarde este c√≥digo para eventual confer√™ncia.' + sLineBreak +
     sLineBreak +
-    'Por seguranÁa e sigilo, este comprovante n„o identifica a opÁ„o escolhida.';
+    'Por seguran√ßa e sigilo, este comprovante n√£o identifica a op√ß√£o escolhida.';
 
   Result := MessageText(
     AMensagemRetorno,
