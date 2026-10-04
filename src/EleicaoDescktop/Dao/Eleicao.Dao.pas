@@ -42,6 +42,14 @@ TEleicaoDao = Class
     class function ExisteMembros(const AConn: TUniConnection; const AIdEmpresa: Int64; const AIDEleicaoChapaMembros: Integer): Boolean; static;
     class function RetornoIDChapaAPI(const AConn: TUniConnection; const AEmpresaId:Integer; const AIDChapaRetaguarda: Integer):integer; static;
 
+    //Comissao
+    class function BuscarUsuarioComissao(const AConn: TUniConnection; const AEmpresaId: Integer; const ALogin: string): Integer; static;
+    class function InserirUsuarioComissao(const AConn: TUniConnection; const AEmpresaId: Integer; const ADoc: TEleicaoComissaoModel): Integer; static;
+    class procedure AtualizarUsuarioComissao(const AConn: TUniConnection; const AEmpresaId, AUsuarioId: Integer; const ADoc: TEleicaoComissaoModel); static;
+    class function ExisteComissao(const AConn: TUniConnection; const AEmpresaId, AIdEleicaoInt, AIdComissaoInt: Integer): Boolean; static;
+    class function InserirComissao(const AConn: TUniConnection; const AEmpresaId: Integer; const ADoc: TEleicaoComissaoModel): Integer; static;
+    class function AtualizarComissao(const AConn: TUniConnection; const AEmpresaId: Integer; const ADoc: TEleicaoComissaoModel): Boolean; static;
+
     //Questao
     class function InserirQuestao(const AConn: TUniConnection; const AEmpresaId:Integer; Const ADoc: TEleicaoQuestaoModel): Int64; static;
     class function AtualizarQuestao(const AConn: TUniConnection; const AEmpresaId:Integer; Const ADoc: TEleicaoQuestaoModel):Boolean; static;
@@ -635,6 +643,174 @@ begin
 
     if not Qry.IsEmpty then
       Result := Qry.FieldByName('id').AsInteger;
+  finally
+    Qry.Free;
+  end;
+end;
+
+{$ENDREGION}
+
+
+{$REGION 'Comissao'}
+
+class function TEleicaoDao.BuscarUsuarioComissao(const AConn: TUniConnection;
+  const AEmpresaId: Integer; const ALogin: string): Integer;
+var
+  Qry: TUniQuery;
+begin
+  Result := 0;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT id FROM usuario '+
+      'WHERE empresa_id=:empresa_id AND LOWER(TRIM(login))=LOWER(TRIM(:login)) LIMIT 1';
+    Qry.ParamByName('empresa_id').AsInteger := AEmpresaId;
+    Qry.ParamByName('login').AsString := Trim(ALogin);
+    Qry.Open;
+    if not Qry.IsEmpty then
+      Result := Qry.FieldByName('id').AsInteger;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TEleicaoDao.InserirUsuarioComissao(const AConn: TUniConnection;
+  const AEmpresaId: Integer; const ADoc: TEleicaoComissaoModel): Integer;
+var
+  Qry: TUniQuery;
+begin
+  Result := 0;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'INSERT INTO usuario(empresa_id,pessoa_id,nome,login,senha_hash,ativo,email,perfil) '+
+      'VALUES(:empresa_id,NULL,:nome,:login,:senha_hash,:ativo,:email,''COMISSAO'')';
+    Qry.ParamByName('empresa_id').AsInteger := AEmpresaId;
+    Qry.ParamByName('nome').AsString := ADoc.Nome;
+    Qry.ParamByName('login').AsString := ADoc.CPF;
+    Qry.ParamByName('senha_hash').AsString := ADoc.SenhaHash;
+    Qry.ParamByName('ativo').AsString := ADoc.Ativo;
+    Qry.ParamByName('email').AsString := ADoc.Email;
+    Qry.Execute;
+    Qry.Close;
+    Qry.SQL.Text := 'SELECT LAST_INSERT_ID() AS ID';
+    Qry.Open;
+    Result := Qry.FieldByName('ID').AsInteger;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class procedure TEleicaoDao.AtualizarUsuarioComissao(const AConn: TUniConnection;
+  const AEmpresaId, AUsuarioId: Integer; const ADoc: TEleicaoComissaoModel);
+var
+  Qry: TUniQuery;
+begin
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'UPDATE usuario SET nome=:nome,senha_hash=:senha_hash,ativo=:ativo,email=:email,'+
+      'perfil=CASE WHEN perfil=''ADMIN'' THEN ''ADMIN'' ELSE ''COMISSAO'' END '+
+      'WHERE id=:id AND empresa_id=:empresa_id';
+    Qry.ParamByName('nome').AsString := ADoc.Nome;
+    Qry.ParamByName('senha_hash').AsString := ADoc.SenhaHash;
+    Qry.ParamByName('ativo').AsString := ADoc.Ativo;
+    Qry.ParamByName('email').AsString := ADoc.Email;
+    Qry.ParamByName('id').AsInteger := AUsuarioId;
+    Qry.ParamByName('empresa_id').AsInteger := AEmpresaId;
+    Qry.Execute;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TEleicaoDao.ExisteComissao(const AConn: TUniConnection;
+  const AEmpresaId, AIdEleicaoInt, AIdComissaoInt: Integer): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Result := False;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'SELECT 1 FROM eleicao_comissao '+
+      'WHERE empresa_id=:empresa_id AND id_eleicao_int=:id_eleicao_int '+
+      'AND id_comissao_int=:id_comissao_int LIMIT 1';
+    Qry.ParamByName('empresa_id').AsInteger := AEmpresaId;
+    Qry.ParamByName('id_eleicao_int').AsInteger := AIdEleicaoInt;
+    Qry.ParamByName('id_comissao_int').AsInteger := AIdComissaoInt;
+    Qry.Open;
+    Result := not Qry.IsEmpty;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TEleicaoDao.InserirComissao(const AConn: TUniConnection;
+  const AEmpresaId: Integer; const ADoc: TEleicaoComissaoModel): Integer;
+var
+  Qry: TUniQuery;
+begin
+  Result := 0;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'INSERT INTO eleicao_comissao('+
+      'empresa_id,eleicao_id,id_eleicao_int,id_comissao_int,usuario_id,nome,cpf,telefone,email,cargo,ativo) '+
+      'VALUES(:empresa_id,:eleicao_id,:id_eleicao_int,:id_comissao_int,:usuario_id,:nome,:cpf,:telefone,:email,:cargo,:ativo)';
+    Qry.ParamByName('empresa_id').AsInteger := AEmpresaId;
+    Qry.ParamByName('eleicao_id').AsInteger := ADoc.EleicaoId;
+    Qry.ParamByName('id_eleicao_int').AsInteger := ADoc.IdEleicaoInt;
+    Qry.ParamByName('id_comissao_int').AsInteger := ADoc.IdComissaoInt;
+    Qry.ParamByName('usuario_id').AsInteger := ADoc.UsuarioId;
+    Qry.ParamByName('nome').AsString := ADoc.Nome;
+    Qry.ParamByName('cpf').AsString := ADoc.CPF;
+    Qry.ParamByName('telefone').AsString := ADoc.Telefone;
+    Qry.ParamByName('email').AsString := ADoc.Email;
+    Qry.ParamByName('cargo').AsString := ADoc.Cargo;
+    Qry.ParamByName('ativo').AsString := ADoc.Ativo;
+    Qry.Execute;
+    Qry.Close;
+    Qry.SQL.Text := 'SELECT LAST_INSERT_ID() AS ID';
+    Qry.Open;
+    Result := Qry.FieldByName('ID').AsInteger;
+  finally
+    Qry.Free;
+  end;
+end;
+
+class function TEleicaoDao.AtualizarComissao(const AConn: TUniConnection;
+  const AEmpresaId: Integer; const ADoc: TEleicaoComissaoModel): Boolean;
+var
+  Qry: TUniQuery;
+begin
+  Result := False;
+  Qry := TUniQuery.Create(nil);
+  try
+    Qry.Connection := AConn;
+    Qry.SQL.Text :=
+      'UPDATE eleicao_comissao SET eleicao_id=:eleicao_id,usuario_id=:usuario_id,'+
+      'nome=:nome,cpf=:cpf,telefone=:telefone,email=:email,cargo=:cargo,ativo=:ativo '+
+      'WHERE empresa_id=:empresa_id AND id_eleicao_int=:id_eleicao_int '+
+      'AND id_comissao_int=:id_comissao_int';
+    Qry.ParamByName('eleicao_id').AsInteger := ADoc.EleicaoId;
+    Qry.ParamByName('usuario_id').AsInteger := ADoc.UsuarioId;
+    Qry.ParamByName('nome').AsString := ADoc.Nome;
+    Qry.ParamByName('cpf').AsString := ADoc.CPF;
+    Qry.ParamByName('telefone').AsString := ADoc.Telefone;
+    Qry.ParamByName('email').AsString := ADoc.Email;
+    Qry.ParamByName('cargo').AsString := ADoc.Cargo;
+    Qry.ParamByName('ativo').AsString := ADoc.Ativo;
+    Qry.ParamByName('empresa_id').AsInteger := AEmpresaId;
+    Qry.ParamByName('id_eleicao_int').AsInteger := ADoc.IdEleicaoInt;
+    Qry.ParamByName('id_comissao_int').AsInteger := ADoc.IdComissaoInt;
+    Qry.Execute;
+    Result := Qry.RowsAffected > 0;
   finally
     Qry.Free;
   end;
