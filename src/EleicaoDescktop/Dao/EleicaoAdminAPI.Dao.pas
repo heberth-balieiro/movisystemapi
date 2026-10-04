@@ -192,11 +192,18 @@ begin
       'INNER JOIN eleicao e ON ' +
       '  e.id = ec.eleicao_id ' +
       '  AND e.empresa_id = ec.empresa_id ' +
+      'LEFT JOIN eleicao_comissao cm ON ' +
+      '  cm.usuario_id = u.id ' +
+      '  AND cm.empresa_id = u.empresa_id ' +
+      '  AND cm.eleicao_id = e.id ' +
+      '  AND cm.ativo = ''S'' ' +
       'WHERE LOWER(TRIM(ec.slug)) = LOWER(TRIM(:slug)) ' +
       '  AND LOWER(TRIM(u.email)) = LOWER(TRIM(:email)) ' +
       '  AND u.ativo = ''S'' ' +
       '  AND e.ativo = ''S'' ' +
       '  AND ec.pagina_publicar = ''S'' ' +
+      '  AND (u.perfil = ''ADMIN'' OR (u.perfil = ''COMISSAO'' AND cm.id IS NOT NULL)) ' +
+      'ORDER BY CASE WHEN u.perfil = ''ADMIN'' THEN 0 ELSE 1 END ' +
       'LIMIT 1';
 
     Qry.ParamByName('slug').AsString  := Trim(ASlug);
