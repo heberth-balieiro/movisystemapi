@@ -20,6 +20,7 @@ type
     class procedure Migration_003_CreateUsuario(const AConn: TUniConnection); static;
     class procedure Migration_004_AlterEmpresa(const AConn: TUniConnection); static;
     class procedure Migration_005_AlterUsuario(const AConn: TUniConnection); static;
+    class procedure Migration_006_AlterUsuarioIdExterno(const AConn: TUniConnection); static;
 
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
@@ -118,6 +119,7 @@ begin
       Migration_003_CreateUsuario(Conn);
       Migration_004_AlterEmpresa(Conn);
       Migration_005_AlterUsuario(Conn);
+      Migration_006_AlterUsuarioIdExterno(Conn);
 
       Conn.Commit;
     except
@@ -292,6 +294,22 @@ begin
 
   ExecSQL(AConn,'ALTER TABLE usuario    '+
                 'ADD COLUMN id_eleitor_int INT NULL');
+
+  RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+class procedure TEasyOneMigration.Migration_006_AlterUsuarioIdExterno(const AConn: TUniConnection);
+const
+  VERSION = '006';
+  DESCRIPTION = 'Adicionar identificador externo do usuario EasyOne';
+begin
+  if MigrationExists(AConn, VERSION) then
+    Exit;
+
+  ExecSQL(AConn,
+    'ALTER TABLE usuario '+
+    'ADD COLUMN id_usuario_int INT NULL, '+
+    'ADD UNIQUE KEY uk_usuario_empresa_usuario_int (empresa_id, id_usuario_int)');
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
 end;
