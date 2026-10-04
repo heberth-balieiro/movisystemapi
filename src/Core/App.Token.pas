@@ -23,6 +23,7 @@ TAppToken = class
     {$REGION 'Eleicao'}
 
     class function PossuiRole(const ARoles: TArray<string>;const ARole: string): Boolean; static;
+    class function PodeAdministrarEleicao(const ARoles: TArray<string>): Boolean; static;
     class function PertenceEleicao(const AClaims: TJWTClaims; const ASlug: string): Boolean; static;
     {$ENDREGION}
 end;
@@ -92,6 +93,11 @@ begin
   Result := (not Trim(AClaims.EleicaoSlug).IsEmpty) and
             (not Trim(ASlug).IsEmpty) and
             SameText(Trim(AClaims.EleicaoSlug), Trim(ASlug));
+end;
+
+class function TAppToken.PodeAdministrarEleicao(const ARoles: TArray<string>): Boolean;
+begin
+  Result := PossuiRole(ARoles,'ADMIN') or PossuiRole(ARoles,'COMISSAO');
 end;
 
 class function TAppToken.PossuiRole(const ARoles: TArray<string>;const ARole: string): Boolean;
