@@ -64,7 +64,7 @@ implementation
 
 { TEleicaoAPIPublicDao }
 
-// recupera código/status/tentativas
+// recupera cÃ³digo/status/tentativas
 class function TEleicaoAPIPublicDao.BuscarConfirmacao(const AConn: TUniConnection; const AIdEleicao, AIdUsuario: Integer;
   out AConfirmacao: TEleicaoConfirmacao): Boolean;
 var
@@ -133,7 +133,7 @@ begin
 
 end;
 
-// identifica eleição + usuário + WhatsApp
+// identifica eleiÃ§Ã£o + usuÃ¡rio + WhatsApp
 class function TEleicaoAPIPublicDao.BuscarContextoConfirmacao(
   const AConn: TUniConnection; const ASlug: string; const AIdEmpresa,
   AIdUsuario: Integer; out AContexto: TEleicaoConfirmacaoContexto): Boolean;
@@ -277,8 +277,8 @@ begin
     ConfiguracaoJson.AddPair('data_hora_fim',         FormatDateTime('dd/mm/yyyy hh:nn',Qry.FieldByName('data_hora_fim').AsDateTime));
 
     //Validar abertura
-    TEleicaoAdminAPIDao.AbrirAutomaticamente(AConn, AIdEleicao, Qry.FieldByName('empresa_id').AsInteger);
-    TEleicaoAdminAPIDao.EncerrarAutomaticamente(AConn, AIdEleicao, Qry.FieldByName('empresa_id').AsInteger);
+    TEleicaoAdminAPIDao.AbrirAutomaticamente(AConn, Qry.FieldByName('empresa_id').AsInteger, AIdEleicao);
+    TEleicaoAdminAPIDao.EncerrarAutomaticamente(AConn, Qry.FieldByName('empresa_id').AsInteger, AIdEleicao);
 
     //Carregar Eleicao
     QryEleicao.SQL.Text                               := StrSqlB;
@@ -319,7 +319,7 @@ begin
 
 end;
 
-//código validado
+//cÃ³digo validado
 class procedure TEleicaoAPIPublicDao.ConfirmarCodigo(
                       const AConn: TUniConnection; const AIdConfirmacao: Int64);
 var
@@ -342,7 +342,7 @@ begin
   end;
 end;
 
-//código informado incorretamente
+//cÃ³digo informado incorretamente
 class procedure TEleicaoAPIPublicDao.IncrementarTentativa(
             const AConn: TUniConnection; const AIdConfirmacao: Int64);
 var
@@ -390,7 +390,7 @@ begin
   end;
 end;
 
-//grava hash do novo código
+//grava hash do novo cÃ³digo
 class procedure TEleicaoAPIPublicDao.SalvarCodigoConfirmacao(
   const AConn: TUniConnection; const AIdEmpresa, AIdEleicao,
   AIdUsuario: Integer; const ACodigoHash: string);
@@ -514,7 +514,7 @@ begin
     QryMembro.Connection  := AConn;
 
     //
-    // 1. Identifica a eleição pelo slug
+    // 1. Identifica a eleiÃ§Ã£o pelo slug
     //
     QryEleicao.SQL.Text := SQL_ELEICAO;
     QryEleicao.ParamByName('slug').AsString := Trim(ASlug);
@@ -528,7 +528,7 @@ begin
       QryEleicao.FieldByName('id').AsInteger;
 
     //
-    // 2. Dados básicos da eleição
+    // 2. Dados bÃ¡sicos da eleiÃ§Ã£o
     //
     EleicaoJson := TJSONObject.Create;
 
