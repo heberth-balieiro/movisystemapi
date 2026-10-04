@@ -41,7 +41,8 @@ implementation
 uses
   System.SysUtils,
   App.Errors,
-  EleicaoHorarioAPI.Dao;
+  EleicaoHorarioAPI.Dao,
+  EleicaoAdminAPI.Dao;
 
 class procedure TEleicaoHorarioAPIService.ValidarPeriodoVotacao(
   const AConn: TUniConnection;
@@ -60,6 +61,45 @@ begin
   if not TEleicaoHorarioAPIDao.BuscarHorario(AConn, Trim(ASlug), AIdEmpresa, Horario) then
     TAppErrors.RaiseNotFound('Eleição não encontrada.');
 
+  // Garante as transições automáticas também quando o usuário acessa
+  // diretamente login/confirmação/votação, sem depender da página inicial.
+  if SameText(Trim(Horario.Situacao), 'AGENDADA') and
+     Horario.TemInicio and Horario.TemFim and
+     (Horario.DataHoraAtual >= Horario.DataHoraInicio) and
+     (Horario.DataHoraAtual < Horario.DataHoraFim) then
+  begin
+    TEleicaoAdminAPIDao.AbrirAutomaticamente(
+      AConn,
+      AIdEmpresa,
+      Horario.IdEleicao
+    );
+
+    TEleicaoHorarioAPIDao.BuscarHorario(
+      AConn,
+      Trim(ASlug),
+      AIdEmpresa,
+      Horario
+    );
+  end;
+
+  if SameText(Trim(Horario.Situacao), 'ABERTA') and
+     Horario.TemFim and
+     (Horario.DataHoraAtual >= Horario.DataHoraFim) then
+  begin
+    TEleicaoAdminAPIDao.EncerrarAutomaticamente(
+      AConn,
+      AIdEmpresa,
+      Horario.IdEleicao
+    );
+
+    TEleicaoHorarioAPIDao.BuscarHorario(
+      AConn,
+      Trim(ASlug),
+      AIdEmpresa,
+      Horario
+    );
+  end;
+
   if not Horario.TemInicio then
     TAppErrors.RaiseBadRequest('Data e hora de início da votação não configuradas.');
 
@@ -72,7 +112,7 @@ begin
   if Horario.DataHoraAtual < Horario.DataHoraInicio then
     TAppErrors.RaiseBadRequest('A votação ainda não foi iniciada.');
 
-  if Horario.DataHoraAtual > Horario.DataHoraFim then
+  if Horario.DataHoraAtual >= Horario.DataHoraFim then
     TAppErrors.RaiseBadRequest('O período de votação foi encerrado.');
 
   if not SameText(Trim(Horario.Situacao), 'ABERTA') then
