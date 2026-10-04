@@ -420,7 +420,7 @@ begin
   if ADoc = nil then
     TAppErrors.RaiseBadRequest('Dados da questão não informados.');
 
-  if ADoc.eleicao_id <= 0 then
+  if ADoc.id_eleicao_int <= 0 then
     TAppErrors.RaiseBadRequest('ID da eleição não informado.');
 
   if ADoc.id_questao_int <= 0 then
@@ -465,7 +465,10 @@ begin
       ADoc.eleicao_id := IdEleicao;
 
       if TEleicaoDao.ExisteQuestao(Conn, AEmpresaId, ADoc.id_questao_int) then
-        Result := TEleicaoDao.AtualizarQuestao(Conn, AEmpresaId,ADoc)
+      begin
+        TEleicaoDao.AtualizarQuestao(Conn, AEmpresaId,ADoc);
+        Result := True;
+      end
       else
       begin
         AId := TEleicaoDao.InserirQuestao(Conn, AEmpresaId, ADoc);
@@ -536,7 +539,10 @@ begin
 
       if TEleicaoDao.ExisteQuestaoOpcao(
         Conn, AEmpresaId, ADoc.id_eleicao_int, ADoc.id_questao_int, ADoc.id_opcao_int) then
-        Result := TEleicaoDao.AtualizarQuestaoOpcao(Conn, AEmpresaId, ADoc)
+      begin
+        TEleicaoDao.AtualizarQuestaoOpcao(Conn, AEmpresaId, ADoc);
+        Result := True;
+      end
       else
       begin
         AId := TEleicaoDao.InserirQuestaoOpcao(Conn, AEmpresaId, ADoc);
