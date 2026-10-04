@@ -23,7 +23,8 @@ uses
 
 procedure PreencherUsuariosFromJson(const AJson: TJSONObject; const ADoc: TUsuariosModel);
 begin
-  ADoc.id_socio   := TAppClasses.GetJsonInt(AJson,'id_socio',0);
+  ADoc.id_usuario_int := TAppClasses.GetJsonInt(AJson,'id_usuario',0);
+  ADoc.id_socio       := TAppClasses.GetJsonInt(AJson,'id_socio',0);
   ADoc.nome       := TAppClasses.GetJsonString(AJson,'nome');
   ADoc.login      := TAppClasses.GetJsonString(AJson,'login');
   ADoc.senha_hash := TAppClasses.GetJsonString(AJson,'senha_hash');
@@ -65,7 +66,7 @@ begin
 
         Body := Req.Body<TJSONObject>;
         if Body = nil then
-          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
+          TAppErrors.RaiseBadRequest('JSON invÃ¡lido ou nÃ£o informado.');
 
         Usuario := TUsuariosModel.Create;
         try
@@ -77,7 +78,7 @@ begin
           if Resultado.IdUsuarios > 0 then
             Retorno.AddPair('id',TJSONNumber.Create(Resultado.IdUsuarios));
 
-          TAppResponse.Created(Res,Retorno,'[API] Usuário/Associado sincronizado com sucesso.');
+          TAppResponse.Created(Res,Retorno,'[API] UsuÃ¡rio/Associado sincronizado com sucesso.');
         finally
           Usuario.Free;
         end;
@@ -110,7 +111,7 @@ begin
 
         Body := Req.Body<TJSONObject>;
         if Body = nil then
-          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
+          TAppErrors.RaiseBadRequest('JSON invÃ¡lido ou nÃ£o informado.');
 
         Usuario := TUsuariosModel.Create;
         try
@@ -121,7 +122,7 @@ begin
           if Resultado.IdUsuarios > 0 then
             Retorno.AddPair('id',TJSONNumber.Create(Resultado.IdUsuarios));
 
-          TAppResponse.Created(Res,Retorno, '[API] Usuário sincronizado com sucesso.');
+          TAppResponse.Created(Res,Retorno, '[API] UsuÃ¡rio sincronizado com sucesso.');
         finally
           Usuario.Free;
         end;
