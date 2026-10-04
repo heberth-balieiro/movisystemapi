@@ -15,6 +15,7 @@ type
     class procedure RegistryMembros;
     class procedure RegistryComissao;
     class procedure RegistryQuestao;
+    class procedure RegistryQuestaoOpcao;
   end;
 
 implementation
@@ -422,16 +423,14 @@ end;
 
 procedure PreencherEleicaoQuestaoFromJson(const AJson: TJSONObject; const ADoc: TEleicaoQuestaoModel);
 begin
-  ADoc.id_questao_int       :=TAppClasses.GetJsonInt(AJson, 'xxxxxx',0);
-  Adoc.eleicao_id           :=TAppClasses.GetJsonInt(AJson, 'xxxxxx',0);
-  Adoc.id_eleicao_int       :=TAppClasses.GetJsonInt(AJson, 'xxxxxx',0);
-  Adoc.empresa_id           :=TAppClasses.GetJsonInt(AJson, 'xxxxxx',0);
-  Adoc.titulo               :=TAppClasses.GetJsonString(AJson, 'xxxxx');
-  Adoc.descricao            :=TAppClasses.GetJsonString(AJson, 'xxxxx');
-  Adoc.ordem                :=TAppClasses.GetJsonInt(AJson, 'xxxxxx',0);
-  Adoc.tipo_resposta        :=TAppClasses.GetJsonString(AJson, 'xxxxx');
-  Adoc.obrigatoria          :=TAppClasses.GetJsonString(AJson, 'xxxxx');
-  Adoc.ativo                :=TAppClasses.GetJsonString(AJson, 'xxxxx','N');
+  ADoc.id_questao_int := TAppClasses.GetJsonInt(AJson, 'id_questao_int',0);
+  ADoc.id_eleicao_int := TAppClasses.GetJsonInt(AJson, 'id_eleicao_int',0);
+  ADoc.titulo         := TAppClasses.GetJsonString(AJson, 'titulo');
+  ADoc.descricao      := TAppClasses.GetJsonString(AJson, 'descricao');
+  ADoc.ordem          := TAppClasses.GetJsonInt(AJson, 'ordem',0);
+  ADoc.tipo_resposta  := TAppClasses.GetJsonString(AJson, 'tipo_resposta');
+  ADoc.obrigatoria    := TAppClasses.GetJsonString(AJson, 'obrigatoria','S');
+  ADoc.ativo          := TAppClasses.GetJsonString(AJson, 'ativo','S');
 end;
 
 class procedure TEleicaoController.RegistryQuestao;
@@ -480,6 +479,57 @@ begin
   {$ENDREGION}
 
 
+end;
+
+
+procedure PreencherEleicaoQuestaoOpcaoFromJson(const AJson: TJSONObject;
+  const ADoc: TEleicaoQuestaoOpcaoModel);
+begin
+  ADoc.id_opcao_int   := TAppClasses.GetJsonInt(AJson, 'id_opcao_int',0);
+  ADoc.id_questao_int := TAppClasses.GetJsonInt(AJson, 'id_questao_int',0);
+  ADoc.id_eleicao_int := TAppClasses.GetJsonInt(AJson, 'id_eleicao_int',0);
+  ADoc.ordem          := TAppClasses.GetJsonInt(AJson, 'ordem',0);
+  ADoc.descricao      := TAppClasses.GetJsonString(AJson, 'descricao');
+  ADoc.ativo          := TAppClasses.GetJsonString(AJson, 'ativo','S');
+end;
+
+class procedure TEleicaoController.RegistryQuestaoOpcao;
+begin
+  THorse.Post('/v1/integracao/eleicao/questao/opcao',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Body: TJSONObject;
+      ADoc: TEleicaoQuestaoOpcaoModel;
+      Retorno: TJSONObject;
+      Contexto: TEasyOneIntegracaoContexto;
+      UUID, APIKey: string;
+    begin
+      try
+        UUID := Trim(Req.Headers['X-EasyOne-Empresa']);
+        APIKey := Trim(Req.Headers['X-EasyOne-Key']);
+        Contexto := TEasyOneIntegracaoService.Autenticar(UUID,APIKey);
+
+        Body := Req.Body<TJSONObject>;
+        if Body = nil then
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
+
+        ADoc := TEleicaoQuestaoOpcaoModel.Create;
+        try
+          PreencherEleicaoQuestaoOpcaoFromJson(Body, ADoc);
+
+          if not TEleicaoService.InserirEleicaoQuestaoOpcao(Contexto.IdEmpresaAPI, ADoc) then
+            TAppErrors.RaiseBadRequest('Não foi possível sincronizar a opção da questão.');
+
+          Retorno := TJSONObject.Create;
+          TAppResponse.Created(Res, Retorno, '[API] Opção da questão sincronizada com sucesso.');
+        finally
+          ADoc.Free;
+        end;
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res,E);
+      end;
+    end);
 end;
 
 {$ENDREGION}
