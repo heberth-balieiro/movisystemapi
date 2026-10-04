@@ -34,6 +34,9 @@ TEleicaoService = Class
     //Membros
     class procedure ValidarCadastroMembros(const ADoc: TEleicaoChapaMembrosModel); static;
 
+    //Comissao
+    class procedure ValidarCadastroComissao(const ADoc: TEleicaoComissaoModel); static;
+
     //Questao
     class procedure ValidarCadastroQuestao(const ADoc: TEleicaoQuestaoModel); static;
 
@@ -51,6 +54,9 @@ TEleicaoService = Class
 
     //Membros
     class function InserirEleicaoChapaMembros(const AEmpresaId:Integer; const ADoc: TEleicaoChapaMembrosModel): Boolean; static;
+
+    //Comissao
+    class function InserirEleicaoComissao(const AEmpresaId:Integer; const ADoc: TEleicaoComissaoModel): Boolean; static;
 
     //Questao
     class function InserirEleicaoQuestao(const AEmpresaId:Integer; const ADoc: TEleicaoQuestaoModel): Boolean; static;
@@ -73,7 +79,7 @@ var
   Json: TJSONObject;
 begin
   if AIdEmpresa <= 0 then
-    TAppErrors.RaiseUnauthorized('Empresa não informada.');
+    TAppErrors.RaiseUnauthorized('Empresa nÃ£o informada.');
 
   Result := TJSONArray.Create;
   Conn := nil;
@@ -158,16 +164,16 @@ end;
 class procedure TEleicaoService.ValidarCadastroEleicao(const ADoc: TEleicaoModel);
 begin
   if ADoc = nil then
-    TAppErrors.RaiseBadRequest('Dados da eleição não informado.');
+    TAppErrors.RaiseBadRequest('Dados da eleiÃ§Ã£o nÃ£o informado.');
 
   if ADoc.nome.IsEmpty then
-    TAppErrors.RaiseBadRequest('Nome da eleição não informado.');
+    TAppErrors.RaiseBadRequest('Nome da eleiÃ§Ã£o nÃ£o informado.');
 
   if ADoc.id_eleicao_int <=0 then
-    TAppErrors.RaiseBadRequest('ID eleição não informado.');
+    TAppErrors.RaiseBadRequest('ID eleiÃ§Ã£o nÃ£o informado.');
 
   if ADoc.ativo.IsEmpty then
-    TAppErrors.RaiseBadRequest('Campo ativo não informado.');
+    TAppErrors.RaiseBadRequest('Campo ativo nÃ£o informado.');
 
   Adoc.ativo          := TAppClasses.NormalizarSN(Adoc.ativo,'N');
 
@@ -181,30 +187,30 @@ end;
 class procedure TEleicaoService.ValidarCadastroEleicaoConfig(const ADoc: TEleicaoConfigModel);
 begin
   if ADoc = nil then
-    TAppErrors.RaiseBadRequest('Dados da configuração da eleição não informados.');
+    TAppErrors.RaiseBadRequest('Dados da configuraÃ§Ã£o da eleiÃ§Ã£o nÃ£o informados.');
 
   if ADoc.EleicaoId <= 0 then
-    TAppErrors.RaiseBadRequest('ID da eleição não informado.');
+    TAppErrors.RaiseBadRequest('ID da eleiÃ§Ã£o nÃ£o informado.');
 
   if ADoc.IdConfig <= 0 then
-    TAppErrors.RaiseBadRequest('ID da configuração não informado.');
+    TAppErrors.RaiseBadRequest('ID da configuraÃ§Ã£o nÃ£o informado.');
 
   if Trim(ADoc.Slug).IsEmpty then
-    TAppErrors.RaiseBadRequest('Slug da eleição não informado.');
+    TAppErrors.RaiseBadRequest('Slug da eleiÃ§Ã£o nÃ£o informado.');
 
   if Trim(ADoc.PaginaPublicar).IsEmpty then
-    TAppErrors.RaiseBadRequest('Campo publicação não informado.');
+    TAppErrors.RaiseBadRequest('Campo publicaÃ§Ã£o nÃ£o informado.');
 
   ADoc.PaginaPublicar := TAppClasses.NormalizarSN(ADoc.PaginaPublicar,'N');
 
   if ADoc.DataHoraInicio <= 0 then
-    TAppErrors.RaiseBadRequest('Data/hora de início da eleição não informada.');
+    TAppErrors.RaiseBadRequest('Data/hora de inÃ­cio da eleiÃ§Ã£o nÃ£o informada.');
 
   if ADoc.DataHoraFim <= 0 then
-    TAppErrors.RaiseBadRequest('Data/hora de término da eleição não informada.');
+    TAppErrors.RaiseBadRequest('Data/hora de tÃ©rmino da eleiÃ§Ã£o nÃ£o informada.');
 
   if ADoc.DataHoraFim <= ADoc.DataHoraInicio then
-    TAppErrors.RaiseBadRequest('Data/hora de término deve ser maior que a data/hora de início.');
+    TAppErrors.RaiseBadRequest('Data/hora de tÃ©rmino deve ser maior que a data/hora de inÃ­cio.');
 end;
 
 class function TEleicaoService.InserirEleicaoConfig(const AEmpresaId: Integer; const ADoc: TEleicaoConfigModel): Boolean;
@@ -217,7 +223,7 @@ begin
   Result := False;
 
   if AEmpresaId <= 0 then
-    TAppErrors.RaiseBadRequest('Empresa não informada.');
+    TAppErrors.RaiseBadRequest('Empresa nÃ£o informada.');
 
   ValidarCadastroEleicaoConfig(ADoc);
 
@@ -227,11 +233,11 @@ begin
   try
     Conn.StartTransaction;
     try
-      // ADoc.EleicaoId chega como ID da eleição no retaguarda.
+      // ADoc.EleicaoId chega como ID da eleiÃ§Ã£o no retaguarda.
       IdEleicao := TEleicaoDao.RetornoIDeleicaoAPI(Conn,AEmpresaId,ADoc.EleicaoId);
 
       if IdEleicao <= 0 then
-        TAppErrors.RaiseBadRequest('Eleição não encontrada para a empresa informada.');
+        TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o encontrada para a empresa informada.');
 
       // A partir daqui trabalha somente com o ID interno da API.
       ADoc.EleicaoId := IdEleicao;
@@ -261,19 +267,19 @@ end;
 class procedure TEleicaoService.ValidarCadastroChapa(const ADoc: TEleicaoChapaModel);
 begin
   if ADoc = nil then
-    TAppErrors.RaiseBadRequest('Dados da chapa não informados.');
+    TAppErrors.RaiseBadRequest('Dados da chapa nÃ£o informados.');
 
   if ADoc.EleicaoId <= 0 then
-    TAppErrors.RaiseBadRequest('ID da eleição não informado.');
+    TAppErrors.RaiseBadRequest('ID da eleiÃ§Ã£o nÃ£o informado.');
 
   if ADoc.id_chapa_int <= 0 then
-    TAppErrors.RaiseBadRequest('ID da chapa não informado.');
+    TAppErrors.RaiseBadRequest('ID da chapa nÃ£o informado.');
 
   if Trim(ADoc.NomeChapa).IsEmpty then
-    TAppErrors.RaiseBadRequest('Nome da chapa não informado.');
+    TAppErrors.RaiseBadRequest('Nome da chapa nÃ£o informado.');
 
   if Trim(ADoc.Ativo).IsEmpty then
-    TAppErrors.RaiseBadRequest('Campo ativo não informado.');
+    TAppErrors.RaiseBadRequest('Campo ativo nÃ£o informado.');
 
   ADoc.Ativo := TAppClasses.NormalizarSN(ADoc.Ativo,'N');
 end;
@@ -288,7 +294,7 @@ begin
   Result := False;
 
   if AEmpresaId <= 0 then
-    TAppErrors.RaiseBadRequest('Empresa não informada.');
+    TAppErrors.RaiseBadRequest('Empresa nÃ£o informada.');
 
   ValidarCadastroChapa(ADoc);
 
@@ -298,11 +304,11 @@ begin
   try
     Conn.StartTransaction;
     try
-      // EleicaoId chega como ID da eleição no retaguarda.
+      // EleicaoId chega como ID da eleiÃ§Ã£o no retaguarda.
       IdEleicao := TEleicaoDao.RetornoIDeleicaoAPI(Conn,AEmpresaId,ADoc.EleicaoId);
 
       if IdEleicao <= 0 then
-        TAppErrors.RaiseBadRequest('Eleição não encontrada para a empresa informada.');
+        TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o encontrada para a empresa informada.');
 
       // A partir daqui utiliza o ID interno da API.
       ADoc.EleicaoId := IdEleicao;
@@ -331,25 +337,25 @@ end;
 
 class procedure TEleicaoService.ValidarCadastroMembros(const ADoc: TEleicaoChapaMembrosModel);
 begin
-  if ADoc = nil then TAppErrors.RaiseBadRequest('Dados do membro não informados.');
+  if ADoc = nil then TAppErrors.RaiseBadRequest('Dados do membro nÃ£o informados.');
 
   if ADoc.EleicaoId <= 0 then
-    TAppErrors.RaiseBadRequest('[API] ID da eleição não informado.');
+    TAppErrors.RaiseBadRequest('[API] ID da eleiÃ§Ã£o nÃ£o informado.');
 
   if ADoc.EleicaoChapaId <= 0 then
-    TAppErrors.RaiseBadRequest('[API] ID da chapa não informado.');
+    TAppErrors.RaiseBadRequest('[API] ID da chapa nÃ£o informado.');
 
   if ADoc.id_membro_int <= 0 then
-    TAppErrors.RaiseBadRequest('[API] ID do membro não informado.');
+    TAppErrors.RaiseBadRequest('[API] ID do membro nÃ£o informado.');
 
   if Trim(ADoc.Nome).IsEmpty then
-    TAppErrors.RaiseBadRequest('[API] Nome do membro não informado.');
+    TAppErrors.RaiseBadRequest('[API] Nome do membro nÃ£o informado.');
 
   if Trim(ADoc.Cpf).IsEmpty then
-    TAppErrors.RaiseBadRequest('[API] CPF não informado.');
+    TAppErrors.RaiseBadRequest('[API] CPF nÃ£o informado.');
 
   if Trim(ADoc.Ativo).IsEmpty then
-    TAppErrors.RaiseBadRequest('[API] Campo ativo não informado.');
+    TAppErrors.RaiseBadRequest('[API] Campo ativo nÃ£o informado.');
 
   ADoc.Ativo := TAppClasses.NormalizarSN(ADoc.Ativo,'N');
 end;
@@ -364,7 +370,7 @@ var
 begin
   Result := False;
 
-  if AEmpresaId <= 0 then TAppErrors.RaiseBadRequest('Empresa não informada.');
+  if AEmpresaId <= 0 then TAppErrors.RaiseBadRequest('Empresa nÃ£o informada.');
 
   ValidarCadastroMembros(ADoc);
 
@@ -374,12 +380,12 @@ begin
   try
     Conn.StartTransaction;
     try
-      // IDs recebidos são os IDs do retaguarda.
+      // IDs recebidos sÃ£o os IDs do retaguarda.
       IdEleicao := TEleicaoDao.RetornoIDeleicaoAPI(Conn,AEmpresaId,ADoc.EleicaoId);
-      if IdEleicao <= 0 then TAppErrors.RaiseBadRequest('Eleição não encontrada para a empresa informada.');
+      if IdEleicao <= 0 then TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o encontrada para a empresa informada.');
 
       IdChapa := TEleicaoDao.RetornoIDChapaAPI(Conn,AEmpresaId,ADoc.EleicaoChapaId);
-      if IdChapa <= 0 then TAppErrors.RaiseBadRequest('Chapa não encontrada para a empresa informada.');
+      if IdChapa <= 0 then TAppErrors.RaiseBadRequest('Chapa nÃ£o encontrada para a empresa informada.');
 
       // Daqui para frente somente IDs internos da API.
       ADoc.EleicaoId := IdEleicao;
@@ -410,19 +416,19 @@ end;
 class procedure TEleicaoService.ValidarCadastroQuestao(const ADoc: TEleicaoQuestaoModel);
 begin
   if ADoc = nil then
-    TAppErrors.RaiseBadRequest('Dados da questão não informados.');
+    TAppErrors.RaiseBadRequest('Dados da questÃ£o nÃ£o informados.');
 
   if ADoc.eleicao_id <= 0 then
-    TAppErrors.RaiseBadRequest('ID da eleição não informado.');
+    TAppErrors.RaiseBadRequest('ID da eleiÃ§Ã£o nÃ£o informado.');
 
   if ADoc.id_questao_int <= 0 then
-    TAppErrors.RaiseBadRequest('ID da questão não informado.');
+    TAppErrors.RaiseBadRequest('ID da questÃ£o nÃ£o informado.');
 
   if Trim(ADoc.titulo).IsEmpty then
-    TAppErrors.RaiseBadRequest('Título da questão não informado.');
+    TAppErrors.RaiseBadRequest('TÃ­tulo da questÃ£o nÃ£o informado.');
 
   if Trim(ADoc.Ativo).IsEmpty then
-    TAppErrors.RaiseBadRequest('Campo ativo não informado.');
+    TAppErrors.RaiseBadRequest('Campo ativo nÃ£o informado.');
 
   ADoc.Ativo := TAppClasses.NormalizarSN(ADoc.Ativo,'N');
 end;
@@ -437,7 +443,7 @@ begin
   Result := False;
 
   if AEmpresaId <= 0 then
-    TAppErrors.RaiseBadRequest('Empresa não informada.');
+    TAppErrors.RaiseBadRequest('Empresa nÃ£o informada.');
 
   ValidarCadastroQuestao(ADoc);
 
@@ -447,11 +453,11 @@ begin
   try
     Conn.StartTransaction;
     try
-      // EleicaoId chega como ID da eleição no retaguarda.
+      // EleicaoId chega como ID da eleiÃ§Ã£o no retaguarda.
       IdEleicao := TEleicaoDao.RetornoIDeleicaoAPI(Conn, AEmpresaId, ADoc.id_eleicao_int);
 
       if IdEleicao <= 0 then
-        TAppErrors.RaiseBadRequest('Eleição não encontrada para a empresa informada.');
+        TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o encontrada para a empresa informada.');
 
       // A partir daqui utiliza o ID interno da API.
       ADoc.eleicao_id := IdEleicao;
