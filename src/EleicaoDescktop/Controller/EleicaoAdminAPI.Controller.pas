@@ -1,17 +1,4 @@
 
-{
-  "email": "heberthbalieiro@hotmail.com",
-  "senha": "123456"
-}
-
-{
-  "erro": false,
-  "mensagem": "Login realizado com sucesso.",
-  "dados": {
-    "token": "eyJ...",
-    "nome": "Administrador"
-  }
-
 unit EleicaoAdminAPI.Controller;
 
 interface
@@ -61,12 +48,12 @@ begin
         Slug    := Trim(Req.Params['slug']);
 
         if Slug.IsEmpty then
-          TAppErrors.RaiseBadRequest('Eleição não informada.');
+          TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o informada.');
 
         Body := Req.Body<TJSONObject>;
 
         if Body = nil then
-          TAppErrors.RaiseBadRequest('Dados de acesso não informados.');
+          TAppErrors.RaiseBadRequest('Dados de acesso nÃ£o informados.');
 
         email       := Trim(TAppClasses.GetJsonString(Body,'email'));
         Senha       := TAppClasses.GetJsonString(Body,'senha');
@@ -116,18 +103,18 @@ begin
         Slug := Trim(Req.Params['slug']);
 
         if Slug.IsEmpty then
-          TAppErrors.RaiseBadRequest('Eleição não informada.');
+          TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o informada.');
 
         if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
-        TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
+        TAppErrors.RaiseUnauthorized('UsuÃ¡rio nÃ£o autorizado.');
         if not TAppToken.PertenceEleicao(Claims, Slug) then
-          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+          TAppErrors.RaiseUnauthorized('Token nÃ£o pertence a esta eleiÃ§Ã£o.');
 
         Resultado   := TEleicaoAdminAPIService.BuscarPainel(Slug, Claims.UserId, Claims.IdEmpresa);
 
         try
           Dados       := TJSONObject.Create;
-          // Eleição
+          // EleiÃ§Ã£o
           EleicaoJson := TJSONObject.Create;
 
           EleicaoJson.AddPair('id',       TJSONNumber.Create(Resultado.IdEleicao));
@@ -147,7 +134,7 @@ begin
           ResumoJson.AddPair('percentual_participacao',TJSONNumber.Create(Resultado.Resumo.PercentualParticipacao));
           Dados.AddPair('resumo',ResumoJson);
 
-          // Evolução
+          // EvoluÃ§Ã£o
           EvolucaoArray := TJSONArray.Create;
 
           for Item in Resultado.Evolucao do
@@ -192,7 +179,7 @@ begin
       Slug := Trim(Req.Params['slug']);
 
       if Slug.IsEmpty then
-        TAppErrors.RaiseBadRequest('Eleição não informada.');
+        TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o informada.');
 
       if not TAppToken.ValidarToken(Req, Res, Claims) then
         Exit;
@@ -200,16 +187,16 @@ begin
 
 
       if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
-        TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
+        TAppErrors.RaiseUnauthorized('UsuÃ¡rio nÃ£o autorizado.');
       if not TAppToken.PertenceEleicao(Claims, Slug) then
-          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+          TAppErrors.RaiseUnauthorized('Token nÃ£o pertence a esta eleiÃ§Ã£o.');
 
       TEleicaoAdminAPIService.EncerrarEleicao(Slug, Claims.UserId, Claims.IdEmpresa,TAppRequestInfo.GetIP(Req),TAppRequestInfo.GetUserAgent(Req));
 
       Dados := TJSONObject.Create;
       Dados.AddPair('situacao', 'ENCERRADA');
 
-      TAppResponse.Ok(Res, Dados, 'Eleição encerrada com sucesso.');
+      TAppResponse.Ok(Res, Dados, 'EleiÃ§Ã£o encerrada com sucesso.');
 
     except
       on E: Exception do
@@ -236,12 +223,12 @@ begin
       Slug := Trim(Req.Params['slug']);
 
       if Slug.IsEmpty then
-        TAppErrors.RaiseBadRequest('Eleição não informada.');
+        TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o informada.');
 
       if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
-        TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
+        TAppErrors.RaiseUnauthorized('UsuÃ¡rio nÃ£o autorizado.');
         if not TAppToken.PertenceEleicao(Claims, Slug) then
-          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+          TAppErrors.RaiseUnauthorized('Token nÃ£o pertence a esta eleiÃ§Ã£o.');
 
 
 
@@ -250,7 +237,7 @@ begin
       Dados := TJSONObject.Create;
       Dados.AddPair('situacao', 'EM_APURACAO');
 
-      TAppResponse.Ok(Res, Dados, 'Apuração iniciada com sucesso.');
+      TAppResponse.Ok(Res, Dados, 'ApuraÃ§Ã£o iniciada com sucesso.');
 
     except
       on E: Exception do
@@ -277,12 +264,12 @@ begin
       Slug := Trim(Req.Params['slug']);
 
       if Slug.IsEmpty then
-        TAppErrors.RaiseBadRequest('Eleição não informada.');
+        TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o informada.');
 
       if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
-        TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
+        TAppErrors.RaiseUnauthorized('UsuÃ¡rio nÃ£o autorizado.');
       if not TAppToken.PertenceEleicao(Claims, Slug) then
-          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+          TAppErrors.RaiseUnauthorized('Token nÃ£o pertence a esta eleiÃ§Ã£o.');
 
 
 
@@ -291,7 +278,7 @@ begin
       Dados := TJSONObject.Create;
       Dados.AddPair('situacao', 'APURADA');
 
-      TAppResponse.Ok(Res, Dados, 'Apuração finalizada com sucesso.');
+      TAppResponse.Ok(Res, Dados, 'ApuraÃ§Ã£o finalizada com sucesso.');
 
     except
       on E: Exception do
@@ -321,12 +308,12 @@ begin
       Slug := Trim(Req.Params['slug']);
 
       if Slug.IsEmpty then
-        TAppErrors.RaiseBadRequest('Eleição não informada.');
+        TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o informada.');
 
       if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
-        TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
+        TAppErrors.RaiseUnauthorized('UsuÃ¡rio nÃ£o autorizado.');
         if not TAppToken.PertenceEleicao(Claims, Slug) then
-          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+          TAppErrors.RaiseUnauthorized('Token nÃ£o pertence a esta eleiÃ§Ã£o.');
 
 
 
@@ -395,12 +382,12 @@ begin
       Slug := Trim(Req.Params['slug']);
 
       if Slug.IsEmpty then
-        TAppErrors.RaiseBadRequest('Eleição não informada.');
+        TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o informada.');
 
       if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
-        TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
+        TAppErrors.RaiseUnauthorized('UsuÃ¡rio nÃ£o autorizado.');
       if not TAppToken.PertenceEleicao(Claims, Slug) then
-          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+          TAppErrors.RaiseUnauthorized('Token nÃ£o pertence a esta eleiÃ§Ã£o.');
 
       TEleicaoAdminAPIService.PublicarResultado(Slug, Claims.UserId, Claims.IdEmpresa,TAppRequestInfo.GetIP(Req),TAppRequestInfo.GetUserAgent(Req));
 
@@ -443,12 +430,12 @@ begin
 
 
       if Slug.IsEmpty then
-        TAppErrors.RaiseBadRequest('Eleição não informada.');
+        TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o informada.');
 
       if not TAppToken.PossuiRole(Claims.Roles, 'ADMIN') then
-        TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
+        TAppErrors.RaiseUnauthorized('UsuÃ¡rio nÃ£o autorizado.');
         if not TAppToken.PertenceEleicao(Claims, Slug) then
-          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+          TAppErrors.RaiseUnauthorized('Token nÃ£o pertence a esta eleiÃ§Ã£o.');
 
       Lista := TEleicaoAuditoriaAPIService.BuscarAuditoria(Slug, Claims.UserId, Claims.IdEmpresa,
                 TipoEvento,
