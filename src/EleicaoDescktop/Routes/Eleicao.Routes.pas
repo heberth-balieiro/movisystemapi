@@ -29,6 +29,7 @@ begin
   TEleicaoController.RegistryConfig;
   TEleicaoController.RegistryChapa;
   TEleicaoController.RegistryMembros;
+  TEleicaoController.RegistryComissao;
   TEleicaoAPIConfirmacaoController.Registry;
   TEleicaoAPIVotacaoController.Registry;
   TEleicaoComprovanteAPIController.Registry;
