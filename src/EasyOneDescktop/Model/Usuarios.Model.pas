@@ -15,6 +15,7 @@ TUsuariosModel  = class
     FNome: String;
     FIdSocio: Integer;
     Fid_eleitor_int: integer;
+    Fid_usuario_int: integer;
 
   public
     property id         : Integer read FId        write FId;
@@ -27,6 +28,7 @@ TUsuariosModel  = class
     property email      : String  read FEmail     write FEmail;
     property id_socio   : Integer read FIdSocio   write FIdSocio;
     property id_eleitor_int: integer read Fid_eleitor_int write Fid_eleitor_int;
+    property id_usuario_int: integer read Fid_usuario_int write Fid_usuario_int;
 end;
 
 implementation
