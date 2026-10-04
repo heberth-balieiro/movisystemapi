@@ -22,8 +22,7 @@ type
 implementation
 
 uses
-  System.NetEncoding,
-  System.Classes;
+  System.NetEncoding;
 
 class function TEleicaoComprovantePDFService.NormalizarASCII(
   const AValor: string): string;
@@ -119,7 +118,7 @@ begin
     '0000000000 65535 f '#13#10;
 
   for I := 1 to 6 do
-    PDF := PDF + Format('%.10d 00000 n ', [Offsets[I]]) + #13#10;
+    PDF := PDF + Format('%10.10d 00000 n ', [Offsets[I]]) + #13#10;
 
   PDF := PDF +
     'trailer'#13#10 +
