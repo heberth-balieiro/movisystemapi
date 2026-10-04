@@ -611,7 +611,7 @@ end;
 
 class procedure TEleicaoMigration.Migration_012_CreateEleicaoQuestao(const AConn: TUniConnection);
 const
-  VERSION = '012_E';
+  VERSION = '015_E';
   DESCRIPTION = 'Criar tabela eleicao_questao';
 begin
   if MigrationExists(AConn, VERSION) then
@@ -646,7 +646,7 @@ end;
 
 class procedure TEleicaoMigration.Migration_013_CreateEleicaoQuestaoOpcao(const AConn: TUniConnection);
 const
-  VERSION = '013_E';
+  VERSION = '016_E';
   DESCRIPTION = 'Criar tabela eleicao_questao_opcao';
 begin
   if MigrationExists(AConn, VERSION) then
@@ -683,7 +683,7 @@ end;
 
 class procedure TEleicaoMigration.Migration_014_CreateEleicaoComissao(const AConn: TUniConnection);
 const
-  VERSION = '014_E';
+  VERSION = '017_E';
   DESCRIPTION = 'Criar tabela eleicao_comissao';
 begin
   if MigrationExists(AConn, VERSION) then
