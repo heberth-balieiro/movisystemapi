@@ -177,12 +177,14 @@ begin
     if not VerifySenha(ASenha, Usuario.SenhaHash) then
       TAppErrors.RaiseUnauthorized('Email ou senha inválidos.');
 
-    // Somente ADMIN pode acessar este painel
-    if not SameText(Trim(Usuario.Perfil),'ADMIN') then
+    // ADMIN acessa as eleições da empresa; COMISSAO somente a eleição vinculada,
+    // regra já validada pelo DAO através do slug.
+    if not (SameText(Trim(Usuario.Perfil),'ADMIN') or
+            SameText(Trim(Usuario.Perfil),'COMISSAO')) then
       TAppErrors.RaiseUnauthorized('Usuário não autorizado para acessar o painel eleitoral.');
 
     SetLength(Roles, 1);
-    Roles[0] := 'ADMIN';
+    Roles[0] := UpperCase(Trim(Usuario.Perfil));
 
     //Result.Token := TAppJWT.GerarToken(Config.JWT, Usuario.IdUsuario, Usuario.IdEmpresa, Roles, Trim(ASlug));
     Result.Token := TAppJWT.GerarToken(
