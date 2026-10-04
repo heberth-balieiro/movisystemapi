@@ -413,6 +413,96 @@ end;
 
 {$ENDREGION}
 
+
+{$REGION 'Comissao'}
+
+class procedure TEleicaoService.ValidarCadastroComissao(const ADoc: TEleicaoComissaoModel);
+begin
+  if ADoc = nil then
+    TAppErrors.RaiseBadRequest('Dados da comissão não informados.');
+
+  if ADoc.IdComissaoInt <= 0 then
+    TAppErrors.RaiseBadRequest('ID da comissão não informado.');
+
+  if ADoc.IdEleicaoInt <= 0 then
+    TAppErrors.RaiseBadRequest('ID da eleição não informado.');
+
+  if Trim(ADoc.Nome).IsEmpty then
+    TAppErrors.RaiseBadRequest('Nome da comissão não informado.');
+
+  if Trim(ADoc.CPF).IsEmpty then
+    TAppErrors.RaiseBadRequest('CPF da comissão não informado.');
+
+  if Trim(ADoc.Email).IsEmpty then
+    TAppErrors.RaiseBadRequest('E-mail da comissão não informado.');
+
+  if Trim(ADoc.SenhaHash).IsEmpty then
+    TAppErrors.RaiseBadRequest('Senha da comissão não informada.');
+
+  ADoc.Ativo := TAppClasses.NormalizarSN(ADoc.Ativo,'S');
+end;
+
+class function TEleicaoService.InserirEleicaoComissao(const AEmpresaId: Integer;
+  const ADoc: TEleicaoComissaoModel): Boolean;
+var
+  Conn: TUniConnection;
+  Config: TAppApiConfig;
+  IdEleicao, UsuarioId, IdComissao: Integer;
+begin
+  Result := False;
+
+  if AEmpresaId <= 0 then
+    TAppErrors.RaiseBadRequest('Empresa não informada.');
+
+  ValidarCadastroComissao(ADoc);
+
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Conn.StartTransaction;
+    try
+      IdEleicao := TEleicaoDao.RetornoIDeleicaoAPI(Conn, AEmpresaId, ADoc.IdEleicaoInt);
+      if IdEleicao <= 0 then
+        TAppErrors.RaiseBadRequest('Eleição não encontrada para a empresa informada.');
+
+      ADoc.EleicaoId := IdEleicao;
+
+      UsuarioId := TEleicaoDao.BuscarUsuarioComissao(Conn, AEmpresaId, ADoc.CPF);
+      if UsuarioId <= 0 then
+        UsuarioId := TEleicaoDao.InserirUsuarioComissao(Conn, AEmpresaId, ADoc)
+      else
+        TEleicaoDao.AtualizarUsuarioComissao(Conn, AEmpresaId, UsuarioId, ADoc);
+
+      if UsuarioId <= 0 then
+        TAppErrors.RaiseBadRequest('Não foi possível criar o usuário da comissão.');
+
+      ADoc.UsuarioId := UsuarioId;
+
+      if TEleicaoDao.ExisteComissao(
+        Conn, AEmpresaId, ADoc.IdEleicaoInt, ADoc.IdComissaoInt) then
+      begin
+        TEleicaoDao.AtualizarComissao(Conn, AEmpresaId, ADoc);
+        Result := True;
+      end
+      else
+      begin
+        IdComissao := TEleicaoDao.InserirComissao(Conn, AEmpresaId, ADoc);
+        Result := IdComissao > 0;
+      end;
+
+      Conn.Commit;
+    except
+      if Conn.InTransaction then
+        Conn.Rollback;
+      raise;
+    end;
+  finally
+    Conn.Free;
+  end;
+end;
+
+{$ENDREGION}
+
 {$REGION}
 
 class procedure TEleicaoService.ValidarCadastroQuestao(const ADoc: TEleicaoQuestaoModel);
