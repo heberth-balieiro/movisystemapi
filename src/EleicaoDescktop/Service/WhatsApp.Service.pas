@@ -313,6 +313,7 @@ class function TWhatsAppService.EnviarDocumentoBase64(
   out AMensagemRetorno: string): Boolean;
 var
   NumeroEnvio: string;
+  Base64Limpo: string;
   Body: TJSONObject;
   Resposta: IResponse;
 begin
@@ -345,7 +346,13 @@ begin
     Exit;
   end;
 
-  if Trim(ABase64).IsEmpty then
+  Base64Limpo := Trim(ABase64);
+  Base64Limpo := StringReplace(Base64Limpo, #13, '', [rfReplaceAll]);
+  Base64Limpo := StringReplace(Base64Limpo, #10, '', [rfReplaceAll]);
+  Base64Limpo := StringReplace(Base64Limpo, #9, '', [rfReplaceAll]);
+  Base64Limpo := StringReplace(Base64Limpo, ' ', '', [rfReplaceAll]);
+
+  if Base64Limpo.IsEmpty then
   begin
     AMensagemRetorno := 'Conteúdo do documento não informado.';
     Exit;
@@ -356,7 +363,7 @@ begin
     Body.AddPair('number', Trim(NumeroEnvio));
     Body.AddPair('mediatype', 'document');
     Body.AddPair('mimetype', 'application/pdf');
-    Body.AddPair('media', Trim(ABase64));
+    Body.AddPair('media', Base64Limpo);
     Body.AddPair('fileName', Trim(ANomeArquivo));
     if not Trim(ALegenda).IsEmpty then
       Body.AddPair('caption', ALegenda);
@@ -369,19 +376,29 @@ begin
         .ContentType('application/json')
         .AddHeader('apikey', AAPIKey)
         .AddBody(Body.ToJSON, TRESTContentType.ctAPPLICATION_JSON)
-        .Timeout(10000)
+        .Timeout(30000)
         .Post;
 
       Result := RespostaSucesso(Resposta);
       if Result then
-        AMensagemRetorno := 'Comprovante em PDF enviado com sucesso.'
+      begin
+        AMensagemRetorno := 'Comprovante em PDF enviado com sucesso.';
+        Writeln('[WhatsApp PDF] OK - ', ANomeArquivo);
+      end
       else
+      begin
         AMensagemRetorno := MensagemResposta(Resposta);
+        if Assigned(Resposta) then
+          Writeln('[WhatsApp PDF] ERRO HTTP ', Resposta.StatusCode, ' - ', AMensagemRetorno)
+        else
+          Writeln('[WhatsApp PDF] ERRO - ', AMensagemRetorno);
+      end;
     except
       on E: Exception do
       begin
         Result := False;
         AMensagemRetorno := E.ClassName + ': ' + E.Message;
+        Writeln('[WhatsApp PDF] EXCECAO - ', AMensagemRetorno);
       end;
     end;
   finally
