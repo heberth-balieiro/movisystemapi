@@ -1,7 +1,6 @@
 unit Eleicao.Routes;
 
 interface
-
 type
   TEleicaoRoutes = class
   public
@@ -17,6 +16,7 @@ Uses
     EleicaoVotacaoAPI.Controller,
     EleicaoComprovanteAPI.Controller,
     EleicaoAdminAPI.Controller,
+    EleicaoApuracaoEvolucaoAPI.Controller,
     EleicaoResultadoPublicoAPI.Controller,
     EleicaoMembroFotoAPI.Controller,
     EleicaoRelatorioAPI.Controller;
@@ -36,6 +36,7 @@ begin
   TEleicaoAPIVotacaoController.Registry;
   TEleicaoComprovanteAPIController.Registry;
   TEleicaoAdminAPIController.Registry;
+  TEleicaoApuracaoEvolucaoAPIController.Registry;
   TEleicaoResultadoPublicoAPIController.Registry;
   TEleicaoMembroFotoAPIController.Registry;
   TEleicaoRelatorioAPIController.Registry;
