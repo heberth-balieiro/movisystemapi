@@ -448,7 +448,13 @@ begin
         Qry.ParamByName('ip').AsString := Copy(Trim(AIP), 1, 64);
         Qry.ParamByName('agent').AsString := Copy(Trim(AUserAgent), 1, 500);
         Qry.Execute;
-        Result.IdSolicitacao := Conn.LastInsertId;
+
+        // UniDAC desta versão não expõe LastInsertId em TUniConnection.
+        // Consulta o AUTO_INCREMENT gerado usando a mesma conexão MySQL.
+        Qry.Close;
+        Qry.SQL.Text := 'SELECT LAST_INSERT_ID() AS id';
+        Qry.Open;
+        Result.IdSolicitacao := Qry.FieldByName('id').AsLargeInt;
       end
       else
       begin
