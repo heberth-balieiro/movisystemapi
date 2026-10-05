@@ -41,7 +41,38 @@ begin
         Retorno.AddPair('id_empresa', TJSONNumber.Create(Contexto.IdEmpresa));
         Retorno.AddPair('uuid', Contexto.UUID);
 
-        TAppResponse.OK(Res, Retorno, 'Integra��o autenticada com sucesso.');
+        TAppResponse.OK(Res, Retorno, 'Integração autenticada com sucesso.');
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end);
+
+  // Pendências criadas pela página pública /atualizar-cadastro.
+  // O EasyBot apenas recebe e armazena localmente nesta etapa;
+  // a solicitação continua PENDENTE na API até a retaguarda processá-la.
+  THorse.Get('/api/v1/integracao/easyone/atualizacoes-cadastrais/pendentes',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      UUID    : string;
+      APIKey  : string;
+      Contexto: TEasyOneIntegracaoContexto;
+      Dados   : TJSONArray;
+    begin
+      try
+        UUID   := Trim(Req.Headers['X-EasyOne-Empresa']);
+        APIKey := Trim(Req.Headers['X-EasyOne-Key']);
+
+        Contexto := TEasyOneIntegracaoService.Autenticar(UUID, APIKey);
+        Dados := TEasyOneIntegracaoService.ListarAtualizacoesCadastraisPendentes(
+          Contexto.IdEmpresaAPI
+        );
+
+        TAppResponse.OK(
+          Res,
+          Dados,
+          'Solicitações cadastrais pendentes consultadas com sucesso.'
+        );
       except
         on E: Exception do
           TAppErrors.HandleException(Res, E);
