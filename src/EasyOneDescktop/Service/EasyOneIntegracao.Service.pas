@@ -2,6 +2,9 @@ unit EasyOneIntegracao.Service;
 
 interface
 
+uses
+  System.JSON;
+
 type
   TEasyOneIntegracaoContexto = record
     IdEmpresaAPI: Integer;  // empresa.id
@@ -16,6 +19,7 @@ type
   public
     class function Autenticar(const AUUID, AAPIKey: string): TEasyOneIntegracaoContexto; static;
     class procedure ValidarBootstrap(const AUsuario, ASenha: string); static;
+    class function ListarAtualizacoesCadastraisPendentes(const AIdEmpresaAPI: Integer): TJSONArray; static;
   end;
 
 implementation
@@ -62,7 +66,7 @@ var
   UsuarioConfig, SenhaConfig: string;
 begin
   if Trim(AUsuario).IsEmpty or Trim(ASenha).IsEmpty then
-    TAppErrors.RaiseUnauthorized('Credenciais de integração inválidas.');
+    TAppErrors.RaiseUnauthorized('Credenciais de integraÃ§Ã£o invÃ¡lidas.');
   Ini := TIniFile.Create(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   try
     UsuarioConfig := Trim(Ini.ReadString('API','Usuario',''));
@@ -71,11 +75,11 @@ begin
     Ini.Free;
   end;
   if UsuarioConfig.IsEmpty or SenhaConfig.IsEmpty then
-    TAppErrors.RaiseUnauthorized('Credenciais de integração inválidas.');
+    TAppErrors.RaiseUnauthorized('Credenciais de integraÃ§Ã£o invÃ¡lidas.');
   if not SameText(Trim(AUsuario),UsuarioConfig) then
-    TAppErrors.RaiseUnauthorized('Credenciais de integração inválidas.');
+    TAppErrors.RaiseUnauthorized('Credenciais de integraÃ§Ã£o invÃ¡lidas.');
   if not HashIgual(Trim(ASenha),SenhaConfig) then
-    TAppErrors.RaiseUnauthorized('Credenciais de integração inválidas.');
+    TAppErrors.RaiseUnauthorized('Credenciais de integraÃ§Ã£o invÃ¡lidas.');
 end;
 
 class function TEasyOneIntegracaoService.Autenticar(const AUUID, AAPIKey: string): TEasyOneIntegracaoContexto;
@@ -88,28 +92,28 @@ begin
   Result := Default(TEasyOneIntegracaoContexto);
 
   if Trim(AUUID).IsEmpty or Trim(AAPIKey).IsEmpty then
-    TAppErrors.RaiseUnauthorized('Credenciais de integração não informadas.');
+    TAppErrors.RaiseUnauthorized('Credenciais de integraÃ§Ã£o nÃ£o informadas.');
 
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(Config.Database);
 
   try
     if not TEasyOneIntegracaoDAO.BuscarEmpresaPorUUID(Conn,AUUID,Dados) then
-      TAppErrors.RaiseUnauthorized('Credenciais de integração inválidas.');
+      TAppErrors.RaiseUnauthorized('Credenciais de integraÃ§Ã£o invÃ¡lidas.');
 
     if not SameText(Trim(Dados.Ativo),'S') then
-      TAppErrors.RaiseUnauthorized('Credenciais de integração inválidas.');
+      TAppErrors.RaiseUnauthorized('Credenciais de integraÃ§Ã£o invÃ¡lidas.');
 
     if not SameText(Trim(Dados.IntegracaoAtiva),'S') then
-      TAppErrors.RaiseUnauthorized('Credenciais de integração inválidas.');
+      TAppErrors.RaiseUnauthorized('Credenciais de integraÃ§Ã£o invÃ¡lidas.');
 
     if Trim(Dados.APIKeyHash).IsEmpty then
-      TAppErrors.RaiseUnauthorized('Credenciais de integração inválidas.');
+      TAppErrors.RaiseUnauthorized('Credenciais de integraÃ§Ã£o invÃ¡lidas.');
 
     Hash := GerarHash(AAPIKey);
 
     if not HashIgual(Hash,Dados.APIKeyHash) then
-      TAppErrors.RaiseUnauthorized('Credenciais de integração inválidas.');
+      TAppErrors.RaiseUnauthorized('Credenciais de integraÃ§Ã£o invÃ¡lidas.');
 
     Result.IdEmpresaAPI := Dados.Id;
     Result.IdEmpresa    := Dados.IdEmpresa;
@@ -117,6 +121,58 @@ begin
   finally
     Conn.Free;
   end;
+end;
+
+class function TEasyOneIntegracaoService.ListarAtualizacoesCadastraisPendentes(
+  const AIdEmpresaAPI: Integer): TJSONArray;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  Qry: TUniQuery;
+  Item: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Qry := TUniQuery.Create(nil);
+    try
+      Qry.Connection := Conn;
+      Qry.SQL.Text :=
+        'SELECT ac.id, ac.pessoa_id, p.nome, p.cpf, p.matricula, ' +
+        '       ac.email_novo, ac.telefone_novo, ac.whatsapp_novo, ac.criado_em ' +
+        'FROM eleicao_atualizacao_cadastral ac ' +
+        'INNER JOIN pessoa p ON p.id = ac.pessoa_id AND p.empresa_id = ac.empresa_id ' +
+        'WHERE ac.empresa_id = :empresa ' +
+        'AND ac.situacao = ''PENDENTE'' ' +
+        'ORDER BY ac.id';
+      Qry.ParamByName('empresa').AsInteger := AIdEmpresaAPI;
+      Qry.Open;
+
+      while not Qry.Eof do
+      begin
+        Item := TJSONObject.Create;
+        Item.AddPair('id_solicitacao', TJSONNumber.Create(Qry.FieldByName('id').AsLargeInt));
+        Item.AddPair('pessoa_id_api', TJSONNumber.Create(Qry.FieldByName('pessoa_id').AsLargeInt));
+        Item.AddPair('nome', Qry.FieldByName('nome').AsString);
+        Item.AddPair('cpf', Qry.FieldByName('cpf').AsString);
+        Item.AddPair('matricula', Qry.FieldByName('matricula').AsString);
+        Item.AddPair('email_novo', Qry.FieldByName('email_novo').AsString);
+        Item.AddPair('telefone_novo', Qry.FieldByName('telefone_novo').AsString);
+        Item.AddPair('whatsapp_novo', Qry.FieldByName('whatsapp_novo').AsString);
+        Item.AddPair('criado_em', FormatDateTime('yyyy-mm-dd hh:nn:ss', Qry.FieldByName('criado_em').AsDateTime));
+        Result.AddElement(Item);
+        Qry.Next;
+      end;
+    finally
+      Qry.Free;
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+  Conn.Free;
 end;
 
 end.
