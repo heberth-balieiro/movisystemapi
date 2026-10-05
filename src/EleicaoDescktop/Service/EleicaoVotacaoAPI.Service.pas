@@ -1,7 +1,5 @@
 unit EleicaoVotacaoAPI.Service;
 
-{$CODEPAGE UTF8}
-
 interface
 
 Uses  EleicaoAuditoriaAPI.Service,
