@@ -22,6 +22,7 @@ uses
   App.JWT,
   App.Token,
   EleicaoAPIPublic.Service,
+  EleicaoMelhoriasAPI.Service,
   APP.Classes,
   App.RequestInfo;
 
@@ -30,10 +31,10 @@ uses
 class procedure TEleicaoAPIConfirmacaoController.Registry;
 begin
 
-  {$REGION 'Confirma��o'}
+  {$REGION 'Confirmação'}
 
   //
-  // SOLICITAR C�DIGO
+  // SOLICITAR CÓDIGO
   //
   THorse.Post('/api/v1/public/eleicao/:slug/confirmacao/solicitar-codigo',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
@@ -42,6 +43,7 @@ begin
       Slug    : string;
       Result  : TSolicitarCodigoResult;
       Retorno : TJSONObject;
+      ExpiracaoAjustada: Integer;
     begin
       try
         // 1. Valida token_identificacao
@@ -54,20 +56,35 @@ begin
         Slug := Trim(Req.Params['slug']);
 
         if Slug.IsEmpty then
-          TAppErrors.RaiseBadRequest('Elei��o n�o informada.');
+          TAppErrors.RaiseBadRequest('Eleição não informada.');
 
 
         if not TAppToken.PossuiRole(Claims.Roles, 'ELEITOR_IDENTIFICADO') then
-          TAppErrors.RaiseUnauthorized('Identifica��o inv�lida ou expirada.');
+          TAppErrors.RaiseUnauthorized('Identificação inválida ou expirada.');
 
         if not TAppToken.PertenceEleicao(Claims, Slug) then
-          TAppErrors.RaiseUnauthorized('Token n�o pertence a esta elei��o.');
+          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
 
 
         // 3. Chama Service
         //
         Result  := TEleicaoAPIPublicService.SolicitarCodigoConfirmacao(
                     Slug, Claims.UserId, Claims.IdEmpresa,TAppRequestInfo.GetIP(Req),TAppRequestInfo.GetUserAgent(Req));
+
+        // Compatibilidade com a implementação atual do DAO: em um novo envio
+        // o service retorna 60/60. Ajustamos a validade real para 90 segundos
+        // sem prolongar códigos já existentes em chamadas subsequentes.
+        if (Result.ExpiraEmSegundos >= 60) and (Result.ReenviarEmSegundos >= 60) then
+        begin
+          ExpiracaoAjustada := TEleicaoMelhoriasAPIService.AjustarExpiracaoOTP(
+            Slug,
+            Claims.IdEmpresa,
+            Claims.UserId
+          );
+
+          if ExpiracaoAjustada > 0 then
+            Result.ExpiraEmSegundos := ExpiracaoAjustada;
+        end;
 
         //
         // 4. Monta retorno
@@ -79,7 +96,7 @@ begin
         Retorno.AddPair('expira_em_segundos',TJSONNumber.Create(Result.ExpiraEmSegundos));
         Retorno.AddPair('reenviar_em_segundos',TJSONNumber.Create(Result.ReenviarEmSegundos));
 
-        TAppResponse.Ok(Res,Retorno,'C�digo de confirma��o enviado.');
+        TAppResponse.Ok(Res,Retorno,'Código de confirmação enviado.');
 
       except
         on E: Exception do
@@ -89,7 +106,7 @@ begin
 
 
   //
-  // VALIDAR C�DIGO
+  // VALIDAR CÓDIGO
   //
   THorse.Post('/api/v1/public/eleicao/:slug/confirmacao/validar-codigo',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
@@ -114,13 +131,13 @@ begin
         Slug := Trim(Req.Params['slug']);
 
         if Slug.IsEmpty then
-          TAppErrors.RaiseBadRequest('Elei��o n�o informada.');
+          TAppErrors.RaiseBadRequest('Eleição não informada.');
 
         if not TAppToken.PossuiRole(Claims.Roles, 'ELEITOR_IDENTIFICADO') then
-          TAppErrors.RaiseUnauthorized('Identifica��o inv�lida ou expirada.');
+          TAppErrors.RaiseUnauthorized('Identificação inválida ou expirada.');
 
         if not TAppToken.PertenceEleicao(Claims, Slug) then
-        TAppErrors.RaiseUnauthorized('Token n�o pertence a esta elei��o.');
+        TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
 
 
 
@@ -130,12 +147,12 @@ begin
         Body := Req.Body<TJSONObject>;
 
         if Body = nil then
-          TAppErrors.RaiseBadRequest('JSON inv�lido ou n�o informado.');
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
 
         Codigo := Trim(TAppClasses.GetJsonString(Body,'codigo'));
 
         if Codigo.IsEmpty then
-          TAppErrors.RaiseBadRequest('Informe o c�digo de confirma��o.');
+          TAppErrors.RaiseBadRequest('Informe o código de confirmação.');
 
         //
         // 4. Chama Service
@@ -154,7 +171,7 @@ begin
 
         Retorno.AddPair('confirmado',Result.Confirmado);
         Retorno.AddPair('token_votacao',Result.TokenVotacao);
-        TAppResponse.Ok(Res,Retorno,'C�digo confirmado com sucesso.');
+        TAppResponse.Ok(Res,Retorno,'Código confirmado com sucesso.');
 
       except
         on E: Exception do
