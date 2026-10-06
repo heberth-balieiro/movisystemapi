@@ -49,9 +49,8 @@ begin
     end);
 
   // Pendências criadas pela página pública /atualizar-cadastro.
-  // O EasyBot apenas recebe e armazena localmente nesta etapa;
-  // a solicitação continua PENDENTE na API até a retaguarda processá-la.
-  THorse.Get('/api/v1/integracao/easyone/atualizacoes-cadastrais/pendentes',
+  // Mantém o mesmo prefixo /v1 utilizado pelo EasyBot nas rotas de integração.
+  THorse.Get('/v1/integracao/easyone/atualizacoes-cadastrais/pendentes',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     var
       UUID    : string;
