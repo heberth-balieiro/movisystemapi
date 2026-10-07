@@ -26,6 +26,7 @@ uses
 class procedure TEleicaoAtualizacaoCadastralAPIController.Registry;
 begin
   TEleicaoMelhoriasAPIService.EnsureSchema;
+  TEleicaoAtualizacaoCadastralEnderecoService.EnsureSchema;
 
   THorse.Post('/api/v1/public/atualizacao-cadastral/identificar',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
