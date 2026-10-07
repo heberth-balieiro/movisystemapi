@@ -141,7 +141,9 @@ begin
       Qry.Connection := Conn;
       Qry.SQL.Text :=
         'SELECT ac.id, ac.pessoa_id, p.nome, p.cpf, p.matricula, ' +
-        '       ac.email_novo, ac.telefone_novo, ac.whatsapp_novo, ac.criado_em ' +
+        '       ac.email_novo, ac.telefone_novo, ac.whatsapp_novo, ' +
+        '       ac.cep_novo, ac.endereco_novo, ac.numero_novo, ac.bairro_novo, ' +
+        '       ac.complemento_novo, ac.cidade_nova, ac.criado_em ' +
         'FROM eleicao_atualizacao_cadastral ac ' +
         'INNER JOIN pessoa p ON p.id = ac.pessoa_id AND p.empresa_id = ac.empresa_id ' +
         'WHERE ac.empresa_id = :empresa ' +
@@ -161,6 +163,12 @@ begin
         Item.AddPair('email_novo', Qry.FieldByName('email_novo').AsString);
         Item.AddPair('telefone_novo', Qry.FieldByName('telefone_novo').AsString);
         Item.AddPair('whatsapp_novo', Qry.FieldByName('whatsapp_novo').AsString);
+        Item.AddPair('cep_novo', Qry.FieldByName('cep_novo').AsString);
+        Item.AddPair('endereco_novo', Qry.FieldByName('endereco_novo').AsString);
+        Item.AddPair('numero_novo', Qry.FieldByName('numero_novo').AsString);
+        Item.AddPair('bairro_novo', Qry.FieldByName('bairro_novo').AsString);
+        Item.AddPair('complemento_novo', Qry.FieldByName('complemento_novo').AsString);
+        Item.AddPair('cidade_nova', Qry.FieldByName('cidade_nova').AsString);
         Item.AddPair('criado_em', FormatDateTime('yyyy-mm-dd hh:nn:ss', Qry.FieldByName('criado_em').AsDateTime));
         Result.AddElement(Item);
         Qry.Next;
