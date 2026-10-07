@@ -90,6 +90,7 @@ var
   Conn: TUniConnection;
   Qry: TUniQuery;
   IdPessoa: Int64;
+  NovaSolicitacao: Boolean;
 begin
   Result.IdSolicitacao := 0;
   Result.Situacao := '';
@@ -147,7 +148,9 @@ begin
       Qry.ParamByName('pessoa').AsLargeInt := IdPessoa;
       Qry.Open;
 
-      if Qry.IsEmpty then
+      NovaSolicitacao := Qry.IsEmpty;
+
+      if NovaSolicitacao then
       begin
         Qry.Close;
         Qry.SQL.Text :=
@@ -157,6 +160,9 @@ begin
           ' situacao, ip_origem, user_agent) ' +
           'VALUES (:empresa, :usuario, :pessoa, :email, :telefone, :whatsapp, :cep, :endereco, ' +
           ' :numero, :bairro, :complemento, :cidade, ''PENDENTE'', :ip, :agent)';
+        Qry.ParamByName('empresa').AsLargeInt := AIdEmpresa;
+        Qry.ParamByName('usuario').AsLargeInt := AIdUsuario;
+        Qry.ParamByName('pessoa').AsLargeInt := IdPessoa;
       end
       else
       begin
@@ -171,9 +177,6 @@ begin
         Qry.ParamByName('id').AsLargeInt := Result.IdSolicitacao;
       end;
 
-      Qry.ParamByName('empresa').AsLargeInt := AIdEmpresa;
-      Qry.ParamByName('usuario').AsLargeInt := AIdUsuario;
-      Qry.ParamByName('pessoa').AsLargeInt := IdPessoa;
       Qry.ParamByName('email').AsString := Email;
       Qry.ParamByName('telefone').AsString := Telefone;
       Qry.ParamByName('whatsapp').AsString := Whatsapp;
@@ -187,7 +190,7 @@ begin
       Qry.ParamByName('agent').AsString := Copy(Trim(AUserAgent), 1, 500);
       Qry.Execute;
 
-      if Result.IdSolicitacao = 0 then
+      if NovaSolicitacao then
       begin
         Qry.Close;
         Qry.SQL.Text := 'SELECT LAST_INSERT_ID() AS id';
