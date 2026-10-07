@@ -20,7 +20,8 @@ uses
   App.JWT,
   APP.Classes,
   App.RequestInfo,
-  EleicaoMelhoriasAPI.Service;
+  EleicaoMelhoriasAPI.Service,
+  EleicaoAtualizacaoCadastralEndereco.Service;
 
 class procedure TEleicaoAtualizacaoCadastralAPIController.Registry;
 begin
@@ -91,7 +92,7 @@ begin
         Complemento := Trim(TAppClasses.GetJsonString(Body, 'complemento'));
         Cidade := Trim(TAppClasses.GetJsonString(Body, 'cidade'));
 
-        Dados := TEleicaoMelhoriasAPIService.SolicitarAtualizacao(
+        Dados := TEleicaoAtualizacaoCadastralEnderecoService.SolicitarAtualizacao(
           Claims.IdEmpresa,
           Claims.UserId,
           Email,
