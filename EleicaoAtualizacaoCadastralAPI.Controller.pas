@@ -66,6 +66,7 @@ begin
       Claims: TJWTClaims;
       Body: TJSONObject;
       Email, Telefone, Whatsapp: string;
+      CEP, Endereco, Numero, Bairro, Complemento, Cidade: string;
       Dados: TAtualizacaoCadastralSolicitacaoResult;
       Retorno: TJSONObject;
     begin
@@ -83,6 +84,12 @@ begin
         Email := Trim(TAppClasses.GetJsonString(Body, 'email'));
         Telefone := Trim(TAppClasses.GetJsonString(Body, 'telefone'));
         Whatsapp := Trim(TAppClasses.GetJsonString(Body, 'whatsapp'));
+        CEP := Trim(TAppClasses.GetJsonString(Body, 'cep'));
+        Endereco := Trim(TAppClasses.GetJsonString(Body, 'endereco'));
+        Numero := Trim(TAppClasses.GetJsonString(Body, 'numero'));
+        Bairro := Trim(TAppClasses.GetJsonString(Body, 'bairro'));
+        Complemento := Trim(TAppClasses.GetJsonString(Body, 'complemento'));
+        Cidade := Trim(TAppClasses.GetJsonString(Body, 'cidade'));
 
         Dados := TEleicaoMelhoriasAPIService.SolicitarAtualizacao(
           Claims.IdEmpresa,
@@ -90,6 +97,12 @@ begin
           Email,
           Telefone,
           Whatsapp,
+          CEP,
+          Endereco,
+          Numero,
+          Bairro,
+          Complemento,
+          Cidade,
           TAppRequestInfo.GetIP(Req),
           TAppRequestInfo.GetUserAgent(Req)
         );
