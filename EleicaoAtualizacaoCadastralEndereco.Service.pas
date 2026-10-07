@@ -9,8 +9,8 @@ type
   TEleicaoAtualizacaoCadastralEnderecoService = class
   private
     class function SomenteNumeros(const AValor: string): string; static;
-    class procedure GarantirCamposEndereco; static;
   public
+    class procedure EnsureSchema; static;
     class function SolicitarAtualizacao(const AIdEmpresa, AIdUsuario: Int64;
       const AEmail, ATelefone, AWhatsapp, ACEP, AEndereco, ANumero, ABairro,
       AComplemento, ACidade, AIP, AUserAgent: string): TAtualizacaoCadastralSolicitacaoResult; static;
@@ -36,7 +36,7 @@ begin
       Result := Result + C;
 end;
 
-class procedure TEleicaoAtualizacaoCadastralEnderecoService.GarantirCamposEndereco;
+class procedure TEleicaoAtualizacaoCadastralEnderecoService.EnsureSchema;
 var
   Config: TAppApiConfig;
   Conn: TUniConnection;
@@ -118,7 +118,7 @@ begin
   if (not CEP.IsEmpty) and (Length(CEP) <> 8) then
     TAppErrors.RaiseBadRequest('Informe um CEP válido.');
 
-  GarantirCamposEndereco;
+  EnsureSchema;
 
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(Config.Database);
