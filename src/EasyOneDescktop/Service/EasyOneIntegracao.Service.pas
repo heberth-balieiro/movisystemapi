@@ -20,6 +20,10 @@ type
     class function Autenticar(const AUUID, AAPIKey: string): TEasyOneIntegracaoContexto; static;
     class procedure ValidarBootstrap(const AUsuario, ASenha: string); static;
     class function ListarAtualizacoesCadastraisPendentes(const AIdEmpresaAPI: Integer): TJSONArray; static;
+    class procedure AtualizarStatusAtualizacaoCadastral(
+      const AIdEmpresaAPI: Integer;
+      const AIdSolicitacao: Int64;
+      const ASituacao, AObservacao: string); static;
   end;
 
 implementation
@@ -181,6 +185,80 @@ begin
     raise;
   end;
   Conn.Free;
+end;
+
+class procedure TEasyOneIntegracaoService.AtualizarStatusAtualizacaoCadastral(
+  const AIdEmpresaAPI: Integer;
+  const AIdSolicitacao: Int64;
+  const ASituacao, AObservacao: string);
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  Qry: TUniQuery;
+  Situacao, SituacaoAtual: string;
+begin
+  if AIdEmpresaAPI <= 0 then
+    TAppErrors.RaiseBadRequest('Empresa de integração inválida.');
+
+  if AIdSolicitacao <= 0 then
+    TAppErrors.RaiseBadRequest('Solicitação cadastral inválida.');
+
+  Situacao := UpperCase(Trim(ASituacao));
+  if not MatchText(Situacao, ['PROCESSADO', 'REJEITADO', 'ERRO']) then
+    TAppErrors.RaiseBadRequest('Situação da solicitação cadastral inválida.');
+
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    Qry := TUniQuery.Create(nil);
+    try
+      Qry.Connection := Conn;
+      Qry.SQL.Text :=
+        'UPDATE eleicao_atualizacao_cadastral ' +
+        'SET situacao = :situacao, ' +
+        '    processado_em = NOW(), ' +
+        '    observacao = NULLIF(:observacao, '''') ' +
+        'WHERE id = :id ' +
+        '  AND empresa_id = :empresa ' +
+        '  AND situacao = ''PENDENTE''';
+      Qry.ParamByName('situacao').AsString := Situacao;
+      Qry.ParamByName('observacao').AsString := Trim(AObservacao);
+      Qry.ParamByName('id').AsLargeInt := AIdSolicitacao;
+      Qry.ParamByName('empresa').AsInteger := AIdEmpresaAPI;
+      Qry.Execute;
+
+      if Qry.RowsAffected > 0 then
+        Exit;
+
+      Qry.Close;
+      Qry.SQL.Text :=
+        'SELECT situacao ' +
+        'FROM eleicao_atualizacao_cadastral ' +
+        'WHERE id = :id AND empresa_id = :empresa ' +
+        'LIMIT 1';
+      Qry.ParamByName('id').AsLargeInt := AIdSolicitacao;
+      Qry.ParamByName('empresa').AsInteger := AIdEmpresaAPI;
+      Qry.Open;
+
+      if Qry.IsEmpty then
+        TAppErrors.RaiseBadRequest('Solicitação cadastral não localizada para a empresa autenticada.');
+
+      SituacaoAtual := UpperCase(Trim(Qry.FieldByName('situacao').AsString));
+
+      // Retorno idempotente: se o EasyBot repetir uma confirmação já aplicada,
+      // a API considera a operação concluída sem alterar novamente o registro.
+      if SameText(SituacaoAtual, Situacao) then
+        Exit;
+
+      TAppErrors.RaiseBadRequest(
+        Format('A solicitação cadastral já está com a situação %s.', [SituacaoAtual])
+      );
+    finally
+      Qry.Free;
+    end;
+  finally
+    Conn.Free;
+  end;
 end;
 
 end.
