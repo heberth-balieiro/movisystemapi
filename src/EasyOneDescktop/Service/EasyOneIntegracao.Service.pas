@@ -204,7 +204,9 @@ begin
     TAppErrors.RaiseBadRequest('Solicitação cadastral inválida.');
 
   Situacao := UpperCase(Trim(ASituacao));
-  if not MatchText(Situacao, ['PROCESSADO', 'REJEITADO', 'ERRO']) then
+  if (Situacao <> 'PROCESSADO') and
+     (Situacao <> 'REJEITADO') and
+     (Situacao <> 'ERRO') then
     TAppErrors.RaiseBadRequest('Situação da solicitação cadastral inválida.');
 
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
