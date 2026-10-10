@@ -21,6 +21,7 @@ type
 
   TEleicaoCodigoTemporarioDados = record
     Id: Int64;
+    OperadorUsuarioId: Integer;
     CodigoHash: string;
     ExpiraEm: TDateTime;
     Status: string;
@@ -54,10 +55,10 @@ type
       const AIdEmpresa, AIdEleicao, AIdOperador, AMinutos: Integer
     ): Integer; static;
 
-    class procedure InvalidarAtivos(
+    class function InvalidarAtivos(
       const AConn: TUniConnection;
       const AIdEmpresa, AIdEleicao, AIdUsuario: Integer
-    ); static;
+    ): Integer; static;
 
     class procedure InvalidarConfirmacaoNormal(
       const AConn: TUniConnection;
@@ -239,16 +240,18 @@ begin
   finally Qry.Free; end;
 end;
 
-class procedure TEleicaoCodigoTemporarioAPIDao.InvalidarAtivos(
-  const AConn: TUniConnection; const AIdEmpresa, AIdEleicao, AIdUsuario: Integer);
+class function TEleicaoCodigoTemporarioAPIDao.InvalidarAtivos(
+  const AConn: TUniConnection; const AIdEmpresa, AIdEleicao, AIdUsuario: Integer): Integer;
 var Qry: TUniQuery;
 begin
+  Result := 0;
   Qry := TUniQuery.Create(nil);
   try
     Qry.Connection := AConn;
     Qry.SQL.Text := 'UPDATE eleicao_codigo_temporario SET status=''INVALIDADO'',invalidado_em=NOW() WHERE empresa_id=:e AND eleicao_id=:el AND usuario_id=:u AND status=''ATIVO''';
     Qry.ParamByName('e').AsInteger := AIdEmpresa; Qry.ParamByName('el').AsInteger := AIdEleicao; Qry.ParamByName('u').AsInteger := AIdUsuario;
     Qry.ExecSQL;
+    Result := Qry.RowsAffected;
   finally Qry.Free; end;
 end;
 
@@ -291,11 +294,15 @@ begin
   Qry := TUniQuery.Create(nil);
   try
     Qry.Connection := AConn;
-    Qry.SQL.Text := 'SELECT id,codigo_hash,expira_em,status FROM eleicao_codigo_temporario WHERE empresa_id=:e AND eleicao_id=:el AND usuario_id=:u AND status=''ATIVO'' ORDER BY id DESC LIMIT 1';
+    Qry.SQL.Text := 'SELECT id,operador_usuario_id,codigo_hash,expira_em,status FROM eleicao_codigo_temporario WHERE empresa_id=:e AND eleicao_id=:el AND usuario_id=:u AND status=''ATIVO'' ORDER BY id DESC LIMIT 1';
     Qry.ParamByName('e').AsInteger := AIdEmpresa; Qry.ParamByName('el').AsInteger := AIdEleicao; Qry.ParamByName('u').AsInteger := AIdUsuario;
     Qry.Open; if Qry.IsEmpty then Exit;
-    ADados.Id := Qry.FieldByName('id').AsLargeInt; ADados.CodigoHash := Qry.FieldByName('codigo_hash').AsString;
-    ADados.ExpiraEm := Qry.FieldByName('expira_em').AsDateTime; ADados.Status := Qry.FieldByName('status').AsString; Result := True;
+    ADados.Id := Qry.FieldByName('id').AsLargeInt;
+    ADados.OperadorUsuarioId := Qry.FieldByName('operador_usuario_id').AsInteger;
+    ADados.CodigoHash := Qry.FieldByName('codigo_hash').AsString;
+    ADados.ExpiraEm := Qry.FieldByName('expira_em').AsDateTime;
+    ADados.Status := Qry.FieldByName('status').AsString;
+    Result := True;
   finally Qry.Free; end;
 end;
 
