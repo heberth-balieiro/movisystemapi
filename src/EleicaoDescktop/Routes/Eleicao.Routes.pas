@@ -21,7 +21,8 @@ Uses
     EleicaoMembroFotoAPI.Controller,
     EleicaoRelatorioAPI.Controller,
     EleicaoAtualizacaoCadastralAPI.Controller,
-    EleicaoIntegracaoResultado.Controller;
+    EleicaoIntegracaoResultado.Controller,
+    EleicaoListaPublicaAPI.Controller;
 { TEleicaoRoutes }
 
 class procedure TEleicaoRoutes.Registry;
@@ -44,6 +45,7 @@ begin
   TEleicaoRelatorioAPIController.Registry;
   TEleicaoAtualizacaoCadastralAPIController.Registry;
   TEleicaoIntegracaoResultadoController.Registry;
+  TEleicaoListaPublicaAPIController.Registry;
 
   //Rota API
   TEleicaoAPIPublicController.Registry;
