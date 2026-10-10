@@ -272,7 +272,15 @@ begin
       'SET e.situacao=''ABERTA'' ' +
       'WHERE e.id=:ideleicao AND e.empresa_id=:idempresa ' +
       'AND e.situacao=''AGENDADA'' AND ec.abertura_automatica=''S'' ' +
-      'AND NOW()>=ec.data_hora_inicio AND NOW()<ec.data_hora_fim';
+      'AND NOW()>=ec.data_hora_inicio AND NOW()<ec.data_hora_fim ' +
+      'AND EXISTS (' +
+      '  SELECT 1 FROM usuario u ' +
+      '  INNER JOIN pessoa p ON p.id=u.pessoa_id AND p.empresa_id=u.empresa_id ' +
+      '  WHERE u.empresa_id=e.empresa_id ' +
+      '    AND u.ativo=''S'' AND p.ativo=''S'' ' +
+      '    AND COALESCE(p.bloqueado,''N'')=''N'' ' +
+      '    AND COALESCE(p.excluido,0)=0' +
+      ')';
     Qry.ParamByName('ideleicao').AsInteger := AIdEleicao;
     Qry.ParamByName('idempresa').AsInteger := AIdEmpresa;
     Qry.ExecSQL;
