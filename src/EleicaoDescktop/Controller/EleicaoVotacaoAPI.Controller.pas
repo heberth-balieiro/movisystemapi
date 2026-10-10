@@ -29,52 +29,44 @@ uses
 
 class procedure TEleicaoAPIVotacaoController.Registry;
 begin
-//
-  {$REGION 'Votação carregar'}
+  {$REGION 'Votacao carregar'}
 
-  //
-  // CARREGAR CÉDULA DE VOTAÇÃO
-  //
   THorse.Get(
     '/api/v1/public/eleicao/:slug/votacao',
 
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     var
-      Claims  : TJWTClaims;
-      Slug    : string;
-      Retorno : TJSONObject;
+      Claims: TJWTClaims;
+      Slug: string;
+      Retorno: TJSONObject;
     begin
       try
-        // 1. Validar token_votacao
-
         if not TAppToken.ValidarToken(Req,Res,Claims) then
           Exit;
 
         if not TAppToken.PossuiRole(Claims.Roles,'ELEITOR_VOTACAO') then
-        begin
-          TAppErrors.RaiseUnauthorized('Acesso à votação não autorizado.');
-        end;
+          TAppErrors.RaiseUnauthorized('Acesso a votacao nao autorizado.');
 
-        // 2. Recuperar slug
-        Slug    := Trim(Req.Params['slug']);
+        Slug := Trim(Req.Params['slug']);
 
         if Slug.IsEmpty then
-          TAppErrors.RaiseBadRequest('Eleição não informada.');
+          TAppErrors.RaiseBadRequest('Eleicao nao informada.');
 
         if not TAppToken.PertenceEleicao(Claims, Slug) then
-        TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
-
-        // 3. Buscar cédula
+          TAppErrors.RaiseUnauthorized('Token nao pertence a esta eleicao.');
 
         Retorno := TEleicaoAPIPublicService.BuscarCedulaVotacao(
-            Slug,
-            Claims.UserId,
-            Claims.IdEmpresa
-          );
+          Slug,
+          Claims.UserId,
+          Claims.IdEmpresa
+        );
 
-        //
-        // 4. Retorno
-        //
+        TEleicaoVotacaoAPIService.CompletarCedulaAssembleia(
+          Slug,
+          Claims.IdEmpresa,
+          Retorno
+        );
+
         TAppResponse.Ok(
           Res,
           Retorno,
@@ -83,10 +75,7 @@ begin
 
       except
         on E: Exception do
-          TAppErrors.HandleException(
-            Res,
-            E
-          );
+          TAppErrors.HandleException(Res,E);
       end;
     end
   );
@@ -95,115 +84,95 @@ begin
 
   {$REGION 'Votar'}
 
-  THorse.Post('/api/v1/public/eleicao/:slug/votacao/votar',
+  THorse.Post(
+    '/api/v1/public/eleicao/:slug/votacao/votar',
 
-  procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
-  var
-    Claims   : TJWTClaims;
-    Slug     : string;
-    Body     : TJSONObject;
-    TipoVoto : string;
-    IdChapa  : Integer;
-    Resultado: TVotacaoResult;
-    Dados    : TJSONObject;
-  begin
-    try
-      // 1. Validar token
-      if not TAppToken.ValidarToken(Req, Res, Claims) then
-        Exit;
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Slug: string;
+      Body: TJSONObject;
+      Respostas: TJSONArray;
+      TipoVoto: string;
+      IdChapa: Integer;
+      Resultado: TVotacaoResult;
+      Dados: TJSONObject;
+    begin
+      try
+        if not TAppToken.ValidarToken(Req,Res,Claims) then
+          Exit;
 
-      // 2. Aceitar somente token de votação
-      if not TAppToken.PossuiRole(Claims.Roles, 'ELEITOR_VOTACAO') then
-        TAppErrors.RaiseUnauthorized('Acesso à votação não autorizado.');
+        if not TAppToken.PossuiRole(Claims.Roles,'ELEITOR_VOTACAO') then
+          TAppErrors.RaiseUnauthorized('Acesso a votacao nao autorizado.');
 
-      // 3. Slug
-      Slug := Trim(Req.Params['slug']);
+        Slug := Trim(Req.Params['slug']);
 
-      if Slug.IsEmpty then
-        TAppErrors.RaiseBadRequest(
-          'Eleição não informada.'
-        );
+        if Slug.IsEmpty then
+          TAppErrors.RaiseBadRequest('Eleicao nao informada.');
 
-      if not TAppToken.PertenceEleicao(Claims, Slug) then
-        TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+        if not TAppToken.PertenceEleicao(Claims,Slug) then
+          TAppErrors.RaiseUnauthorized('Token nao pertence a esta eleicao.');
 
+        Body := Req.Body<TJSONObject>;
 
-      //
-      // 4. Body
-      //
-      Body := Req.Body<TJSONObject>;
+        if Body = nil then
+          TAppErrors.RaiseBadRequest('Dados do voto nao informados.');
 
-      if Body = nil then
-        TAppErrors.RaiseBadRequest(
-          'Dados do voto não informados.'
-        );
+        Respostas := Body.GetValue<TJSONArray>('respostas');
 
-      TipoVoto    :=
-        UpperCase(
-          Trim(
-            TAppClasses.GetJsonString(Body,'tipo_voto')
-          )
-        );
-
-      if TipoVoto.IsEmpty then
-        TAppErrors.RaiseBadRequest(
-          'Tipo de voto não informado.'
-        );
-
-      //
-      // id_chapa é obrigatório somente para CHAPA
-      //
-      IdChapa := 0;
-
-      if Body.GetValue('id_chapa') <> nil then
-        IdChapa :=
-          Body.GetValue<Integer>(
-            'id_chapa',
-            0
+        if Assigned(Respostas) then
+        begin
+          Resultado := TEleicaoVotacaoAPIService.RegistrarVotoAssembleia(
+            Slug,
+            Claims.UserId,
+            Claims.IdEmpresa,
+            Respostas
+          );
+        end
+        else
+        begin
+          TipoVoto := UpperCase(
+            Trim(
+              TAppClasses.GetJsonString(Body,'tipo_voto')
+            )
           );
 
-      //
-      // 5. Registrar voto
-      //
-      Resultado := TEleicaoVotacaoAPIService.RegistrarVoto(
-          Slug,
-          Claims.UserId,
-          Claims.IdEmpresa,
-          TipoVoto,
-          IdChapa
-        );
+          if TipoVoto.IsEmpty then
+            TAppErrors.RaiseBadRequest('Tipo de voto nao informado.');
 
-      //
-      // 6. Retorno
-      //
-      Dados := TJSONObject.Create;
+          IdChapa := 0;
 
-      Dados.AddPair('confirmado', Resultado.Confirmado);
+          if Body.GetValue('id_chapa') <> nil then
+            IdChapa := Body.GetValue<Integer>('id_chapa',0);
 
-      Dados.AddPair(
-        'comprovante',
-        Resultado.Comprovante
-      );
+          Resultado := TEleicaoVotacaoAPIService.RegistrarVoto(
+            Slug,
+            Claims.UserId,
+            Claims.IdEmpresa,
+            TipoVoto,
+            IdChapa
+          );
+        end;
 
-      TAppResponse.Ok(
-        Res,
-        Dados,
-        'Voto registrado com sucesso.'
-      );
+        Dados := TJSONObject.Create;
+        Dados.AddPair('confirmado',Resultado.Confirmado);
+        Dados.AddPair('tipo_voto',Resultado.TipoVoto);
+        Dados.AddPair('comprovante',Resultado.Comprovante);
 
-    except
-      on E: Exception do
-        TAppErrors.HandleException(
+        TAppResponse.Ok(
           Res,
-          E
+          Dados,
+          'Voto registrado com sucesso.'
         );
-    end;
-  end
-);
 
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res,E);
+      end;
+    end
+  );
 
   {$ENDREGION}
-
 end;
 
 end.
