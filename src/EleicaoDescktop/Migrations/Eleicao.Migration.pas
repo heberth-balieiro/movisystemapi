@@ -29,6 +29,7 @@ type
     class procedure Migration_012_CreateEleicaoQuestao(const AConn: TUniConnection);static;
     class procedure Migration_013_CreateEleicaoQuestaoOpcao(const AConn: TUniConnection);static;
     class procedure Migration_014_CreateEleicaoComissao(const AConn: TUniConnection);static;
+    class procedure Migration_015_CreateEleicaoQuestaoVoto(const AConn: TUniConnection);static;
   public
     class procedure Run(const ACfg: TAppDatabaseConfig); static;
 end;
@@ -135,6 +136,7 @@ begin
       Migration_012_CreateEleicaoQuestao(Conn);
       Migration_013_CreateEleicaoQuestaoOpcao(Conn);
       Migration_014_CreateEleicaoComissao(Conn);
+      Migration_015_CreateEleicaoQuestaoVoto(Conn);
       Conn.Commit;
     except
       Conn.Rollback;
@@ -717,6 +719,40 @@ begin
   );
 
   RegisterMigration(AConn, VERSION, DESCRIPTION);
+end;
+
+class procedure TEleicaoMigration.Migration_015_CreateEleicaoQuestaoVoto(
+  const AConn: TUniConnection
+);
+const
+  VERSION = '018_E';
+  DESCRIPTION = 'Criar tabela eleicao_questao_voto';
+begin
+  if MigrationExists(AConn,VERSION) then
+    Exit;
+
+  ExecSQL(AConn,
+    'CREATE TABLE IF NOT EXISTS eleicao_questao_voto ('+
+    ' id BIGINT NOT NULL AUTO_INCREMENT,'+
+    ' empresa_id INT NOT NULL,'+
+    ' eleicao_id INT NOT NULL,'+
+    ' questao_id INT NOT NULL,'+
+    ' opcao_id INT NOT NULL,'+
+    ' comprovante_hash VARCHAR(128) NOT NULL,'+
+    ' criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,'+
+    ' PRIMARY KEY (id),'+
+    ' UNIQUE KEY uk_eleicao_questao_voto (empresa_id,eleicao_id,questao_id,comprovante_hash),'+
+    ' KEY idx_eleicao_questao_voto_eleicao (empresa_id,eleicao_id),'+
+    ' KEY idx_eleicao_questao_voto_questao (questao_id),'+
+    ' KEY idx_eleicao_questao_voto_opcao (opcao_id),'+
+    ' CONSTRAINT fk_eleicao_questao_voto_empresa FOREIGN KEY (empresa_id) REFERENCES empresa(id),'+
+    ' CONSTRAINT fk_eleicao_questao_voto_eleicao FOREIGN KEY (eleicao_id) REFERENCES eleicao(id) ON DELETE CASCADE,'+
+    ' CONSTRAINT fk_eleicao_questao_voto_questao FOREIGN KEY (questao_id) REFERENCES eleicao_questao(id) ON DELETE CASCADE,'+
+    ' CONSTRAINT fk_eleicao_questao_voto_opcao FOREIGN KEY (opcao_id) REFERENCES eleicao_questao_opcao(id) ON DELETE CASCADE'+
+    ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;'
+  );
+
+  RegisterMigration(AConn,VERSION,DESCRIPTION);
 end;
 
 {$ENDREGION}
