@@ -39,7 +39,14 @@ begin
       '  e.nome, ' +
       '  COALESCE(e.descricao, '''') AS descricao, ' +
       '  COALESCE(e.operacao, '''') AS operacao, ' +
-      '  e.situacao, ' +
+      '  CASE ' +
+      '    WHEN UPPER(TRIM(COALESCE(e.situacao, ''''))) = ''AGENDADA'' ' +
+      '      AND ec.data_hora_inicio IS NOT NULL ' +
+      '      AND ec.data_hora_inicio <= NOW() ' +
+      '      AND (ec.data_hora_fim IS NULL OR ec.data_hora_fim >= NOW()) ' +
+      '    THEN ''ABERTA'' ' +
+      '    ELSE UPPER(TRIM(COALESCE(e.situacao, ''''))) ' +
+      '  END AS situacao_publica, ' +
       '  ec.slug, ' +
       '  COALESCE(ec.nome_exibicao, '''') AS nome_exibicao, ' +
       '  COALESCE(ec.logo, '''') AS logo, ' +
@@ -54,15 +61,25 @@ begin
       'WHERE e.ativo = ''S'' ' +
       '  AND ec.pagina_publicar = ''S'' ' +
       '  AND COALESCE(TRIM(ec.slug), '''') <> '''' ' +
-      '  AND UPPER(TRIM(COALESCE(e.situacao, ''''))) IN (''AGENDADA'',''ABERTA'') ' +
+      '  AND ( ' +
+      '    UPPER(TRIM(COALESCE(e.situacao, ''''))) = ''ABERTA'' ' +
+      '    OR ( ' +
+      '      UPPER(TRIM(COALESCE(e.situacao, ''''))) = ''AGENDADA'' ' +
+      '      AND (ec.data_hora_fim IS NULL OR ec.data_hora_fim >= NOW()) ' +
+      '    ) ' +
+      '  ) ' +
       'ORDER BY ' +
-      '  CASE WHEN UPPER(TRIM(e.situacao)) = ''ABERTA'' THEN 0 ELSE 1 END, ' +
+      '  CASE ' +
+      '    WHEN UPPER(TRIM(COALESCE(e.situacao, ''''))) = ''ABERTA'' THEN 0 ' +
+      '    WHEN ec.data_hora_inicio IS NOT NULL AND ec.data_hora_inicio <= NOW() THEN 0 ' +
+      '    ELSE 1 ' +
+      '  END, ' +
       '  ec.data_hora_inicio, e.id';
     Qry.Open;
 
     while not Qry.Eof do
     begin
-      Situacao := UpperCase(Trim(Qry.FieldByName('situacao').AsString));
+      Situacao := UpperCase(Trim(Qry.FieldByName('situacao_publica').AsString));
 
       Item := TJSONObject.Create;
       Item.AddPair('id', TJSONNumber.Create(Qry.FieldByName('id').AsInteger));
