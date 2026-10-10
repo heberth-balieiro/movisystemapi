@@ -255,13 +255,24 @@ begin
       Exit;
     end;
 
-    CodigoHash := HashCodigo(Trim(ACodigo));
-    if not SameText(CodigoHash, Dados.CodigoHash) then
-      Exit;
-
     TEleicaoRateLimitAPIService.VerificarValidacaoCodigo(
       AIdEmpresa, Eleicao.IdEleicao, AIdUsuario, NormalizarSlug(ASlug)
     );
+
+    CodigoHash := HashCodigo(Trim(ACodigo));
+    if not SameText(CodigoHash, Dados.CodigoHash) then
+    begin
+      TEleicaoRateLimitAPIService.RegistrarFalhaValidacaoCodigo(
+        AIdEmpresa, Eleicao.IdEleicao, AIdUsuario, NormalizarSlug(ASlug)
+      );
+      TEleicaoAuditoriaAPIService.RegistrarEvento(
+        Conn, AIdEmpresa, Eleicao.IdEleicao, AIdUsuario,
+        'CODIGO_TEMPORARIO_INVALIDO', AUDITORIA_ORIGEM_ELEITOR, False,
+        'Tentativa inválida de código temporário administrativo.',
+        AIP, AUserAgent
+      );
+      TAppErrors.RaiseBadRequest('Código inválido ou expirado.');
+    end;
 
     Conn.StartTransaction;
     try
