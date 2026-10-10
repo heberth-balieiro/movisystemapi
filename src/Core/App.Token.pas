@@ -13,6 +13,9 @@ uses
   APP.Errors,
   App.ModuloAccess;
 
+const
+  ELEICAO_PERMISSAO_GERAR_CODIGO_CONTINGENCIA = 'ELEICAO_GERAR_CODIGO_CONTINGENCIA';
+
 Type
 TAppToken = class
   Private
@@ -24,6 +27,7 @@ TAppToken = class
 
     class function PossuiRole(const ARoles: TArray<string>;const ARole: string): Boolean; static;
     class function PodeAdministrarEleicao(const ARoles: TArray<string>): Boolean; static;
+    class function PodeGerarCodigoContingencia(const ARoles: TArray<string>): Boolean; static;
     class function PertenceEleicao(const AClaims: TJWTClaims; const ASlug: string): Boolean; static;
     {$ENDREGION}
 end;
@@ -98,6 +102,11 @@ end;
 class function TAppToken.PodeAdministrarEleicao(const ARoles: TArray<string>): Boolean;
 begin
   Result := PossuiRole(ARoles,'ADMIN') or PossuiRole(ARoles,'COMISSAO');
+end;
+
+class function TAppToken.PodeGerarCodigoContingencia(const ARoles: TArray<string>): Boolean;
+begin
+  Result := PossuiRole(ARoles,ELEICAO_PERMISSAO_GERAR_CODIGO_CONTINGENCIA);
 end;
 
 class function TAppToken.PossuiRole(const ARoles: TArray<string>;const ARole: string): Boolean;
