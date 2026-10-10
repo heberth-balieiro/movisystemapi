@@ -2,9 +2,11 @@ unit EleicaoVotacaoAPI.Service;
 
 interface
 
-Uses  EleicaoAuditoriaAPI.Service,
-      WhatsAppConfigAPI.Service,
-      WhatsAppConfigAPI.Dao;
+uses
+  System.JSON,
+  EleicaoAuditoriaAPI.Service,
+  WhatsAppConfigAPI.Service,
+  WhatsAppConfigAPI.Dao;
 
 type
   TVotacaoResult = record
@@ -30,12 +32,25 @@ type
     ): string; static;
 
   public
+    class procedure CompletarCedulaAssembleia(
+      const ASlug: string;
+      const AIdEmpresa: Integer;
+      const ACedula: TJSONObject
+    ); static;
+
     class function RegistrarVoto(
       const ASlug: string;
       const AIdUsuario: Integer;
       const AIdEmpresa: Integer;
       const ATipoVoto: string;
       const AIdChapa: Integer
+    ): TVotacaoResult; static;
+
+    class function RegistrarVotoAssembleia(
+      const ASlug: string;
+      const AIdUsuario: Integer;
+      const AIdEmpresa: Integer;
+      const ARespostas: TJSONArray
     ): TVotacaoResult; static;
   end;
 
@@ -50,6 +65,7 @@ uses
   System.Hash,
   System.NetEncoding,
   System.Classes,
+  System.Generics.Collections,
   Uni,
   WhatsApp.Service,
   App.Config,
@@ -176,6 +192,38 @@ begin
     Result := TNetEncoding.Base64.EncodeBytesToString(BytesPDF);
   finally
     Encoding1252.Free;
+  end;
+end;
+
+class procedure TEleicaoVotacaoAPIService.CompletarCedulaAssembleia(
+  const ASlug: string;
+  const AIdEmpresa: Integer;
+  const ACedula: TJSONObject
+);
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+begin
+  if not Assigned(ACedula) then
+    Exit;
+
+  if Trim(ASlug).IsEmpty or (AIdEmpresa <= 0) then
+    Exit;
+
+  Config := TAppConfig.Carregar(
+    ExtractFilePath(ParamStr(0)) + 'Config.ini'
+  );
+
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    TEleicaoVotacaoAPIDao.AdicionarQuestoesCedula(
+      Conn,
+      AIdEmpresa,
+      Trim(ASlug),
+      ACedula
+    );
+  finally
+    Conn.Free;
   end;
 end;
 
@@ -376,6 +424,238 @@ begin
       if Conn.InTransaction then
         Conn.Rollback;
       raise;
+    end;
+
+  finally
+    Conn.Free;
+  end;
+end;
+
+class function TEleicaoVotacaoAPIService.RegistrarVotoAssembleia(
+  const ASlug: string;
+  const AIdUsuario: Integer;
+  const AIdEmpresa: Integer;
+  const ARespostas: TJSONArray
+): TVotacaoResult;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  QryEleicao: TUniQuery;
+  Contexto: TEleicaoConfirmacaoContexto;
+  Slug, Operacao, Comprovante: string;
+  NomeEleicao, NomeEmpresa, PDFBase64, NomeArquivoPDF: string;
+  QuestoesRespondidas: TList<Integer>;
+  Item: TJSONObject;
+  I, IdQuestao, IdOpcao: Integer;
+  TotalObrigatorias, ObrigatoriasRespondidas: Integer;
+  Obrigatoria: Boolean;
+begin
+  Result := Default(TVotacaoResult);
+  Slug := Trim(ASlug);
+
+  if Slug.IsEmpty then
+    TAppErrors.RaiseBadRequest('Assembleia nao informada.');
+
+  if (AIdUsuario <= 0) or (AIdEmpresa <= 0) then
+    TAppErrors.RaiseUnauthorized('Acesso a votacao nao autorizado.');
+
+  Config := TAppConfig.Carregar(
+    ExtractFilePath(ParamStr(0)) + 'Config.ini'
+  );
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+
+  try
+    if not TEleicaoAPIPublicDao.BuscarContextoConfirmacao(
+      Conn,
+      Slug,
+      AIdEmpresa,
+      AIdUsuario,
+      Contexto
+    ) then
+      TAppErrors.RaiseUnauthorized('Nao foi possivel acessar esta votacao.');
+
+    Operacao := TEleicaoVotacaoAPIDao.BuscarOperacao(
+      Conn,
+      AIdEmpresa,
+      Contexto.IdEleicao
+    );
+
+    if not SameText(Operacao, 'ASSEMBLEIA') then
+      TAppErrors.RaiseBadRequest('Esta votacao nao e uma assembleia.');
+
+    TEleicaoVotacaoAPIDao.GarantirEstruturaVotoQuestao(Conn);
+
+    TotalObrigatorias := TEleicaoVotacaoAPIDao.QuantidadeQuestoesObrigatorias(
+      Conn,
+      AIdEmpresa,
+      Contexto.IdEleicao
+    );
+
+    if (not Assigned(ARespostas)) and (TotalObrigatorias > 0) then
+      TAppErrors.RaiseBadRequest('Respostas da assembleia nao informadas.');
+
+    NomeEleicao := Slug;
+    NomeEmpresa := '';
+    QryEleicao := TUniQuery.Create(nil);
+    try
+      QryEleicao.Connection := Conn;
+      QryEleicao.SQL.Text :=
+        'SELECT e.nome, COALESCE(NULLIF(emp.fantasia, ''''), emp.razao) AS empresa_nome ' +
+        'FROM eleicao e ' +
+        'INNER JOIN empresa emp ON emp.id = e.empresa_id ' +
+        'WHERE e.id = :id AND e.empresa_id = :idempresa LIMIT 1';
+      QryEleicao.ParamByName('id').AsInteger := Contexto.IdEleicao;
+      QryEleicao.ParamByName('idempresa').AsInteger := AIdEmpresa;
+      QryEleicao.Open;
+
+      if not QryEleicao.IsEmpty then
+      begin
+        NomeEleicao := QryEleicao.FieldByName('nome').AsString;
+        NomeEmpresa := QryEleicao.FieldByName('empresa_nome').AsString;
+      end;
+    finally
+      QryEleicao.Free;
+    end;
+
+    if NomeEmpresa.Trim.IsEmpty then
+      NomeEmpresa := 'Sistema de Votacao Digital';
+
+    QuestoesRespondidas := TList<Integer>.Create;
+    try
+      ObrigatoriasRespondidas := 0;
+
+      if Assigned(ARespostas) then
+      begin
+        for I := 0 to ARespostas.Count - 1 do
+        begin
+          if not (ARespostas.Items[I] is TJSONObject) then
+            TAppErrors.RaiseBadRequest('Resposta da assembleia invalida.');
+
+          Item := ARespostas.Items[I] as TJSONObject;
+          IdQuestao := Item.GetValue<Integer>('id_questao', 0);
+          IdOpcao := Item.GetValue<Integer>('id_opcao', 0);
+
+          if (IdQuestao <= 0) or (IdOpcao <= 0) then
+            TAppErrors.RaiseBadRequest('Questao ou opcao nao informada.');
+
+          if QuestoesRespondidas.Contains(IdQuestao) then
+            TAppErrors.RaiseBadRequest('Uma questao foi respondida mais de uma vez.');
+
+          Obrigatoria := False;
+          if not TEleicaoVotacaoAPIDao.QuestaoOpcaoValida(
+            Conn,
+            AIdEmpresa,
+            Contexto.IdEleicao,
+            IdQuestao,
+            IdOpcao,
+            Obrigatoria
+          ) then
+            TAppErrors.RaiseBadRequest('Questao ou opcao invalida para esta assembleia.');
+
+          QuestoesRespondidas.Add(IdQuestao);
+          if Obrigatoria then
+            Inc(ObrigatoriasRespondidas);
+        end;
+      end;
+
+      if ObrigatoriasRespondidas <> TotalObrigatorias then
+        TAppErrors.RaiseBadRequest('Responda todas as questoes obrigatorias.');
+
+      Conn.StartTransaction;
+      try
+        if TEleicaoVotacaoAPIDao.EleitorJaVotou(
+          Conn,
+          Contexto.IdEleicao,
+          AIdUsuario
+        ) then
+          TAppErrors.RaiseBadRequest('Seu voto ja foi registrado nesta assembleia.');
+
+        Comprovante := GerarComprovante;
+
+        if Assigned(ARespostas) then
+        begin
+          for I := 0 to ARespostas.Count - 1 do
+          begin
+            Item := ARespostas.Items[I] as TJSONObject;
+            IdQuestao := Item.GetValue<Integer>('id_questao', 0);
+            IdOpcao := Item.GetValue<Integer>('id_opcao', 0);
+
+            TEleicaoVotacaoAPIDao.RegistrarVotoQuestao(
+              Conn,
+              AIdEmpresa,
+              Contexto.IdEleicao,
+              IdQuestao,
+              IdOpcao,
+              Comprovante
+            );
+          end;
+        end;
+
+        TEleicaoVotacaoAPIDao.RegistrarVotante(
+          Conn,
+          AIdEmpresa,
+          Contexto.IdEleicao,
+          AIdUsuario
+        );
+
+        TEleicaoAuditoriaAPIService.RegistrarEvento(
+          Conn, AIdEmpresa, Contexto.IdEleicao, 0,
+          AUDITORIA_VOTO_REGISTRADO, AUDITORIA_ORIGEM_ELEITOR, True,
+          'Voto da assembleia registrado com sucesso.'
+        );
+
+        Conn.Commit;
+
+        Result.Confirmado := 'S';
+        Result.TipoVoto := 'QUESTAO';
+        Result.Comprovante := Comprovante;
+      except
+        if Conn.InTransaction then
+          Conn.Rollback;
+        raise;
+      end;
+    finally
+      QuestoesRespondidas.Free;
+    end;
+
+    try
+      WhatsConfig := TWhatsAppConfigAPIService.BuscarConfiguracao(AIdEmpresa);
+
+      TWhatsAppService.EnviarComprovanteVotacao(
+        WhatsConfig.URL,
+        WhatsConfig.Instancia,
+        WhatsConfig.Token,
+        Contexto.Whatsapp,
+        Contexto.Nome,
+        Comprovante,
+        MsgWhatsApp
+      );
+
+      PDFBase64 := GerarComprovantePDFBase64(
+        NomeEleicao,
+        Contexto.Nome,
+        NomeEmpresa,
+        Comprovante,
+        Now
+      );
+
+      NomeArquivoPDF :=
+        'comprovante_votacao_' +
+        LowerCase(Copy(Comprovante, 1, 12)) +
+        '.pdf';
+
+      TWhatsAppService.EnviarDocumentoBase64(
+        WhatsConfig.URL,
+        WhatsConfig.Instancia,
+        WhatsConfig.Token,
+        Contexto.Whatsapp,
+        PDFBase64,
+        NomeArquivoPDF,
+        'Comprovante de votacao - ' + NomeEmpresa,
+        MsgWhatsApp
+      );
+    except
+      // O voto ja foi confirmado. Comunicacao nao invalida o registro.
     end;
 
   finally
