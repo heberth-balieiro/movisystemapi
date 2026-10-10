@@ -277,6 +277,8 @@ begin
       '  SELECT 1 FROM usuario u ' +
       '  INNER JOIN pessoa p ON p.id=u.pessoa_id AND p.empresa_id=u.empresa_id ' +
       '  WHERE u.empresa_id=e.empresa_id ' +
+      '    AND u.id_eleitor_int IS NOT NULL AND u.id_eleitor_int>0 ' +
+      '    AND u.perfil=''ELEITOR_IDENTIFICADO'' ' +
       '    AND u.ativo=''S'' AND p.ativo=''S'' ' +
       '    AND COALESCE(p.bloqueado,''N'')=''N'' ' +
       '    AND COALESCE(p.excluido,0)=0' +
