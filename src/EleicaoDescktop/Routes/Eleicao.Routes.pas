@@ -23,7 +23,8 @@ Uses
     EleicaoAtualizacaoCadastralAPI.Controller,
     EleicaoIntegracaoResultado.Controller,
     EleicaoListaPublicaAPI.Controller,
-    EleicaoEmailConfigAPI.Controller;
+    EleicaoEmailConfigAPI.Controller,
+    EleicaoCodigoTemporarioAPI.Controller;
 { TEleicaoRoutes }
 
 class procedure TEleicaoRoutes.Registry;
@@ -48,6 +49,7 @@ begin
   TEleicaoIntegracaoResultadoController.Registry;
   TEleicaoListaPublicaAPIController.Registry;
   TEleicaoEmailConfigAPIController.Registry;
+  TEleicaoCodigoTemporarioAPIController.Registry;
 
   //Rota API
   TEleicaoAPIPublicController.Registry;
