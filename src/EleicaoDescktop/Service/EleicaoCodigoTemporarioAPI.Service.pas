@@ -18,6 +18,10 @@ type
     class function NormalizarSlug(const ASlug: string): string; static;
     class function GerarCodigo: string; static;
     class function HashCodigo(const ACodigo: string): string; static;
+    class function DescricaoSegura(
+      const AIdEleitor, AIdOperador: Integer;
+      const AComplemento: string = ''
+    ): string; static;
   public
     class function BuscarEleitores(
       const ASlug: string;
@@ -60,6 +64,7 @@ const
   LIMITE_ELEITOR = 3;
   LIMITE_OPERADOR = 20;
   JANELA_LIMITE_MINUTOS = 30;
+  ORIGEM_CODIGO = 'ADMIN_CONTINGENCIA';
 
 class function TEleicaoCodigoTemporarioAPIService.NormalizarSlug(
   const ASlug: string): string;
@@ -96,6 +101,17 @@ class function TEleicaoCodigoTemporarioAPIService.HashCodigo(
   const ACodigo: string): string;
 begin
   Result := THashSHA2.GetHashString(Trim(ACodigo), SHA256);
+end;
+
+class function TEleicaoCodigoTemporarioAPIService.DescricaoSegura(
+  const AIdEleitor, AIdOperador: Integer;
+  const AComplemento: string): string;
+begin
+  Result := 'origem=' + ORIGEM_CODIGO +
+            '; eleitor_usuario_id=' + AIdEleitor.ToString +
+            '; operador_usuario_id=' + AIdOperador.ToString;
+  if not Trim(AComplemento).IsEmpty then
+    Result := Result + '; ' + Trim(AComplemento);
 end;
 
 class function TEleicaoCodigoTemporarioAPIService.BuscarEleitores(
@@ -142,6 +158,7 @@ var
   JaVotou: Boolean;
   Codigo: string;
   CodigoHash: string;
+  QuantidadeInvalidados: Integer;
 begin
   Result := Default(TEleicaoCodigoTemporarioGerado);
 
@@ -184,9 +201,19 @@ begin
 
     Conn.StartTransaction;
     try
-      TEleicaoCodigoTemporarioAPIDao.InvalidarAtivos(
+      QuantidadeInvalidados := TEleicaoCodigoTemporarioAPIDao.InvalidarAtivos(
         Conn, AIdEmpresa, Eleicao.IdEleicao, AIdUsuarioEleitor
       );
+
+      if QuantidadeInvalidados > 0 then
+        TEleicaoAuditoriaAPIService.RegistrarEvento(
+          Conn, AIdEmpresa, Eleicao.IdEleicao, AIdOperador,
+          AUDITORIA_CODIGO_TEMP_INVALIDADO, AUDITORIA_ORIGEM_ADMIN, True,
+          DescricaoSegura(AIdUsuarioEleitor,AIdOperador,
+            'motivo=NOVO_CODIGO; quantidade=' + QuantidadeInvalidados.ToString),
+          AIP, AUserAgent
+        );
+
       TEleicaoCodigoTemporarioAPIDao.InvalidarConfirmacaoNormal(
         Conn, AIdEmpresa, Eleicao.IdEleicao, AIdUsuarioEleitor
       );
@@ -197,9 +224,9 @@ begin
 
       TEleicaoAuditoriaAPIService.RegistrarEvento(
         Conn, AIdEmpresa, Eleicao.IdEleicao, AIdOperador,
-        'CODIGO_TEMPORARIO_GERADO', AUDITORIA_ORIGEM_ADMIN, True,
-        'Código temporário gerado para eleitor ' + NomeEleitor +
-        ' (usuário ' + AIdUsuarioEleitor.ToString + ').',
+        AUDITORIA_CODIGO_TEMP_GERADO, AUDITORIA_ORIGEM_ADMIN, True,
+        DescricaoSegura(AIdUsuarioEleitor,AIdOperador,
+          'validade_minutos=' + VALIDADE_MINUTOS.ToString),
         AIP, AUserAgent
       );
 
@@ -214,6 +241,8 @@ begin
     Result.ExpiraEm := IncMinute(Now, VALIDADE_MINUTOS);
   finally
     Codigo := '';
+    CodigoHash := '';
+    NomeEleitor := '';
     Conn.Free;
   end;
 end;
@@ -251,7 +280,20 @@ begin
 
     if Dados.ExpiraEm <= Now then
     begin
-      TEleicaoCodigoTemporarioAPIDao.MarcarExpirado(Conn, Dados.Id);
+      Conn.StartTransaction;
+      try
+        TEleicaoCodigoTemporarioAPIDao.MarcarExpirado(Conn, Dados.Id);
+        TEleicaoAuditoriaAPIService.RegistrarEvento(
+          Conn, AIdEmpresa, Eleicao.IdEleicao, AIdUsuario,
+          AUDITORIA_CODIGO_TEMP_EXPIRADO, AUDITORIA_ORIGEM_SISTEMA, True,
+          DescricaoSegura(AIdUsuario,Dados.OperadorUsuarioId,'status=EXPIRADO'),
+          AIP, AUserAgent
+        );
+        Conn.Commit;
+      except
+        if Conn.InTransaction then Conn.Rollback;
+        raise;
+      end;
       Exit;
     end;
 
@@ -267,8 +309,8 @@ begin
       );
       TEleicaoAuditoriaAPIService.RegistrarEvento(
         Conn, AIdEmpresa, Eleicao.IdEleicao, AIdUsuario,
-        'CODIGO_TEMPORARIO_INVALIDO', AUDITORIA_ORIGEM_ELEITOR, False,
-        'Tentativa inválida de código temporário administrativo.',
+        AUDITORIA_CODIGO_TEMP_INVALIDO, AUDITORIA_ORIGEM_ELEITOR, False,
+        DescricaoSegura(AIdUsuario,Dados.OperadorUsuarioId,'resultado=INVALIDO'),
         AIP, AUserAgent
       );
       TAppErrors.RaiseBadRequest('Código inválido ou expirado.');
@@ -279,8 +321,8 @@ begin
       TEleicaoCodigoTemporarioAPIDao.MarcarUtilizado(Conn, Dados.Id);
       TEleicaoAuditoriaAPIService.RegistrarEvento(
         Conn, AIdEmpresa, Eleicao.IdEleicao, AIdUsuario,
-        'CODIGO_TEMPORARIO_VALIDADO', AUDITORIA_ORIGEM_ELEITOR, True,
-        'Código temporário administrativo validado com sucesso.',
+        AUDITORIA_CODIGO_TEMP_VALIDADO, AUDITORIA_ORIGEM_ELEITOR, True,
+        DescricaoSegura(AIdUsuario,Dados.OperadorUsuarioId,'status=UTILIZADO'),
         AIP, AUserAgent
       );
       Conn.Commit;
@@ -304,8 +346,10 @@ begin
       AIdEmpresa, Eleicao.IdEleicao, AIdUsuario, NormalizarSlug(ASlug)
     );
 
+    CodigoHash := '';
     Result := True;
   finally
+    CodigoHash := '';
     Conn.Free;
   end;
 end;
