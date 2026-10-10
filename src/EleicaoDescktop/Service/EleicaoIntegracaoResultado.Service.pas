@@ -87,8 +87,6 @@ begin
         TAppErrors.RaiseBadRequest('O resultado somente pode ser consultado apos a apuracao.');
 
       OperacaoNormalizada := UpperCase(Trim(Eleicao.Operacao));
-      OperacaoNormalizada := StringReplace(OperacaoNormalizada, 'ELEICAO', 'ELEICAO', []);
-
       if SameText(OperacaoNormalizada, 'ASSEMBLEIA') then
         TAppErrors.RaiseBadRequest('Resultado de assembleia ainda nao disponivel para integracao.');
 
