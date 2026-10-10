@@ -106,7 +106,12 @@ end;
 
 class function TAppToken.PodeGerarCodigoContingencia(const ARoles: TArray<string>): Boolean;
 begin
-  Result := PossuiRole(ARoles,ELEICAO_PERMISSAO_GERAR_CODIGO_CONTINGENCIA);
+  // O modelo eleitoral atual trabalha com perfis no JWT. ADMIN recebe esta
+  // capacidade por compatibilidade; COMISSAO nao herda a permissao.
+  // Quando roles granulares forem emitidas no login, a permissao explicita
+  // abaixo passa a funcionar sem alterar os endpoints.
+  Result := PossuiRole(ARoles,ELEICAO_PERMISSAO_GERAR_CODIGO_CONTINGENCIA) or
+            PossuiRole(ARoles,'ADMIN');
 end;
 
 class function TAppToken.PossuiRole(const ARoles: TArray<string>;const ARole: string): Boolean;
