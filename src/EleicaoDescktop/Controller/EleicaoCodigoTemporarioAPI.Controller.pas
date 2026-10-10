@@ -1,7 +1,6 @@
 unit EleicaoCodigoTemporarioAPI.Controller;
 
 interface
-
 type
   TEleicaoCodigoTemporarioAPIController = class
   public
@@ -61,8 +60,8 @@ begin
         if not TAppToken.ValidarToken(Req,Res,Claims) then Exit;
         Slug := Trim(Req.Params['slug']);
         if Slug.IsEmpty then TAppErrors.RaiseBadRequest('Eleição não informada.');
-        if not TAppToken.PodeAdministrarEleicao(Claims.Roles) then
-          TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
+        if not TAppToken.PodeGerarCodigoContingencia(Claims.Roles) then
+          TAppErrors.RaiseUnauthorized('Permissão para contingência administrativa não concedida.');
         if not TAppToken.PertenceEleicao(Claims,Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
 
@@ -107,8 +106,8 @@ begin
         if not TAppToken.ValidarToken(Req,Res,Claims) then Exit;
         Slug := Trim(Req.Params['slug']);
         if Slug.IsEmpty then TAppErrors.RaiseBadRequest('Eleição não informada.');
-        if not TAppToken.PodeAdministrarEleicao(Claims.Roles) then
-          TAppErrors.RaiseUnauthorized('Usuário não autorizado.');
+        if not TAppToken.PodeGerarCodigoContingencia(Claims.Roles) then
+          TAppErrors.RaiseUnauthorized('Permissão para contingência administrativa não concedida.');
         if not TAppToken.PertenceEleicao(Claims,Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
 
