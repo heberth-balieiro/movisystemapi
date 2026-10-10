@@ -9,6 +9,10 @@ uses
 type
   TEleicaoVotacaoAPIDao = class
   public
+    class procedure GarantirEstruturaVotoQuestao(
+      const AConn: TUniConnection
+    ); static;
+
     class function EleitorJaVotou(
       const AConn: TUniConnection;
       const AIdEleicao: Integer;
@@ -83,6 +87,14 @@ uses
   DB;
 
 { TEleicaoVotacaoAPIDao }
+
+class procedure TEleicaoVotacaoAPIDao.GarantirEstruturaVotoQuestao(
+  const AConn: TUniConnection
+);
+begin
+  // A estrutura e criada pela migration 018_E.
+  // Mantido para compatibilidade com o fluxo de votacao e apuracao.
+end;
 
 class function TEleicaoVotacaoAPIDao.EleitorJaVotou(
   const AConn: TUniConnection;
