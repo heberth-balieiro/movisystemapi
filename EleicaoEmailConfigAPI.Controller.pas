@@ -18,6 +18,7 @@ uses
   App.JWT,
   App.Response,
   APP.Errors,
+  EleicaoEmail.Contracts,
   EleicaoEmailConfigAPI.Model,
   EleicaoEmailConfigAPI.Service,
   EleicaoEmail.Service;
@@ -148,6 +149,7 @@ begin
       Body: TJSONObject;
       Destinatario: string;
       Dados: TJSONObject;
+      EmailService: IEmailService;
     begin
       try
         if not AutorizarAdmin(Req, Res, Claims, Slug) then
@@ -161,7 +163,8 @@ begin
         if Destinatario.IsEmpty then
           TAppErrors.RaiseBadRequest('Informe o destinatário do teste.');
 
-        TEleicaoEmailService.EnviarTeste(Claims.IdEmpresa, Destinatario);
+        EmailService := TEleicaoEmailService.New;
+        EmailService.EnviarTeste(Claims.IdEmpresa, Destinatario);
 
         Dados := TJSONObject.Create;
         Dados.AddPair('enviado', TJSONBool.Create(True));
