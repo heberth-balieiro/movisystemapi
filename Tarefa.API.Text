@@ -1,0 +1,88 @@
+﻿empresa
+  └── assinatura
+        └── assinatura_cobranca
+
+GET    /v1/assinaturas
+GET    /v1/assinaturas/atual
+GET    /v1/assinaturas/:id
+POST   /v1/assinaturas
+PUT    /v1/assinaturas/:id
+DELETE /v1/assinaturas/:id
+PUT    /v1/assinaturas/:id/cancelar
+PUT    /v1/assinaturas/:id/bloquear
+PUT    /v1/assinaturas/:id/ativar
+
+GET    /v1/assinatura-cobrancas
+GET    /v1/assinatura-cobrancas?id_assinatura=1
+GET    /v1/assinatura-cobrancas/:id
+POST   /v1/assinatura-cobrancas
+PUT    /v1/assinatura-cobrancas/:id
+DELETE /v1/assinatura-cobrancas/:id
+PUT    /v1/assinatura-cobrancas/:id/pagar  ok
+PUT    /v1/assinatura-cobrancas/:id/vencer
+PUT    /v1/assinatura-cobrancas/:id/cancelar
+PUT    /v1/assinatura-cobrancas/:id/reabrir
+PUT    /v1/assinaturas/{id}/contratar     ok
+PUT    /v1/assinaturas/processar-vencimentos ok
+PUT    /v1/assinaturas/processar-bloqueios ok
+PUT   /v1/assinaturas/processar-rotina ok
+GET   /v1/assinaturas/status ok
+POST  /v1/uploads/categorias/:id   ok
+
+PUT   /v1/admin/assinaturas/processar-rotina  ok
+
+
+Nas rotas protegidas do painel, depois de validar o token, chame:
+
+TAssinaturaService.ValidarAcessoPainel(Claims.IdEmpresa);
+
+* Quando enviar a primeira vez para produção ajustar a migration só com os create.
+* Criar para verificar se o banco de dados ja esta criado se nao criar.
+
+1. Criar rotina global/admin de processamento de assinaturas   ok
+2. Depois criar endpoint/status para o frontend mostrar a situação da assinatura
+3. Depois ajustar frontend para exibir aviso de trial/vencimento/bloqueio
+
+1. cobrança vira PAGA
+2. pago_em = NOW()
+3. assinatura continua ATIVA
+4. proximo_vencimento avança para o próximo ciclo
+
+A próxima etapa boa é aplicar essa situação da assinatura no acesso da empresa: bloquear catálogo/painel quando assinatura estiver VENCIDA, BLOQUEADA ou CANCELADA.
+
+
+Quando a empresa se cadastra:
+
+assinatura.situacao = TRIAL
+assinatura.recorrencia = MENSAL ou ANUAL
+assinatura.trial_termina_em = data atual + 7 dias
+assinatura.proximo_vencimento = trial_termina_em
+assinatura.valor = valor do plano
+
+Quando cliente confirma pagamento ou contrata:
+
+assinatura.situacao = ATIVA
+assinatura.proximo_vencimento = próximo mês ou próximo ano
+
+E gera registro em:
+
+assinatura_cobranca.situacao = ABERTA
+
+Quando pagar:
+
+assinatura_cobranca.situacao = PAGA
+assinatura_cobranca.pago_em = NOW()
+
+E atualiza a assinatura:
+
+assinatura.situacao = ATIVA
+assinatura.proximo_vencimento = próximo vencimento
+
+Se passou do vencimento e não pagou:
+
+assinatura.situacao = VENCIDA
+assinatura_cobranca.situacao = VENCIDA
+
+Depois de uma regra de bloqueio:
+
+assinatura.situacao = BLOQUEADA

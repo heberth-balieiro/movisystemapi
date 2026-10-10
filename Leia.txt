@@ -1,0 +1,418 @@
+//// Git ///////////////////////////////////////////
+
+Enviar alterações
+
+git init
+git branch -M main
+git remote add origin https://github.com/heberth-balieiro/easycatalogo-backend.git
+git add .
+git commit -m "Melhorias de codigo e criação de tabelas da API Easy Catálogo"
+git push -u origin main
+
+Enviar a força quando tem arquivo diferente
+
+git remote set-url origin https://github.com/heberth-balieiro/easycatalogo-backend.git
+git branch -M main
+git add .
+git commit -m "Reenvio completo da API Easy Catálogo"
+git push -u origin main --force
+
+Baixar as alterações do git
+
+git remote set-url origin https://github.com/heberth-balieiro/easycatalogo-backend.git
+git fetch origin
+git checkout main
+git reset --hard origin/main
+git pull origin main
+
+
+
+
+
+/////////////////////////////////////////////////////
+Criando uma API para roda no linux e windows
+
+1 - Primeiro Instalar o Boss.
+2 - No caminho do projeto iniciar o boss: boss init
+3 - Instalar o horse: boss install horse
+3 - Instalar o cors: boss install horse-cors
+4 - Instalar o JWT: boss install horse-jwt 
+5 - Instalar o Jose: boss install github.com/paolo-rossi/delphi-jose-jwt
+6 - Horse para arquivos: boss install github.com/giorgiobazzo/horse-upload
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnN0YW5jZU5hbWUiOiI4MDkwRkUwNDc2RkQ2N0YwNkFFRTcyOEM5MEUxNjJFRTEwM0RENjcxRkIwMDcwODVFMTExNjdCMTZBODRCRDdBOUUiLCJhcGlOYW1lIjoid2hhdHNhcHAtYXBpIiwidG9rZW5JZCI6IjAxS1BDRjNUUDNWWjZTOTFBWTZONUhIWU44IiwiaWF0IjoxNzc2Mzg3NDg0LCJleHAiOjE3NzYzODc0ODQsInN1YiI6ImctdCJ9.ogiHp5f3KKIz05AVJxTqxfdKWi9YhDTqkhX-_Gin1j8
+
+
+EndPoint
+Status da API: http://localhost:9000/v1/status
+
+Login: http://localhost:9000/v1/usuarios
+DataBase: http://localhost:9000/v1/db/status
+
+Cadastro: POST http://localhost:9000/v1/empresas/cadastro
+{
+  "nome": "Catálogo Digital Teste",
+  "cnpj": "12345678000199",
+  "cep": "16000000",
+  "endereco": "Rua Exemplo",
+  "numero": "100",
+  "complemento": "Sala 2",
+  "bairro": "Centro",
+  "cidade": "Araçatuba",
+  "uf": "SP",
+  "whatsapp": "18999999999",
+  "email": "contato@catalogoteste.com.br",
+  "nome_responsavel": "Diego Balieiro",
+  "senha": "123456",
+  "notificar_pedido_whatsapp": "S",
+  "notificar_pedido_email": "S",
+  "resumo_diario": "N",
+  "mensagem_modelo": "Olá, recebemos seu pedido e em breve entraremos em contato."
+}
+
+POST http://localhost:9000/v1/auth/login
+{
+  "email": "contato@catalogoteste.com.br",
+  "senha": "123456"
+}
+
+{
+  "erro": false,
+  "mensagem": "Login realizado com sucesso.",
+  "dados": {
+    "token": "...",
+    "usuario": {
+      "id_usuario": 1,
+      "nome": "Diego Balieiro",
+      "email": "contato@catalogoteste.com.br",
+      "perfil": "ADMIN"
+    },
+    "empresa": {
+      "id_empresa": 1,
+      "nome": "Catálogo Digital Teste",
+      "data_validade": "2026-06-30"
+    }
+  }
+}
+
+GET http://localhost:9000/v1/auth/me
+
+POST http://localhost:9000/v1/categorias
+GET  http://localhost:9000/v1/categorias
+PUT  http://localhost:9000/v1/categorias/{id}
+DELETE http://localhost:9000/v1/categorias/{id}
+
+{
+  "nome": "Salgados",
+  "descricao": "Categoria principal de salgados",
+  "ativo": "S",
+  "ordem": 1
+}
+
+{
+  "nome": "Salgados Fritos",
+  "descricao": "Categoria de salgados fritos",
+  "ativo": "S",
+  "ordem": 2
+}
+
+POST   http://localhost:9000/v1/produtos
+GET    http://localhost:9000/v1/produtos
+GET    http://localhost:9000/v1/produtos/:id
+PUT    http://localhost:9000/v1/produtos/:id
+DELETE http://localhost:9000/v1/produtos/:id
+
+{
+  "id_categoria": 1,
+  "nome": "Coxinha de Frango",
+  "descricao": "Coxinha tradicional recheada com frango",
+  "preco": 7.50,
+  "ativo": "S",
+  "destaque": "S",
+  "ordem": 1
+}
+
+{
+  "id_categoria": 1,
+  "nome": "Coxinha de Frango com Catupiry",
+  "descricao": "Coxinha tradicional com frango e catupiry",
+  "preco": 8.50,
+  "ativo": "S",
+  "destaque": "S",
+  "ordem": 1
+}
+
+POST   http://localhost:9000/v1/produtos/:id/imagens
+GET    http://localhost:9000/v1/produtos/:id/imagens
+PUT    http://localhost:9000/v1/produtos/:id/imagens/:id_imagem
+DELETE http://localhost:9000/v1/produtos/:id/imagens/:id_imagem
+
+{
+  "url_imagem": "https://meusite.com.br/imagens/coxinha.jpg",
+  "principal": "S",
+  "ordem": 1
+}
+
+{
+  "erro": false,
+  "mensagem": "Imagem cadastrada com sucesso.",
+  "dados": {
+    "id_imagem": 1
+  }
+}
+
+
+GET /v1/public/catalogo/:slug
+GET /v1/catalogo/config
+PUT /v1/catalogo/config
+
+{
+  "slug": "catalogo-teste",
+  "titulo_catalogo": "Catálogo Teste",
+  "descricao": "Confira nossos produtos disponíveis para orçamento.",
+  "cor_primaria": "#FF6600",
+  "cor_secundaria": "#222222",
+  "logo_url": "https://meusite.com.br/logo.png",
+  "banner_url": "https://meusite.com.br/banner.png",
+  "mostrar_preco": "S",
+  "permitir_observacao": "S",
+  "permitir_retirada": "S",
+  "permitir_entrega": "N",
+  "valor_minimo_pedido": 0,
+  "ativo": "S"
+}
+
+{
+  "erro": false,
+  "mensagem": "Configuração do catálogo salva com sucesso.",
+  "dados": {
+    "id_config": 1
+  }
+}
+
+GET http://localhost:9000/v1/public/catalogo/catalogo-teste
+
+{
+  "erro": false,
+  "mensagem": "",
+  "dados": {
+    "catalogo": {
+      "id_config": 1,
+      "id_empresa": 1,
+      "slug": "catalogo-teste",
+      "titulo_catalogo": "Catálogo Teste",
+      "descricao": "Confira nossos produtos disponíveis para orçamento.",
+      "cor_primaria": "#FF6600",
+      "cor_secundaria": "#222222",
+      "logo_url": "https://meusite.com.br/logo.png",
+      "banner_url": "https://meusite.com.br/banner.png",
+      "mostrar_preco": "S",
+      "permitir_observacao": "S",
+      "permitir_retirada": "S",
+      "permitir_entrega": "N",
+      "valor_minimo_pedido": 0
+    },
+    "empresa": {
+      "id_empresa": 1,
+      "nome": "Catálogo Digital Teste",
+      "whatsapp": "18999999999",
+      "email": "contato@catalogoteste.com.br"
+    },
+    "categorias": []
+  }
+}
+
+POST http://localhost:9000/v1/public/catalogo/catalogo-teste/pedidos
+POST /v1/public/catalogo/:slug/pedidos
+GET /v1/pedidos
+GET /v1/pedidos/:id
+PUT /v1/pedidos/:id/status
+
+{
+  "nome_cliente": "João da Silva",
+  "whatsapp_cliente": "18999999999",
+  "email_cliente": "joao@email.com",
+  "observacao": "Separar para retirar às 15h",
+  "tipo_entrega": "RETIRADA",
+  "endereco_entrega": "",
+  "itens": [
+    {
+      "id_produto": 1,
+      "quantidade": 2,
+      "observacao": "Sem catupiry"
+    }
+  ]
+}
+
+{
+  "erro": false,
+  "mensagem": "Pedido enviado com sucesso.",
+  "dados": {
+    "id_pedido": 1,
+    "valor_total": 23.5
+  }
+}
+
+{
+  "status": "EM_ATENDIMENTO"
+}
+
+GET /v1/registros
+GET /v1/registros/pedido/:id
+
+GET http://localhost:9000/v1/registros/pedido/1
+
+GET /v1/notificacoes
+GET /v1/notificacoes/pendentes
+PUT /v1/notificacoes/:id/cancelar
+
+GET /v1/notificacoes/pendentes?canal=WHATSAPP
+PUT /v1/notificacoes/:id/enviado
+PUT /v1/notificacoes/:id/erro
+
+GET http://localhost:9000/v1/dashboard/resumo
+
+{
+  "erro": false,
+  "mensagem": "",
+  "dados": {
+    "indicadores": {
+      "pedidos": {
+        "total_hoje": 1,
+        "total_novos": 1,
+        "total_em_atendimento": 0,
+        "total_finalizados_mes": 0,
+        "valor_total_mes": 23.5
+      },
+      "cadastros": {
+        "categorias_ativas": 1,
+        "produtos_ativos": 1
+      },
+      "notificacoes": {
+        "pendentes": 2,
+        "com_erro": 0
+      }
+    },
+    "ultimos_pedidos": [],
+    "ultimos_eventos": []
+  }
+}
+
+- Upload real de imagem
+- Processador de notificações WhatsApp/email
+- Relatórios de pedidos
+
+POST /v1/uploads/produtos/:id
+GET  /v1/public/arquivos/produtos/:id_empresa/:id_produto/:arquivo
+GET /v1/public/arquivos/produtos/:id_empresa/:id_produto/:arquivo
+
+Criar ajuda
+POST http://localhost:9000/v1/ajudas
+Authorization: Bearer SEU_TOKEN
+Content-Type: application/json
+
+Body:
+
+{
+  "ordem": 1,
+  "titulo": "Como cadastrar produto",
+  "url": "https://www.youtube.com/watch?v=abc123",
+  "descricao": "Vídeo explicando como cadastrar um produto no catálogo.",
+  "ativo": "S"
+}
+
+
+Listar todas as ajudas da empresa
+GET http://localhost:9000/v1/ajudas
+Authorization: Bearer SEU_TOKEN
+
+Listar minhas ajudas ativas
+GET http://localhost:9000/v1/ajudas/minhas
+Authorization: Bearer SEU_TOKEN
+
+
+Buscar por ID
+GET http://localhost:9000/v1/ajudas/1
+Authorization: Bearer SEU_TOKEN
+
+Atualizar
+PUT http://localhost:9000/v1/ajudas/1
+Authorization: Bearer SEU_TOKEN
+Content-Type: application/json
+
+Body:
+
+{
+  "ordem": 2,
+  "titulo": "Como cadastrar produto atualizado",
+  "url": "https://www.youtube.com/watch?v=abc123",
+  "descricao": "Vídeo atualizado explicando cadastro de produto.",
+  "ativo": "S"
+}
+
+
+Excluir
+DELETE http://localhost:9000/v1/ajudas/1
+Authorization: Bearer SEU_TOKEN
+
+8. Testes no Postman
+Criar plano
+POST http://localhost:9000/v1/plano
+Authorization: Bearer SEU_TOKEN
+Content-Type: application/json
+
+Body:
+
+{
+  "descricao": "Plano Básico",
+  "valor": 49.90,
+  "catalogo": "S",
+  "catalogo_qtde": 100,
+  "interno": "N",
+  "ativo": "S"
+}
+Listar planos
+GET http://localhost:9000/v1/plano
+Authorization: Bearer SEU_TOKEN
+Pesquisar plano
+GET http://localhost:9000/v1/plano?pesquisa=basico
+Authorization: Bearer SEU_TOKEN
+Buscar por ID
+GET http://localhost:9000/v1/plano/1
+Authorization: Bearer SEU_TOKEN
+Atualizar plano
+PUT http://localhost:9000/v1/plano/1
+Authorization: Bearer SEU_TOKEN
+Content-Type: application/json
+
+Body:
+
+{
+  "descricao": "Plano Básico Atualizado",
+  "valor": 59.90,
+  "catalogo": "S",
+  "catalogo_qtde": 150,
+  "interno": "N",
+  "ativo": "S"
+}
+Excluir plano
+DELETE http://localhost:9000/v1/plano/1
+Authorization: Bearer SEU_TOKEN
+Dashboard/cadastro de empresa sem token
+GET http://localhost:9000/v1/plano/dash
+
+Retorna somente planos:
+
+ativo = S
+catalogo = S
+
+
+
+1. Criar o painel administrativo no frontend
+2. Implementar login
+3. Criar dashboard consumindo /v1/dashboard/resumo
+4. Criar telas de categoria, produto e imagem
+5. Criar tela de pedidos
+6. Criar tela de notificações
+7. Criar página pública do catálogo por slug
+

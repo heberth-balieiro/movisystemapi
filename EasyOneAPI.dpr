@@ -462,7 +462,10 @@ uses
   ContratoHistorico.Service in 'src\Contratos\Services\ContratoHistorico.Service.pas',
   ContratoHistorico.Controller in 'src\Contratos\Controller\ContratoHistorico.Controller.pas',
   ContratoFiscalizacao.Controller in 'src\Contratos\Controller\ContratoFiscalizacao.Controller.pas',
-  CertificadoNotificacao.Worker in 'src\Cursos\Services\CertificadoNotificacao.Worker.pas';
+  CertificadoNotificacao.Worker in 'src\Cursos\Services\CertificadoNotificacao.Worker.pas',
+  EleicaoIntegracaoResultado.Controller in 'src\EleicaoDescktop\Controller\EleicaoIntegracaoResultado.Controller.pas',
+  EleicaoIntegracaoResultado.Service in 'src\EleicaoDescktop\Service\EleicaoIntegracaoResultado.Service.pas',
+  EleicaoIntegracaoResultado.Dao in 'src\EleicaoDescktop\Dao\EleicaoIntegracaoResultado.Dao.pas';
 
 var
   LConfig       : TAppApiConfig;
