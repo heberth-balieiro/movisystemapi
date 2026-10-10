@@ -22,6 +22,7 @@ uses
   App.JWT,
   App.Token,
   EleicaoAPIPublic.Service,
+  EleicaoEmailContingencia.Service,
   EleicaoMelhoriasAPI.Service,
   APP.Classes,
   App.RequestInfo;
@@ -34,7 +35,7 @@ begin
   {$REGION 'Confirmação'}
 
   //
-  // SOLICITAR CÓDIGO
+  // SOLICITAR CÓDIGO PELO WHATSAPP
   //
   THorse.Post('/api/v1/public/eleicao/:slug/confirmacao/solicitar-codigo',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
@@ -42,22 +43,18 @@ begin
       Claims  : TJWTClaims;
       Slug    : string;
       Result  : TSolicitarCodigoResult;
+      Contingencia: TEleicaoEmailContingenciaInfo;
       Retorno : TJSONObject;
       ExpiracaoAjustada: Integer;
     begin
       try
-        // 1. Valida token_identificacao
-        //
         if not TAppToken.ValidarToken(Req, Res, Claims) then
           Exit;
-
-        // 2. Recupera slug
 
         Slug := Trim(Req.Params['slug']);
 
         if Slug.IsEmpty then
           TAppErrors.RaiseBadRequest('Eleição não informada.');
-
 
         if not TAppToken.PossuiRole(Claims.Roles, 'ELEITOR_IDENTIFICADO') then
           TAppErrors.RaiseUnauthorized('Identificação inválida ou expirada.');
@@ -65,16 +62,16 @@ begin
         if not TAppToken.PertenceEleicao(Claims, Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
 
+        Result := TEleicaoAPIPublicService.SolicitarCodigoConfirmacao(
+          Slug,
+          Claims.UserId,
+          Claims.IdEmpresa,
+          TAppRequestInfo.GetIP(Req),
+          TAppRequestInfo.GetUserAgent(Req)
+        );
 
-        // 3. Chama Service
-        //
-        Result  := TEleicaoAPIPublicService.SolicitarCodigoConfirmacao(
-                    Slug, Claims.UserId, Claims.IdEmpresa,TAppRequestInfo.GetIP(Req),TAppRequestInfo.GetUserAgent(Req));
-
-        // Compatibilidade com a implementação atual do DAO: em um novo envio
-        // o service retorna 60/60. Ajustamos a validade real para 90 segundos
-        // sem prolongar códigos já existentes em chamadas subsequentes.
-        if (Result.ExpiraEmSegundos >= 60) and (Result.ReenviarEmSegundos >= 60) then
+        if (Result.ExpiraEmSegundos >= 60) and
+           (Result.ReenviarEmSegundos >= 60) then
         begin
           ExpiracaoAjustada := TEleicaoMelhoriasAPIService.AjustarExpiracaoOTP(
             Slug,
@@ -86,17 +83,26 @@ begin
             Result.ExpiraEmSegundos := ExpiracaoAjustada;
         end;
 
-        //
-        // 4. Monta retorno
-        //
-        Retorno   := TJSONObject.Create;
+        Contingencia := TEleicaoEmailContingenciaService.Consultar(
+          Slug,
+          Claims.UserId,
+          Claims.IdEmpresa
+        );
 
+        Retorno := TJSONObject.Create;
         Retorno.AddPair('enviado', Result.Enviado);
-        Retorno.AddPair('destino',Result.Destino);
-        Retorno.AddPair('expira_em_segundos',TJSONNumber.Create(Result.ExpiraEmSegundos));
-        Retorno.AddPair('reenviar_em_segundos',TJSONNumber.Create(Result.ReenviarEmSegundos));
+        Retorno.AddPair('destino', Result.Destino);
+        Retorno.AddPair('canal', 'WHATSAPP');
+        Retorno.AddPair('expira_em_segundos', TJSONNumber.Create(Result.ExpiraEmSegundos));
+        Retorno.AddPair('reenviar_em_segundos', TJSONNumber.Create(Result.ReenviarEmSegundos));
+        Retorno.AddPair('email_disponivel', TJSONBool.Create(Contingencia.Disponivel));
 
-        TAppResponse.Ok(Res,Retorno,'Código de confirmação enviado.');
+        if Contingencia.Disponivel then
+          Retorno.AddPair('email_destino', Contingencia.DestinoMascarado)
+        else
+          Retorno.AddPair('email_destino', TJSONNull.Create);
+
+        TAppResponse.Ok(Res, Retorno, 'Código de confirmação enviado.');
 
       except
         on E: Exception do
@@ -104,6 +110,66 @@ begin
       end;
     end);
 
+  //
+  // SOLICITAR NOVO CÓDIGO PELO E-MAIL CADASTRADO
+  // Disponível somente depois do envio inicial + reenvio por WhatsApp.
+  //
+  THorse.Post('/api/v1/public/eleicao/:slug/confirmacao/solicitar-codigo-email',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Slug: string;
+      Result: TEleicaoEmailContingenciaResult;
+      Retorno: TJSONObject;
+      ExpiracaoAjustada: Integer;
+    begin
+      try
+        if not TAppToken.ValidarToken(Req, Res, Claims) then
+          Exit;
+
+        Slug := Trim(Req.Params['slug']);
+
+        if Slug.IsEmpty then
+          TAppErrors.RaiseBadRequest('Eleição não informada.');
+
+        if not TAppToken.PossuiRole(Claims.Roles, 'ELEITOR_IDENTIFICADO') then
+          TAppErrors.RaiseUnauthorized('Identificação inválida ou expirada.');
+
+        if not TAppToken.PertenceEleicao(Claims, Slug) then
+          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+
+        Result := TEleicaoEmailContingenciaService.SolicitarCodigo(
+          Slug,
+          Claims.UserId,
+          Claims.IdEmpresa,
+          TAppRequestInfo.GetIP(Req),
+          TAppRequestInfo.GetUserAgent(Req)
+        );
+
+        ExpiracaoAjustada := TEleicaoMelhoriasAPIService.AjustarExpiracaoOTP(
+          Slug,
+          Claims.IdEmpresa,
+          Claims.UserId
+        );
+
+        if ExpiracaoAjustada > 0 then
+          Result.ExpiraEmSegundos := ExpiracaoAjustada;
+
+        Retorno := TJSONObject.Create;
+        Retorno.AddPair('enviado', Result.Enviado);
+        Retorno.AddPair('destino', Result.Destino);
+        Retorno.AddPair('canal', 'EMAIL');
+        Retorno.AddPair('expira_em_segundos', TJSONNumber.Create(Result.ExpiraEmSegundos));
+        Retorno.AddPair('reenviar_em_segundos', TJSONNumber.Create(Result.ReenviarEmSegundos));
+        Retorno.AddPair('email_disponivel', TJSONBool.Create(True));
+        Retorno.AddPair('email_destino', Result.Destino);
+
+        TAppResponse.Ok(Res, Retorno, 'Código de confirmação enviado por e-mail.');
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end);
 
   //
   // VALIDAR CÓDIGO
@@ -119,15 +185,9 @@ begin
       Retorno : TJSONObject;
     begin
       try
-        //
-        // 1. Valida token_identificacao
-        //
         if not TAppToken.ValidarToken(Req, Res, Claims) then
           Exit;
 
-        //
-        // 2. Recupera slug
-        //
         Slug := Trim(Req.Params['slug']);
 
         if Slug.IsEmpty then
@@ -137,13 +197,8 @@ begin
           TAppErrors.RaiseUnauthorized('Identificação inválida ou expirada.');
 
         if not TAppToken.PertenceEleicao(Claims, Slug) then
-        TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
 
-
-
-        //
-        // 3. Recupera JSON
-        //
         Body := Req.Body<TJSONObject>;
 
         if Body = nil then
@@ -154,24 +209,19 @@ begin
         if Codigo.IsEmpty then
           TAppErrors.RaiseBadRequest('Informe o código de confirmação.');
 
-        //
-        // 4. Chama Service
-        //
         Result := TEleicaoAPIPublicService.ValidarCodigoConfirmacao(
-                    Slug,
-                    Claims.UserId,
-                    Claims.IdEmpresa,
-                    Codigo,
-                    TAppRequestInfo.GetIP(Req),TAppRequestInfo.GetUserAgent(Req));
+          Slug,
+          Claims.UserId,
+          Claims.IdEmpresa,
+          Codigo,
+          TAppRequestInfo.GetIP(Req),
+          TAppRequestInfo.GetUserAgent(Req)
+        );
 
-        //
-        // 5. Monta retorno
-        //
         Retorno := TJSONObject.Create;
-
-        Retorno.AddPair('confirmado',Result.Confirmado);
-        Retorno.AddPair('token_votacao',Result.TokenVotacao);
-        TAppResponse.Ok(Res,Retorno,'Código confirmado com sucesso.');
+        Retorno.AddPair('confirmado', Result.Confirmado);
+        Retorno.AddPair('token_votacao', Result.TokenVotacao);
+        TAppResponse.Ok(Res, Retorno, 'Código confirmado com sucesso.');
 
       except
         on E: Exception do
