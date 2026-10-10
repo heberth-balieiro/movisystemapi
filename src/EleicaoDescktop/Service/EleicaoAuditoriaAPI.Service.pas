@@ -30,6 +30,13 @@ const
   AUDITORIA_APURACAO_FINALIZADA  = 'APURACAO_FINALIZADA';
   AUDITORIA_RESULTADO_PUBLICADO  = 'RESULTADO_PUBLICADO';
 
+  // Contingencia administrativa. Nunca incluir o codigo em descricao/log.
+  AUDITORIA_CODIGO_TEMP_GERADO      = 'CODIGO_TEMPORARIO_GERADO';
+  AUDITORIA_CODIGO_TEMP_INVALIDADO  = 'CODIGO_TEMPORARIO_INVALIDADO';
+  AUDITORIA_CODIGO_TEMP_EXPIRADO    = 'CODIGO_TEMPORARIO_EXPIRADO';
+  AUDITORIA_CODIGO_TEMP_VALIDADO    = 'CODIGO_TEMPORARIO_VALIDADO';
+  AUDITORIA_CODIGO_TEMP_INVALIDO    = 'CODIGO_TEMPORARIO_INVALIDO';
+
 type
   TEleicaoAuditoriaAPIService = class
   public
@@ -133,17 +140,17 @@ begin
 
   try
     if Trim(ASlug).IsEmpty then
-      TAppErrors.RaiseBadRequest('Eleição não informada.');
+      TAppErrors.RaiseBadRequest('EleiÃ§Ã£o nÃ£o informada.');
 
     if (AIdUsuario <= 0) or (AIdEmpresa <= 0) then
-      TAppErrors.RaiseUnauthorized('Acesso não autorizado.');
+      TAppErrors.RaiseUnauthorized('Acesso nÃ£o autorizado.');
 
     Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
     Conn := TDatabaseConnection.NewConnection(Config.Database);
 
     try
       if not TEleicaoAdminAPIDao.BuscarEleicao(Conn, Trim(ASlug), AIdEmpresa, Eleicao) then
-        TAppErrors.RaiseNotFound('Eleição não encontrada.');
+        TAppErrors.RaiseNotFound('EleiÃ§Ã£o nÃ£o encontrada.');
 
       Filtro := Default(TEleicaoAuditoriaFiltro);
 
@@ -155,17 +162,17 @@ begin
        (Filtro.Origem <> 'ELEITOR') and
        (Filtro.Origem <> 'ADMIN') and
        (Filtro.Origem <> 'SISTEMA') then
-      TAppErrors.RaiseBadRequest('Origem inválida.');
+      TAppErrors.RaiseBadRequest('Origem invÃ¡lida.');
 
       if (Filtro.Sucesso <> '') and
        (Filtro.Sucesso <> 'S') and
        (Filtro.Sucesso <> 'N') then
-      TAppErrors.RaiseBadRequest('Status de sucesso inválido.');
+      TAppErrors.RaiseBadRequest('Status de sucesso invÃ¡lido.');
 
       if not Trim(ADataInicial).IsEmpty then
       begin
         if not TryISO8601ToDate(Trim(ADataInicial), DataTemp, False) then
-          TAppErrors.RaiseBadRequest('Data inicial inválida.');
+          TAppErrors.RaiseBadRequest('Data inicial invÃ¡lida.');
 
         Filtro.DataInicial := StartOfTheDay(DataTemp);
         Filtro.TemDataInicial := True;
@@ -174,7 +181,7 @@ begin
       if not Trim(ADataFinal).IsEmpty then
       begin
         if not TryISO8601ToDate(Trim(ADataFinal), DataTemp, False) then
-          TAppErrors.RaiseBadRequest('Data final inválida.');
+          TAppErrors.RaiseBadRequest('Data final invÃ¡lida.');
 
         Filtro.DataFinal := EndOfTheDay(DataTemp);
         Filtro.TemDataFinal := True;
@@ -182,7 +189,7 @@ begin
 
       if Filtro.TemDataInicial and Filtro.TemDataFinal then
       if Filtro.DataFinal < Filtro.DataInicial then
-        TAppErrors.RaiseBadRequest('Data final não pode ser menor que a data inicial.');
+        TAppErrors.RaiseBadRequest('Data final nÃ£o pode ser menor que a data inicial.');
 
       TEleicaoAuditoriaAPIDao.BuscarAuditoria(Conn, AIdEmpresa, Eleicao.IdEleicao, Filtro, Result);
 
