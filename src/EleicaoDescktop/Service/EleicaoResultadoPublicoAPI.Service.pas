@@ -14,10 +14,31 @@ type
     Percentual: Double;
   end;
 
+  TEleicaoResultadoPublicoOpcaoResult = record
+    IdOpcao: Integer;
+    Ordem: Integer;
+    Descricao: string;
+    QuantidadeVotos: Integer;
+    Percentual: Double;
+  end;
+
+  TEleicaoResultadoPublicoQuestaoResult = class
+  public
+    IdQuestao: Integer;
+    Ordem: Integer;
+    Titulo: string;
+    TotalVotos: Integer;
+    Opcoes: TList<TEleicaoResultadoPublicoOpcaoResult>;
+
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
   TEleicaoResultadoPublicoResult = record
     IdEleicao: Integer;
     NomeEleicao: string;
     Situacao: string;
+    Operacao: string;
 
     TotalVotos: Integer;
     VotosValidos: Integer;
@@ -25,11 +46,14 @@ type
     VotosNulos: Integer;
 
     Chapas: TList<TEleicaoResultadoPublicoChapaResult>;
+    Questoes: TObjectList<TEleicaoResultadoPublicoQuestaoResult>;
   end;
 
   TEleicaoResultadoPublicoAPIService = class
   public
-    class function BuscarResultado(const ASlug: string): TEleicaoResultadoPublicoResult; static;
+    class function BuscarResultado(
+      const ASlug: string
+    ): TEleicaoResultadoPublicoResult; static;
   end;
 
 implementation
@@ -42,73 +66,173 @@ uses
   Database.Connection,
   EleicaoResultadoPublicoAPI.Dao;
 
-class function TEleicaoResultadoPublicoAPIService.BuscarResultado(const ASlug: string): TEleicaoResultadoPublicoResult;
+{ TEleicaoResultadoPublicoQuestaoResult }
+
+constructor TEleicaoResultadoPublicoQuestaoResult.Create;
+begin
+  inherited Create;
+  Opcoes := TList<TEleicaoResultadoPublicoOpcaoResult>.Create;
+end;
+
+destructor TEleicaoResultadoPublicoQuestaoResult.Destroy;
+begin
+  Opcoes.Free;
+  inherited;
+end;
+
+{ TEleicaoResultadoPublicoAPIService }
+
+class function TEleicaoResultadoPublicoAPIService.BuscarResultado(
+  const ASlug: string
+): TEleicaoResultadoPublicoResult;
 var
   Config: TAppApiConfig;
   Conn: TUniConnection;
   Eleicao: TEleicaoResultadoPublicoDados;
   Resumo: TEleicaoResultadoPublicoResumo;
-  ListaDAO: TEleicaoResultadoPublicoLista;
-  ItemDAO: TEleicaoResultadoPublicoChapa;
-  Item: TEleicaoResultadoPublicoChapaResult;
+
+  ListaChapasDAO: TEleicaoResultadoPublicoLista;
+  ItemChapaDAO: TEleicaoResultadoPublicoChapa;
+  ItemChapa: TEleicaoResultadoPublicoChapaResult;
+
+  ListaQuestoesDAO: TEleicaoResultadoPublicoQuestoes;
+  QuestaoDAO: TEleicaoResultadoPublicoQuestao;
+  OpcaoDAO: TEleicaoResultadoPublicoOpcao;
+  Questao: TEleicaoResultadoPublicoQuestaoResult;
+  Opcao: TEleicaoResultadoPublicoOpcaoResult;
 begin
   Result := Default(TEleicaoResultadoPublicoResult);
   Result.Chapas := TList<TEleicaoResultadoPublicoChapaResult>.Create;
+  Result.Questoes := TObjectList<TEleicaoResultadoPublicoQuestaoResult>.Create(True);
 
   try
     if Trim(ASlug).IsEmpty then
-      TAppErrors.RaiseBadRequest('Eleição não informada.');
+      TAppErrors.RaiseBadRequest('Eleicao nao informada.');
 
-    Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+    Config := TAppConfig.Carregar(
+      ExtractFilePath(ParamStr(0)) + 'Config.ini'
+    );
+
     Conn := TDatabaseConnection.NewConnection(Config.Database);
-
     try
-      if not TEleicaoResultadoPublicoAPIDao.BuscarEleicaoPublicada(Conn, Trim(ASlug), Eleicao) then
-        TAppErrors.RaiseNotFound('Resultado da eleição não disponível.');
+      if not TEleicaoResultadoPublicoAPIDao.BuscarEleicaoPublicada(
+        Conn,
+        Trim(ASlug),
+        Eleicao
+      ) then
+        TAppErrors.RaiseNotFound('Resultado da eleicao nao disponivel.');
 
       Result.IdEleicao := Eleicao.IdEleicao;
       Result.NomeEleicao := Eleicao.Nome;
       Result.Situacao := Eleicao.Situacao;
+      Result.Operacao := Eleicao.Operacao;
 
-      if not TEleicaoResultadoPublicoAPIDao.BuscarResumo(Conn, Eleicao.IdEmpresa, Eleicao.IdEleicao, Resumo) then
-        TAppErrors.RaiseBadRequest('Não foi possível carregar o resultado da eleição.');
+      if SameText(Eleicao.Operacao,'ASSEMBLEIA') then
+      begin
+        Result.TotalVotos :=
+          TEleicaoResultadoPublicoAPIDao.BuscarTotalVotantes(
+            Conn,
+            Eleicao.IdEmpresa,
+            Eleicao.IdEleicao
+          );
+        Result.VotosValidos := 0;
+        Result.VotosBrancos := 0;
+        Result.VotosNulos := 0;
 
-      Result.TotalVotos := Resumo.TotalVotos;
-      Result.VotosValidos := Resumo.VotosValidos;
-      Result.VotosBrancos := Resumo.VotosBrancos;
-      Result.VotosNulos := Resumo.VotosNulos;
+        ListaQuestoesDAO := TEleicaoResultadoPublicoQuestoes.Create(True);
+        try
+          TEleicaoResultadoPublicoAPIDao.BuscarQuestoes(
+            Conn,
+            Eleicao.IdEmpresa,
+            Eleicao.IdEleicao,
+            ListaQuestoesDAO
+          );
 
-      ListaDAO := TEleicaoResultadoPublicoLista.Create;
-      try
-        TEleicaoResultadoPublicoAPIDao.BuscarChapas(Conn, Eleicao.IdEmpresa, Eleicao.IdEleicao, ListaDAO);
+          for QuestaoDAO in ListaQuestoesDAO do
+          begin
+            Questao := TEleicaoResultadoPublicoQuestaoResult.Create;
+            Questao.IdQuestao := QuestaoDAO.IdQuestao;
+            Questao.Ordem := QuestaoDAO.Ordem;
+            Questao.Titulo := QuestaoDAO.Titulo;
+            Questao.TotalVotos := QuestaoDAO.TotalVotos;
 
-        for ItemDAO in ListaDAO do
-        begin
-          Item := Default(TEleicaoResultadoPublicoChapaResult);
-          Item.IdChapa := ItemDAO.IdChapa;
-          Item.Numero := ItemDAO.Numero;
-          Item.Nome := ItemDAO.Nome;
-          Item.QuantidadeVotos := ItemDAO.QuantidadeVotos;
+            for OpcaoDAO in QuestaoDAO.Opcoes do
+            begin
+              Opcao := Default(TEleicaoResultadoPublicoOpcaoResult);
+              Opcao.IdOpcao := OpcaoDAO.IdOpcao;
+              Opcao.Ordem := OpcaoDAO.Ordem;
+              Opcao.Descricao := OpcaoDAO.Descricao;
+              Opcao.QuantidadeVotos := OpcaoDAO.QuantidadeVotos;
 
-          if Result.VotosValidos > 0 then
-            Item.Percentual := (Item.QuantidadeVotos / Result.VotosValidos) * 100
-          else
-            Item.Percentual := 0;
+              if Questao.TotalVotos > 0 then
+                Opcao.Percentual :=
+                  (Opcao.QuantidadeVotos / Questao.TotalVotos) * 100
+              else
+                Opcao.Percentual := 0;
 
-          Result.Chapas.Add(Item);
+              Questao.Opcoes.Add(Opcao);
+            end;
+
+            Result.Questoes.Add(Questao);
+          end;
+        finally
+          ListaQuestoesDAO.Free;
         end;
+      end
+      else
+      begin
+        if not TEleicaoResultadoPublicoAPIDao.BuscarResumo(
+          Conn,
+          Eleicao.IdEmpresa,
+          Eleicao.IdEleicao,
+          Resumo
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'Nao foi possivel carregar o resultado da eleicao.'
+          );
 
-      finally
-        ListaDAO.Free;
+        Result.TotalVotos := Resumo.TotalVotos;
+        Result.VotosValidos := Resumo.VotosValidos;
+        Result.VotosBrancos := Resumo.VotosBrancos;
+        Result.VotosNulos := Resumo.VotosNulos;
+
+        ListaChapasDAO := TEleicaoResultadoPublicoLista.Create;
+        try
+          TEleicaoResultadoPublicoAPIDao.BuscarChapas(
+            Conn,
+            Eleicao.IdEmpresa,
+            Eleicao.IdEleicao,
+            ListaChapasDAO
+          );
+
+          for ItemChapaDAO in ListaChapasDAO do
+          begin
+            ItemChapa := Default(TEleicaoResultadoPublicoChapaResult);
+            ItemChapa.IdChapa := ItemChapaDAO.IdChapa;
+            ItemChapa.Numero := ItemChapaDAO.Numero;
+            ItemChapa.Nome := ItemChapaDAO.Nome;
+            ItemChapa.QuantidadeVotos := ItemChapaDAO.QuantidadeVotos;
+
+            if Result.VotosValidos > 0 then
+              ItemChapa.Percentual :=
+                (ItemChapa.QuantidadeVotos / Result.VotosValidos) * 100
+            else
+              ItemChapa.Percentual := 0;
+
+            Result.Chapas.Add(ItemChapa);
+          end;
+        finally
+          ListaChapasDAO.Free;
+        end;
       end;
-
     finally
       Conn.Free;
     end;
-
   except
     Result.Chapas.Free;
     Result.Chapas := nil;
+    Result.Questoes.Free;
+    Result.Questoes := nil;
     raise;
   end;
 end;
