@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS eleicao_codigo_temporario (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  empresa_id INT NOT NULL,
+  eleicao_id INT NOT NULL,
+  usuario_id INT NOT NULL,
+  operador_usuario_id INT NOT NULL,
+  codigo_hash VARCHAR(128) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ATIVO',
+  criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expira_em DATETIME NOT NULL,
+  utilizado_em DATETIME NULL,
+  invalidado_em DATETIME NULL,
+  ip VARCHAR(64) NULL,
+  user_agent VARCHAR(500) NULL,
+  PRIMARY KEY (id),
+  KEY idx_ect_eleitor (empresa_id, eleicao_id, usuario_id, status),
+  KEY idx_ect_operador (empresa_id, eleicao_id, operador_usuario_id, criado_em),
+  CONSTRAINT fk_ect_empresa FOREIGN KEY (empresa_id) REFERENCES empresa(id),
+  CONSTRAINT fk_ect_eleicao FOREIGN KEY (eleicao_id) REFERENCES eleicao(id),
+  CONSTRAINT fk_ect_usuario FOREIGN KEY (usuario_id) REFERENCES usuario(id),
+  CONSTRAINT fk_ect_operador FOREIGN KEY (operador_usuario_id) REFERENCES usuario(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
