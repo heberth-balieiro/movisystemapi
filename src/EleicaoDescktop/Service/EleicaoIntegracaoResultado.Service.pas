@@ -15,6 +15,26 @@ type
     Percentual: Double;
   end;
 
+  TEleicaoIntegracaoResultadoOpcaoResult = record
+    IdOpcaoInt: Integer;
+    Ordem: Integer;
+    Descricao: string;
+    QuantidadeVotos: Integer;
+    Percentual: Double;
+  end;
+
+  TEleicaoIntegracaoResultadoQuestaoResult = class
+  public
+    IdQuestaoInt: Integer;
+    Ordem: Integer;
+    Titulo: string;
+    TotalVotos: Integer;
+    Opcoes: TList<TEleicaoIntegracaoResultadoOpcaoResult>;
+
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
   TEleicaoIntegracaoResultadoResult = record
     IdEleicaoInt: Integer;
     NomeEleicao: string;
@@ -31,6 +51,7 @@ type
     VotosNulos: Integer;
 
     Chapas: TList<TEleicaoIntegracaoResultadoChapaResult>;
+    Questoes: TObjectList<TEleicaoIntegracaoResultadoQuestaoResult>;
   end;
 
   TEleicaoIntegracaoResultadoService = class
@@ -58,7 +79,22 @@ uses
   Uni,
   App.Config,
   App.Errors,
-  Database.Connection;
+  Database.Connection,
+  EleicaoVotacaoAPI.Dao;
+
+{ TEleicaoIntegracaoResultadoQuestaoResult }
+
+constructor TEleicaoIntegracaoResultadoQuestaoResult.Create;
+begin
+  inherited Create;
+  Opcoes := TList<TEleicaoIntegracaoResultadoOpcaoResult>.Create;
+end;
+
+destructor TEleicaoIntegracaoResultadoQuestaoResult.Destroy;
+begin
+  Opcoes.Free;
+  inherited;
+end;
 
 { TEleicaoIntegracaoResultadoService }
 
@@ -77,8 +113,6 @@ end;
 class procedure TEleicaoIntegracaoResultadoService.ValidarEleicao(
   const AEleicao: TEleicaoIntegracaoResultadoEleicao
 );
-var
-  Operacao: string;
 begin
   if not (
     SameText(AEleicao.Situacao, 'APURADA') or
@@ -86,13 +120,6 @@ begin
   ) then
     TAppErrors.RaiseBadRequest(
       'O resultado somente pode ser consultado apos a apuracao.'
-    );
-
-  Operacao := UpperCase(Trim(AEleicao.Operacao));
-
-  if SameText(Operacao, 'ASSEMBLEIA') then
-    TAppErrors.RaiseBadRequest(
-      'Resultado de assembleia ainda nao disponivel para integracao.'
     );
 end;
 
@@ -108,15 +135,22 @@ var
   Participacao: TEleicaoIntegracaoParticipacaoResumo;
   Apuracao: TEleicaoIntegracaoApuracaoResumo;
 
-  ListaDAO: TEleicaoIntegracaoResultadoChapas;
-  ItemDAO: TEleicaoIntegracaoResultadoChapa;
-  Item: TEleicaoIntegracaoResultadoChapaResult;
+  ListaChapasDAO: TEleicaoIntegracaoResultadoChapas;
+  ChapaDAO: TEleicaoIntegracaoResultadoChapa;
+  Chapa: TEleicaoIntegracaoResultadoChapaResult;
+
+  ListaQuestoesDAO: TEleicaoIntegracaoResultadoQuestoes;
+  QuestaoDAO: TEleicaoIntegracaoResultadoQuestao;
+  OpcaoDAO: TEleicaoIntegracaoResultadoOpcao;
+  Questao: TEleicaoIntegracaoResultadoQuestaoResult;
+  Opcao: TEleicaoIntegracaoResultadoOpcaoResult;
 begin
   Result := Default(TEleicaoIntegracaoResultadoResult);
   Result.Chapas := TList<TEleicaoIntegracaoResultadoChapaResult>.Create;
+  Result.Questoes := TObjectList<TEleicaoIntegracaoResultadoQuestaoResult>.Create(True);
 
   try
-    ValidarConsulta(AIdEmpresa, AIdEleicaoInt);
+    ValidarConsulta(AIdEmpresa,AIdEleicaoInt);
 
     Config := TAppConfig.Carregar(
       ExtractFilePath(ParamStr(0)) + 'Config.ini'
@@ -151,55 +185,105 @@ begin
 
       Result.TotalEleitores := Participacao.TotalEleitores;
       Result.TotalVotantes := Participacao.TotalVotantes;
-      Result.TotalNaoVotantes :=
-        Result.TotalEleitores - Result.TotalVotantes;
+      Result.TotalNaoVotantes := Result.TotalEleitores - Result.TotalVotantes;
 
       if Result.TotalNaoVotantes < 0 then
         Result.TotalNaoVotantes := 0;
 
-      if not TEleicaoIntegracaoResultadoDao.BuscarResumoApuracao(
-        Conn,
-        AIdEmpresa,
-        Eleicao.IdEleicao,
-        Apuracao
-      ) then
-        TAppErrors.RaiseBadRequest(
-          'Nao foi possivel carregar o resumo da apuracao da eleicao.'
-        );
+      if SameText(Eleicao.Operacao,'ASSEMBLEIA') then
+      begin
+        TEleicaoVotacaoAPIDao.GarantirEstruturaVotoQuestao(Conn);
 
-      Result.TotalVotos := Apuracao.TotalVotos;
-      Result.VotosValidos := Apuracao.VotosValidos;
-      Result.VotosBrancos := Apuracao.VotosBrancos;
-      Result.VotosNulos := Apuracao.VotosNulos;
+        Result.TotalVotos := Result.TotalVotantes;
+        Result.VotosValidos := 0;
+        Result.VotosBrancos := 0;
+        Result.VotosNulos := 0;
 
-      ListaDAO := TEleicaoIntegracaoResultadoChapas.Create;
-      try
-        TEleicaoIntegracaoResultadoDao.BuscarResultadoChapas(
+        ListaQuestoesDAO := TEleicaoIntegracaoResultadoQuestoes.Create(True);
+        try
+          TEleicaoIntegracaoResultadoDao.BuscarResultadoQuestoes(
+            Conn,
+            AIdEmpresa,
+            Eleicao.IdEleicao,
+            ListaQuestoesDAO
+          );
+
+          for QuestaoDAO in ListaQuestoesDAO do
+          begin
+            Questao := TEleicaoIntegracaoResultadoQuestaoResult.Create;
+            Questao.IdQuestaoInt := QuestaoDAO.IdQuestaoInt;
+            Questao.Ordem := QuestaoDAO.Ordem;
+            Questao.Titulo := QuestaoDAO.Titulo;
+            Questao.TotalVotos := QuestaoDAO.TotalVotos;
+
+            for OpcaoDAO in QuestaoDAO.Opcoes do
+            begin
+              Opcao := Default(TEleicaoIntegracaoResultadoOpcaoResult);
+              Opcao.IdOpcaoInt := OpcaoDAO.IdOpcaoInt;
+              Opcao.Ordem := OpcaoDAO.Ordem;
+              Opcao.Descricao := OpcaoDAO.Descricao;
+              Opcao.QuantidadeVotos := OpcaoDAO.QuantidadeVotos;
+
+              if Questao.TotalVotos > 0 then
+                Opcao.Percentual :=
+                  (Opcao.QuantidadeVotos / Questao.TotalVotos) * 100
+              else
+                Opcao.Percentual := 0;
+
+              Questao.Opcoes.Add(Opcao);
+            end;
+
+            Result.Questoes.Add(Questao);
+          end;
+        finally
+          ListaQuestoesDAO.Free;
+        end;
+      end
+      else
+      begin
+        if not TEleicaoIntegracaoResultadoDao.BuscarResumoApuracao(
           Conn,
           AIdEmpresa,
           Eleicao.IdEleicao,
-          ListaDAO
-        );
+          Apuracao
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'Nao foi possivel carregar o resumo da apuracao da eleicao.'
+          );
 
-        for ItemDAO in ListaDAO do
-        begin
-          Item := Default(TEleicaoIntegracaoResultadoChapaResult);
+        Result.TotalVotos := Apuracao.TotalVotos;
+        Result.VotosValidos := Apuracao.VotosValidos;
+        Result.VotosBrancos := Apuracao.VotosBrancos;
+        Result.VotosNulos := Apuracao.VotosNulos;
 
-          Item.IdChapaInt := ItemDAO.IdChapaInt;
-          Item.Numero := ItemDAO.Numero;
-          Item.Nome := ItemDAO.Nome;
-          Item.QuantidadeVotos := ItemDAO.QuantidadeVotos;
+        ListaChapasDAO := TEleicaoIntegracaoResultadoChapas.Create;
+        try
+          TEleicaoIntegracaoResultadoDao.BuscarResultadoChapas(
+            Conn,
+            AIdEmpresa,
+            Eleicao.IdEleicao,
+            ListaChapasDAO
+          );
 
-          if Result.VotosValidos > 0 then
-            Item.Percentual :=
-              (Item.QuantidadeVotos / Result.VotosValidos) * 100
-          else
-            Item.Percentual := 0;
+          for ChapaDAO in ListaChapasDAO do
+          begin
+            Chapa := Default(TEleicaoIntegracaoResultadoChapaResult);
+            Chapa.IdChapaInt := ChapaDAO.IdChapaInt;
+            Chapa.Numero := ChapaDAO.Numero;
+            Chapa.Nome := ChapaDAO.Nome;
+            Chapa.QuantidadeVotos := ChapaDAO.QuantidadeVotos;
 
-          Result.Chapas.Add(Item);
+            if Result.VotosValidos > 0 then
+              Chapa.Percentual :=
+                (Chapa.QuantidadeVotos / Result.VotosValidos) * 100
+            else
+              Chapa.Percentual := 0;
+
+            Result.Chapas.Add(Chapa);
+          end;
+        finally
+          ListaChapasDAO.Free;
         end;
-      finally
-        ListaDAO.Free;
       end;
     finally
       Conn.Free;
@@ -207,6 +291,8 @@ begin
   except
     Result.Chapas.Free;
     Result.Chapas := nil;
+    Result.Questoes.Free;
+    Result.Questoes := nil;
     raise;
   end;
 end;
