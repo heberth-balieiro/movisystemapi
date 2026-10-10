@@ -66,10 +66,31 @@ type
     Percentual: Double;
   end;
 
+  TEleicaoAdminResultadoOpcaoResult = record
+    IdOpcao: Integer;
+    Ordem: Integer;
+    Descricao: string;
+    QuantidadeVotos: Integer;
+    Percentual: Double;
+  end;
+
+  TEleicaoAdminResultadoQuestaoResult = class
+  public
+    IdQuestao: Integer;
+    Ordem: Integer;
+    Titulo: string;
+    TotalVotos: Integer;
+    Opcoes: TList<TEleicaoAdminResultadoOpcaoResult>;
+
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
   TEleicaoAdminResultadoResult = record
     IdEleicao: Integer;
     NomeEleicao: string;
     Situacao: string;
+    Operacao: string;
 
     TotalVotos: Integer;
     VotosValidos: Integer;
@@ -77,13 +98,13 @@ type
     VotosNulos: Integer;
 
     Chapas: TList<TEleicaoAdminResultadoChapaResult>;
+    Questoes: TObjectList<TEleicaoAdminResultadoQuestaoResult>;
   end;
 
 {$ENDREGION}
 
   TEleicaoAdminAPIService = class
   public
-
     class function Login(
       const ASlug: string;
       const AEmail: string;
@@ -146,17 +167,34 @@ uses
   Database.Connection,
   EleicaoAdminAPI.Dao;
 
+{ TEleicaoAdminResultadoQuestaoResult }
+
+constructor TEleicaoAdminResultadoQuestaoResult.Create;
+begin
+  inherited Create;
+  Opcoes := TList<TEleicaoAdminResultadoOpcaoResult>.Create;
+end;
+
+destructor TEleicaoAdminResultadoQuestaoResult.Destroy;
+begin
+  Opcoes.Free;
+  inherited;
+end;
+
 { TEleicaoAdminAPIService }
 
-class function TEleicaoAdminAPIService.Login(const ASlug: string;const AEmail: string;
-                                            const ASenha: string): TEleicaoAdminLoginResult;
+class function TEleicaoAdminAPIService.Login(
+  const ASlug: string;
+  const AEmail: string;
+  const ASenha: string
+): TEleicaoAdminLoginResult;
 var
-  Config    : TAppApiConfig;
-  Conn      : TUniConnection;
-  Usuario   : TEleicaoAdminUsuario;
-  Roles     : TArray<string>;
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  Usuario: TEleicaoAdminUsuario;
+  Roles: TArray<string>;
 begin
-  Result    := Default(TEleicaoAdminLoginResult);
+  Result := Default(TEleicaoAdminLoginResult);
 
   if Trim(ASlug).IsEmpty then
     TAppErrors.RaiseBadRequest('Eleição não informada.');
@@ -167,38 +205,32 @@ begin
   if Trim(ASenha).IsEmpty then
     TAppErrors.RaiseBadRequest('Senha não informada.');
 
-  Config    := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
-  Conn      := TDatabaseConnection.NewConnection(Config.Database);
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
 
   try
-    if not TEleicaoAdminAPIDao.BuscarUsuarioAdmin(Conn, Trim(ASlug), Trim(AEmail), Usuario) then
+    if not TEleicaoAdminAPIDao.BuscarUsuarioAdmin(Conn,Trim(ASlug),Trim(AEmail),Usuario) then
       TAppErrors.RaiseUnauthorized('Usuário ou senha inválidos.');
 
-    if not VerifySenha(ASenha, Usuario.SenhaHash) then
+    if not VerifySenha(ASenha,Usuario.SenhaHash) then
       TAppErrors.RaiseUnauthorized('Email ou senha inválidos.');
 
-    // ADMIN acessa as eleições da empresa; COMISSAO somente a eleição vinculada,
-    // regra já validada pelo DAO através do slug.
     if not (SameText(Trim(Usuario.Perfil),'ADMIN') or
             SameText(Trim(Usuario.Perfil),'COMISSAO')) then
       TAppErrors.RaiseUnauthorized('Usuário não autorizado para acessar o painel eleitoral.');
 
-    SetLength(Roles, 1);
+    SetLength(Roles,1);
     Roles[0] := UpperCase(Trim(Usuario.Perfil));
 
-    //Result.Token := TAppJWT.GerarToken(Config.JWT, Usuario.IdUsuario, Usuario.IdEmpresa, Roles, Trim(ASlug));
     Result.Token := TAppJWT.GerarToken(
-                    Config.JWT,
-                    Usuario.IdUsuario,
-                    Usuario.IdEmpresa,
-                    Roles,
-                    Trim(ASlug),
-                    Config.JWT.TtlAdminMinutos
-                  );
-
-
-    Result.Nome     := Usuario.Nome;
-
+      Config.JWT,
+      Usuario.IdUsuario,
+      Usuario.IdEmpresa,
+      Roles,
+      Trim(ASlug),
+      Config.JWT.TtlAdminMinutos
+    );
+    Result.Nome := Usuario.Nome;
   finally
     Conn.Free;
   end;
@@ -212,157 +244,84 @@ class function TEleicaoAdminAPIService.BuscarPainel(
 var
   Config: TAppApiConfig;
   Conn: TUniConnection;
-
   Eleicao: TEleicaoAdminDados;
   ResumoDAO: TEleicaoAdminResumo;
-
   ListaDAO: TEleicaoAdminAPIListEvolucao;
   ItemDAO: TEleicaoAdminEvolucao;
   Item: TEleicaoAdminPainelEvolucao;
-
   Acumulado: Integer;
 begin
   Result := Default(TEleicaoAdminPainelResult);
-
-  Result.Evolucao :=
-    TList<TEleicaoAdminPainelEvolucao>.Create;
+  Result.Evolucao := TList<TEleicaoAdminPainelEvolucao>.Create;
 
   try
-
     if Trim(ASlug).IsEmpty then
-      TAppErrors.RaiseBadRequest(
-        'Eleição não informada.'
-      );
+      TAppErrors.RaiseBadRequest('Eleição não informada.');
 
-    if (AIdUsuario <= 0) or
-       (AIdEmpresa <= 0) then
-      TAppErrors.RaiseUnauthorized(
-        'Acesso não autorizado.'
-      );
+    if (AIdUsuario <= 0) or (AIdEmpresa <= 0) then
+      TAppErrors.RaiseUnauthorized('Acesso não autorizado.');
 
-    Config :=
-      TAppConfig.Carregar(
-        ExtractFilePath(ParamStr(0)) +
-        'Config.ini'
-      );
-
-    Conn :=
-      TDatabaseConnection.NewConnection(
-        Config.Database
-      );
+    Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+    Conn := TDatabaseConnection.NewConnection(Config.Database);
 
     try
+      if not TEleicaoAdminAPIDao.BuscarEleicao(Conn,Trim(ASlug),AIdEmpresa,Eleicao) then
+        TAppErrors.RaiseNotFound('Eleição não encontrada.');
 
-      //
-      // Dados da eleição
-      //
-      if not TEleicaoAdminAPIDao.BuscarEleicao(
-        Conn,
-        Trim(ASlug),
-        AIdEmpresa,
-        Eleicao
-      ) then
-        TAppErrors.RaiseNotFound(
-          'Eleição não encontrada.'
-        );
-
-      Result.IdEleicao    := Eleicao.IdEleicao;
-      Result.NomeEleicao  := Eleicao.Nome;
-      Result.Situacao     := Eleicao.Situacao;
+      Result.IdEleicao := Eleicao.IdEleicao;
+      Result.NomeEleicao := Eleicao.Nome;
+      Result.Situacao := Eleicao.Situacao;
       Result.DataHoraInicio := Eleicao.DataHoraInicio;
-      Result.DataHoraFim  := Eleicao.DataHoraFim;
-      Result.abertura     := Eleicao.abertura;
+      Result.DataHoraFim := Eleicao.DataHoraFim;
+      Result.abertura := Eleicao.abertura;
       Result.encerramento := Eleicao.encerramento;
 
-      //
-      // Resumo
-      //
       if not TEleicaoAdminAPIDao.BuscarResumoPainel(
-        Conn,
-        AIdEmpresa,
-        Eleicao.IdEleicao,
-        ResumoDAO
+        Conn,AIdEmpresa,Eleicao.IdEleicao,ResumoDAO
       ) then
-        TAppErrors.RaiseBadRequest(
-          'Não foi possível carregar o resumo da eleição.'
-        );
+        TAppErrors.RaiseBadRequest('Não foi possível carregar o resumo da eleição.');
 
-      Result.Resumo.TotalEleitores :=
-        ResumoDAO.TotalEleitores;
-
-      Result.Resumo.TotalVotantes :=
-        ResumoDAO.TotalVotantes;
-
+      Result.Resumo.TotalEleitores := ResumoDAO.TotalEleitores;
+      Result.Resumo.TotalVotantes := ResumoDAO.TotalVotantes;
       Result.Resumo.TotalNaoVotantes :=
-        Result.Resumo.TotalEleitores -
-        Result.Resumo.TotalVotantes;
+        Result.Resumo.TotalEleitores - Result.Resumo.TotalVotantes;
 
       if Result.Resumo.TotalNaoVotantes < 0 then
         Result.Resumo.TotalNaoVotantes := 0;
 
       if Result.Resumo.TotalEleitores > 0 then
-      begin
         Result.Resumo.PercentualParticipacao :=
-          (
-            Result.Resumo.TotalVotantes /
-            Result.Resumo.TotalEleitores
-          ) * 100;
-      end
+          (Result.Resumo.TotalVotantes / Result.Resumo.TotalEleitores) * 100
       else
         Result.Resumo.PercentualParticipacao := 0;
 
-      //
-      // Evolução por horário
-      //
       ListaDAO := TEleicaoAdminAPIListEvolucao.Create;
 
-      //verificar abertura automatica
       TEleicaoAdminAPIService.VerificarAberturaAutomatica(AIdEmpresa,Eleicao.IdEleicao);
       TEleicaoAdminAPIService.VerificarEncerramentoAutomatico(AIdEmpresa,Eleicao.IdEleicao);
 
       try
-
         TEleicaoAdminAPIDao.BuscarEvolucaoVotacao(
-          Conn,
-          AIdEmpresa,
-          Eleicao.IdEleicao,
-          Eleicao.DataHoraInicio,
-          Eleicao.DataHoraFim,
-          ListaDAO
+          Conn,AIdEmpresa,Eleicao.IdEleicao,
+          Eleicao.DataHoraInicio,Eleicao.DataHoraFim,ListaDAO
         );
 
         Acumulado := 0;
-
         for ItemDAO in ListaDAO do
         begin
-          Acumulado :=
-            Acumulado +
-            ItemDAO.Quantidade;
-
-          Item := Default(
-            TEleicaoAdminPainelEvolucao
-          );
-
-          Item.Hora :=
-            ItemDAO.Hora;
-
-          Item.Quantidade :=
-            ItemDAO.Quantidade;
-
-          Item.Acumulado :=
-            Acumulado;
-
+          Inc(Acumulado,ItemDAO.Quantidade);
+          Item := Default(TEleicaoAdminPainelEvolucao);
+          Item.Hora := ItemDAO.Hora;
+          Item.Quantidade := ItemDAO.Quantidade;
+          Item.Acumulado := Acumulado;
           Result.Evolucao.Add(Item);
         end;
-
       finally
         ListaDAO.Free;
       end;
-
     finally
       Conn.Free;
     end;
-
   except
     Result.Evolucao.Free;
     Result.Evolucao := nil;
@@ -382,69 +341,37 @@ var
   Eleicao: TEleicaoAdminDados;
 begin
   if Trim(ASlug).IsEmpty then
-    TAppErrors.RaiseBadRequest(
-      'Eleição não informada.'
-    );
+    TAppErrors.RaiseBadRequest('Eleição não informada.');
 
-  if (AIdUsuario <= 0) or
-     (AIdEmpresa <= 0) then
-    TAppErrors.RaiseUnauthorized(
-      'Acesso não autorizado.'
-    );
+  if (AIdUsuario <= 0) or (AIdEmpresa <= 0) then
+    TAppErrors.RaiseUnauthorized('Acesso não autorizado.');
 
-  Config :=  TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
-
-  Conn :=
-    TDatabaseConnection.NewConnection(
-      Config.Database
-    );
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
 
   try
+    if not TEleicaoAdminAPIDao.BuscarEleicao(Conn,Trim(ASlug),AIdEmpresa,Eleicao) then
+      TAppErrors.RaiseNotFound('Eleição não encontrada.');
 
-    //
-    // Localizar eleição pelo slug
-    //
-    if not TEleicaoAdminAPIDao.BuscarEleicao(
-      Conn,
-      Trim(ASlug),
-      AIdEmpresa,
-      Eleicao
-    ) then
-      TAppErrors.RaiseNotFound(
-        'Eleição não encontrada.'
-      );
-
-    //
-    // Regra de situação
-    //
-    if not SameText(
-      Trim(Eleicao.Situacao),
-      'ABERTA'
-    ) then
-      TAppErrors.RaiseBadRequest(
-        'Somente eleições abertas podem ser encerradas.'
-      );
-
-    //
-    // Encerrar
-    //
+    if not SameText(Trim(Eleicao.Situacao),'ABERTA') then
+      TAppErrors.RaiseBadRequest('Somente eleições abertas podem ser encerradas.');
 
     Conn.StartTransaction;
-    Try
-      if not TEleicaoAdminAPIDao.EncerrarEleicao(Conn, AIdEmpresa, Eleicao.IdEleicao) then
-      TAppErrors.RaiseBadRequest('Não foi possível encerrar a eleição.');
+    try
+      if not TEleicaoAdminAPIDao.EncerrarEleicao(Conn,AIdEmpresa,Eleicao.IdEleicao) then
+        TAppErrors.RaiseBadRequest('Não foi possível encerrar a eleição.');
 
-      //Auditoria
-      TEleicaoAuditoriaAPIService.RegistrarEvento(Conn, AIdEmpresa, Eleicao.IdEleicao, AIdUsuario,
-                                    AUDITORIA_ELEICAO_ENCERRADA, AUDITORIA_ORIGEM_ADMIN, True,
-                                    'Eleição encerrada pelo administrador.',AIP, AUserAgent);
+      TEleicaoAuditoriaAPIService.RegistrarEvento(
+        Conn,AIdEmpresa,Eleicao.IdEleicao,AIdUsuario,
+        AUDITORIA_ELEICAO_ENCERRADA,AUDITORIA_ORIGEM_ADMIN,True,
+        'Eleição encerrada pelo administrador.',AIP,AUserAgent
+      );
       Conn.Commit;
     except
       if Conn.InTransaction then
-      Conn.Rollback;
+        Conn.Rollback;
       raise;
-    End;
-
+    end;
   finally
     Conn.Free;
   end;
@@ -471,28 +398,28 @@ begin
   Conn := TDatabaseConnection.NewConnection(Config.Database);
 
   try
-    if not TEleicaoAdminAPIDao.BuscarEleicao(Conn, Trim(ASlug), AIdEmpresa, Eleicao) then
+    if not TEleicaoAdminAPIDao.BuscarEleicao(Conn,Trim(ASlug),AIdEmpresa,Eleicao) then
       TAppErrors.RaiseNotFound('Eleição não encontrada.');
 
-    if not SameText(Trim(Eleicao.Situacao), 'ENCERRADA') then
+    if not SameText(Trim(Eleicao.Situacao),'ENCERRADA') then
       TAppErrors.RaiseBadRequest('Somente eleições encerradas podem iniciar a apuração.');
 
     Conn.StartTransaction;
-    Try
-      if not TEleicaoAdminAPIDao.IniciarApuracao(Conn, AIdEmpresa, Eleicao.IdEleicao) then
-      TAppErrors.RaiseBadRequest('Não foi possível iniciar a apuração.');
+    try
+      if not TEleicaoAdminAPIDao.IniciarApuracao(Conn,AIdEmpresa,Eleicao.IdEleicao) then
+        TAppErrors.RaiseBadRequest('Não foi possível iniciar a apuração.');
 
-      //auditoria
-      TEleicaoAuditoriaAPIService.RegistrarEvento(Conn, AIdEmpresa, Eleicao.IdEleicao, AIdUsuario,
-                                  AUDITORIA_APURACAO_INICIADA, AUDITORIA_ORIGEM_ADMIN, True,
-                                  'Apuração iniciada pelo administrador.',AIP, AUserAgent);
-    Conn.Commit;
+      TEleicaoAuditoriaAPIService.RegistrarEvento(
+        Conn,AIdEmpresa,Eleicao.IdEleicao,AIdUsuario,
+        AUDITORIA_APURACAO_INICIADA,AUDITORIA_ORIGEM_ADMIN,True,
+        'Apuração iniciada pelo administrador.',AIP,AUserAgent
+      );
+      Conn.Commit;
     except
       if Conn.InTransaction then
-      Conn.Rollback;
+        Conn.Rollback;
       raise;
-    End;
-
+    end;
   finally
     Conn.Free;
   end;
@@ -519,28 +446,28 @@ begin
   Conn := TDatabaseConnection.NewConnection(Config.Database);
 
   try
-    if not TEleicaoAdminAPIDao.BuscarEleicao(Conn, Trim(ASlug), AIdEmpresa, Eleicao) then
+    if not TEleicaoAdminAPIDao.BuscarEleicao(Conn,Trim(ASlug),AIdEmpresa,Eleicao) then
       TAppErrors.RaiseNotFound('Eleição não encontrada.');
 
-    if not SameText(Trim(Eleicao.Situacao), 'EM_APURACAO') then
+    if not SameText(Trim(Eleicao.Situacao),'EM_APURACAO') then
       TAppErrors.RaiseBadRequest('Somente eleições em apuração podem ser finalizadas.');
 
     Conn.StartTransaction;
-    Try
-      if not TEleicaoAdminAPIDao.FinalizarApuracao(Conn, AIdEmpresa, Eleicao.IdEleicao) then
-      TAppErrors.RaiseBadRequest('Não foi possível finalizar a apuração.');
+    try
+      if not TEleicaoAdminAPIDao.FinalizarApuracao(Conn,AIdEmpresa,Eleicao.IdEleicao) then
+        TAppErrors.RaiseBadRequest('Não foi possível finalizar a apuração.');
 
-      //auditoria
-      TEleicaoAuditoriaAPIService.RegistrarEvento(Conn, AIdEmpresa, Eleicao.IdEleicao, AIdUsuario,
-                            AUDITORIA_APURACAO_FINALIZADA, AUDITORIA_ORIGEM_ADMIN, True,
-                            'Apuração finalizada pelo administrador.',AIP, AUserAgent);
+      TEleicaoAuditoriaAPIService.RegistrarEvento(
+        Conn,AIdEmpresa,Eleicao.IdEleicao,AIdUsuario,
+        AUDITORIA_APURACAO_FINALIZADA,AUDITORIA_ORIGEM_ADMIN,True,
+        'Apuração finalizada pelo administrador.',AIP,AUserAgent
+      );
       Conn.Commit;
     except
       if Conn.InTransaction then
-      Conn.Rollback;
+        Conn.Rollback;
       raise;
-    End;
-
+    end;
   finally
     Conn.Free;
   end;
@@ -556,73 +483,146 @@ var
   Conn: TUniConnection;
   Eleicao: TEleicaoAdminDados;
   Resumo: TEleicaoAdminResultadoResumo;
-  ListaDAO: TEleicaoAdminResultadoLista;
-  ItemDAO: TEleicaoAdminResultadoChapa;
-  Item: TEleicaoAdminResultadoChapaResult;
+  ResumoPainel: TEleicaoAdminResumo;
+
+  ListaChapasDAO: TEleicaoAdminResultadoLista;
+  ItemChapaDAO: TEleicaoAdminResultadoChapa;
+  ItemChapa: TEleicaoAdminResultadoChapaResult;
+
+  ListaQuestoesDAO: TEleicaoAdminResultadoQuestoes;
+  QuestaoDAO: TEleicaoAdminResultadoQuestao;
+  OpcaoDAO: TEleicaoAdminResultadoOpcao;
+  Questao: TEleicaoAdminResultadoQuestaoResult;
+  Opcao: TEleicaoAdminResultadoOpcaoResult;
 begin
   Result := Default(TEleicaoAdminResultadoResult);
   Result.Chapas := TList<TEleicaoAdminResultadoChapaResult>.Create;
+  Result.Questoes := TObjectList<TEleicaoAdminResultadoQuestaoResult>.Create(True);
 
   try
     if Trim(ASlug).IsEmpty then
-      TAppErrors.RaiseBadRequest('Eleição não informada.');
+      TAppErrors.RaiseBadRequest('Eleicao nao informada.');
 
     if (AIdUsuario <= 0) or (AIdEmpresa <= 0) then
-      TAppErrors.RaiseUnauthorized('Acesso não autorizado.');
+      TAppErrors.RaiseUnauthorized('Acesso nao autorizado.');
 
     Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
     Conn := TDatabaseConnection.NewConnection(Config.Database);
 
     try
-      if not TEleicaoAdminAPIDao.BuscarEleicao(Conn, Trim(ASlug), AIdEmpresa, Eleicao) then
-        TAppErrors.RaiseNotFound('Eleição não encontrada.');
+      if not TEleicaoAdminAPIDao.BuscarEleicao(Conn,Trim(ASlug),AIdEmpresa,Eleicao) then
+        TAppErrors.RaiseNotFound('Eleicao nao encontrada.');
 
-      if not (SameText(Trim(Eleicao.Situacao), 'APURADA') or SameText(Trim(Eleicao.Situacao), 'PUBLICADA')) then
-        TAppErrors.RaiseBadRequest('O resultado somente pode ser consultado após a apuração.');
+      if not (SameText(Trim(Eleicao.Situacao),'APURADA') or
+              SameText(Trim(Eleicao.Situacao),'PUBLICADA')) then
+        TAppErrors.RaiseBadRequest(
+          'O resultado somente pode ser consultado apos a apuracao.'
+        );
 
       Result.IdEleicao := Eleicao.IdEleicao;
       Result.NomeEleicao := Eleicao.Nome;
       Result.Situacao := Eleicao.Situacao;
+      Result.Operacao := Eleicao.Operacao;
 
-      if not TEleicaoAdminAPIDao.BuscarResumoResultado(Conn, AIdEmpresa, Eleicao.IdEleicao, Resumo) then
-        TAppErrors.RaiseBadRequest('Não foi possível carregar o resultado da eleição.');
+      if SameText(Eleicao.Operacao,'ASSEMBLEIA') then
+      begin
+        if not TEleicaoAdminAPIDao.BuscarResumoPainel(
+          Conn,AIdEmpresa,Eleicao.IdEleicao,ResumoPainel
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'Nao foi possivel carregar o resumo da assembleia.'
+          );
 
-      Result.TotalVotos := Resumo.TotalVotos;
-      Result.VotosValidos := Resumo.VotosValidos;
-      Result.VotosBrancos := Resumo.VotosBrancos;
-      Result.VotosNulos := Resumo.VotosNulos;
+        Result.TotalVotos := ResumoPainel.TotalVotantes;
+        Result.VotosValidos := 0;
+        Result.VotosBrancos := 0;
+        Result.VotosNulos := 0;
 
-      ListaDAO := TEleicaoAdminResultadoLista.Create;
-      try
-        TEleicaoAdminAPIDao.BuscarResultadoChapas(Conn, AIdEmpresa, Eleicao.IdEleicao, ListaDAO);
+        ListaQuestoesDAO := TEleicaoAdminResultadoQuestoes.Create(True);
+        try
+          TEleicaoAdminAPIDao.BuscarResultadoQuestoes(
+            Conn,AIdEmpresa,Eleicao.IdEleicao,ListaQuestoesDAO
+          );
 
-        for ItemDAO in ListaDAO do
-        begin
-          Item := Default(TEleicaoAdminResultadoChapaResult);
+          for QuestaoDAO in ListaQuestoesDAO do
+          begin
+            Questao := TEleicaoAdminResultadoQuestaoResult.Create;
+            Questao.IdQuestao := QuestaoDAO.IdQuestao;
+            Questao.Ordem := QuestaoDAO.Ordem;
+            Questao.Titulo := QuestaoDAO.Titulo;
+            Questao.TotalVotos := QuestaoDAO.TotalVotos;
 
-          Item.IdChapa := ItemDAO.IdChapa;
-          Item.Numero := ItemDAO.Numero;
-          Item.Nome := ItemDAO.Nome;
-          Item.QuantidadeVotos := ItemDAO.QuantidadeVotos;
+            for OpcaoDAO in QuestaoDAO.Opcoes do
+            begin
+              Opcao := Default(TEleicaoAdminResultadoOpcaoResult);
+              Opcao.IdOpcao := OpcaoDAO.IdOpcao;
+              Opcao.Ordem := OpcaoDAO.Ordem;
+              Opcao.Descricao := OpcaoDAO.Descricao;
+              Opcao.QuantidadeVotos := OpcaoDAO.QuantidadeVotos;
 
-          if Result.VotosValidos > 0 then
-            Item.Percentual := (Item.QuantidadeVotos / Result.VotosValidos) * 100
-          else
-            Item.Percentual := 0;
+              if Questao.TotalVotos > 0 then
+                Opcao.Percentual :=
+                  (Opcao.QuantidadeVotos / Questao.TotalVotos) * 100
+              else
+                Opcao.Percentual := 0;
 
-          Result.Chapas.Add(Item);
+              Questao.Opcoes.Add(Opcao);
+            end;
+
+            Result.Questoes.Add(Questao);
+          end;
+        finally
+          ListaQuestoesDAO.Free;
         end;
-      finally
-        ListaDAO.Free;
-      end;
+      end
+      else
+      begin
+        if not TEleicaoAdminAPIDao.BuscarResumoResultado(
+          Conn,AIdEmpresa,Eleicao.IdEleicao,Resumo
+        ) then
+          TAppErrors.RaiseBadRequest(
+            'Nao foi possivel carregar o resultado da eleicao.'
+          );
 
+        Result.TotalVotos := Resumo.TotalVotos;
+        Result.VotosValidos := Resumo.VotosValidos;
+        Result.VotosBrancos := Resumo.VotosBrancos;
+        Result.VotosNulos := Resumo.VotosNulos;
+
+        ListaChapasDAO := TEleicaoAdminResultadoLista.Create;
+        try
+          TEleicaoAdminAPIDao.BuscarResultadoChapas(
+            Conn,AIdEmpresa,Eleicao.IdEleicao,ListaChapasDAO
+          );
+
+          for ItemChapaDAO in ListaChapasDAO do
+          begin
+            ItemChapa := Default(TEleicaoAdminResultadoChapaResult);
+            ItemChapa.IdChapa := ItemChapaDAO.IdChapa;
+            ItemChapa.Numero := ItemChapaDAO.Numero;
+            ItemChapa.Nome := ItemChapaDAO.Nome;
+            ItemChapa.QuantidadeVotos := ItemChapaDAO.QuantidadeVotos;
+
+            if Result.VotosValidos > 0 then
+              ItemChapa.Percentual :=
+                (ItemChapa.QuantidadeVotos / Result.VotosValidos) * 100
+            else
+              ItemChapa.Percentual := 0;
+
+            Result.Chapas.Add(ItemChapa);
+          end;
+        finally
+          ListaChapasDAO.Free;
+        end;
+      end;
     finally
       Conn.Free;
     end;
-
   except
     Result.Chapas.Free;
     Result.Chapas := nil;
+    Result.Questoes.Free;
+    Result.Questoes := nil;
     raise;
   end;
 end;
@@ -648,52 +648,52 @@ begin
   Conn := TDatabaseConnection.NewConnection(Config.Database);
 
   try
-    if not TEleicaoAdminAPIDao.BuscarEleicao(Conn, Trim(ASlug), AIdEmpresa, Eleicao) then
+    if not TEleicaoAdminAPIDao.BuscarEleicao(Conn,Trim(ASlug),AIdEmpresa,Eleicao) then
       TAppErrors.RaiseNotFound('Eleição não encontrada.');
 
-    if not SameText(Trim(Eleicao.Situacao), 'APURADA') then
+    if not SameText(Trim(Eleicao.Situacao),'APURADA') then
       TAppErrors.RaiseBadRequest('Somente eleições apuradas podem ter o resultado publicado.');
 
-    if not TEleicaoAdminAPIDao.PublicarResultado(Conn, AIdEmpresa, Eleicao.IdEleicao) then
+    if not TEleicaoAdminAPIDao.PublicarResultado(Conn,AIdEmpresa,Eleicao.IdEleicao) then
       TAppErrors.RaiseBadRequest('Não foi possível publicar o resultado da eleição.');
 
-    //auditoria
-    TEleicaoAuditoriaAPIService.RegistrarEvento(Conn, AIdEmpresa, Eleicao.IdEleicao, AIdUsuario,
-    AUDITORIA_RESULTADO_PUBLICADO, AUDITORIA_ORIGEM_ADMIN, True,
-    'Resultado publicado pelo administrador.',AIP, AUserAgent);
+    TEleicaoAuditoriaAPIService.RegistrarEvento(
+      Conn,AIdEmpresa,Eleicao.IdEleicao,AIdUsuario,
+      AUDITORIA_RESULTADO_PUBLICADO,AUDITORIA_ORIGEM_ADMIN,True,
+      'Resultado publicado pelo administrador.',AIP,AUserAgent
+    );
   finally
     Conn.Free;
   end;
 end;
 
-
 class procedure TEleicaoAdminAPIService.VerificarAberturaAutomatica(
-                                  const AIdEmpresa, AIdEleicao: Integer);
+  const AIdEmpresa, AIdEleicao: Integer
+);
 var
-AConn: TUniConnection;
-Config: TAppApiConfig;
+  AConn: TUniConnection;
+  Config: TAppApiConfig;
 begin
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   AConn := TDatabaseConnection.NewConnection(Config.Database);
-
-  Try
-    TEleicaoAdminAPIDao.AbrirAutomaticamente(AConn,AIdEmpresa, AIdEleicao);
+  try
+    TEleicaoAdminAPIDao.AbrirAutomaticamente(AConn,AIdEmpresa,AIdEleicao);
   finally
     AConn.Free;
   end;
 end;
 
 class procedure TEleicaoAdminAPIService.VerificarEncerramentoAutomatico(
-  const AIdEmpresa, AIdEleicao: Integer);
+  const AIdEmpresa, AIdEleicao: Integer
+);
 var
-AConn: TUniConnection;
-Config: TAppApiConfig;
+  AConn: TUniConnection;
+  Config: TAppApiConfig;
 begin
   Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   AConn := TDatabaseConnection.NewConnection(Config.Database);
-
-  Try
-    TEleicaoAdminAPIDao.EncerrarAutomaticamente(AConn,AIdEmpresa, AIdEleicao);
+  try
+    TEleicaoAdminAPIDao.EncerrarAutomaticamente(AConn,AIdEmpresa,AIdEleicao);
   finally
     AConn.Free;
   end;
