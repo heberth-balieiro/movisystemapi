@@ -1,7 +1,11 @@
 -- ETAPA 6 - Permissao e auditoria da contingencia administrativa
 -- Nao ha alteracao de estrutura nesta etapa.
--- A permissao ELEICAO_GERAR_CODIGO_CONTINGENCIA e transportada no JWT administrativo.
--- Apenas ADMIN recebe a permissao no login atual; COMISSAO permanece sem acesso.
+--
+-- Permissao:
+-- ELEICAO_GERAR_CODIGO_CONTINGENCIA
+-- O modelo eleitoral atual emite perfis no JWT. A funcao de autorizacao especifica
+-- aceita a role explicita acima e, por compatibilidade, mapeia o perfil ADMIN para
+-- essa capacidade. COMISSAO nao recebe a capacidade de contingencia.
 --
 -- Auditoria/persistencia existente:
 -- eleicao_codigo_temporario: empresa_id, eleicao_id, usuario_id (eleitor),
@@ -9,6 +13,16 @@
 -- utilizado_em, invalidado_em, ip, user_agent.
 -- eleicao_auditoria: empresa_id, eleicao_id, usuario_id, tipo_evento,
 -- origem, sucesso, descricao, ip, user_agent, criado_em.
+--
+-- Eventos especificos:
+-- CODIGO_TEMPORARIO_GERADO
+-- CODIGO_TEMPORARIO_INVALIDADO
+-- CODIGO_TEMPORARIO_EXPIRADO
+-- CODIGO_TEMPORARIO_VALIDADO
+-- CODIGO_TEMPORARIO_INVALIDO
+--
+-- As descricoes registram somente IDs tecnicos do eleitor/operador e a origem
+-- ADMIN_CONTINGENCIA. Nao registram codigo, senha, token ou conteudo do voto.
 --
 -- O codigo em texto puro nunca e persistido. Somente SHA-256 e armazenado.
 -- A estrutura de voto permanece separada da identidade do eleitor:
