@@ -219,10 +219,12 @@ begin
     QryOpcao.Connection := AConn;
 
     Qry.SQL.Text :=
-      'SELECT id, COALESCE(operacao,'''') AS operacao ' +
-      'FROM eleicao ' +
-      'WHERE empresa_id = :idempresa ' +
-      '  AND slug = :slug ' +
+      'SELECT e.id, COALESCE(e.operacao,'''') AS operacao ' +
+      'FROM eleicao e ' +
+      'INNER JOIN eleicao_configuracao c ON c.eleicao_id = e.id ' +
+      '  AND c.empresa_id = e.empresa_id ' +
+      'WHERE e.empresa_id = :idempresa ' +
+      '  AND c.slug = :slug ' +
       'LIMIT 1';
     Qry.ParamByName('idempresa').AsInteger := AIdEmpresa;
     Qry.ParamByName('slug').AsString := Trim(ASlug);
