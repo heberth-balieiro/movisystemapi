@@ -16,12 +16,18 @@ type
 
 implementation
 
+uses
+  System.NetEncoding;
+
 { TEleicaoMembroFotoAPIDao }
 
 class function TEleicaoMembroFotoAPIDao.BuscarFoto(const AConn: TUniConnection; const ASlug: string; const AIdMembro: Integer; out AArquivo: TBytes; out AExtensao: string): Boolean;
 var
-  Qry   : TUniQuery;
-  Stream: TMemoryStream;
+  Qry           : TUniQuery;
+  Stream        : TMemoryStream;
+  Base64        : string;
+  PosSeparador  : Integer;
+  Decodificado  : Boolean;
 begin
   Result := False;
   AArquivo := nil;
@@ -62,21 +68,53 @@ begin
     if Qry.FieldByName('arquivo_foto').IsNull then
       Exit;
 
-    Stream := TMemoryStream.Create;
-    try
-      TBlobField(Qry.FieldByName('arquivo_foto')).SaveToStream(Stream);
+    AExtensao := UpperCase(Trim(Qry.FieldByName('extensao_foto').AsString));
 
-      if Stream.Size <= 0 then
-        Exit;
+    // A integração grava arquivo_foto como string Base64. A rota pública deve
+    // entregar os bytes reais da imagem, não os caracteres do Base64.
+    Base64 := Trim(Qry.FieldByName('arquivo_foto').AsString);
+    Decodificado := False;
 
-      SetLength(AArquivo, Stream.Size);
-      Stream.Position := 0;
-      Stream.ReadBuffer(AArquivo[0], Stream.Size);
-    finally
-      Stream.Free;
+    if not Base64.IsEmpty then
+    begin
+      if Base64.StartsWith('data:', True) then
+      begin
+        PosSeparador := Pos(',', Base64);
+        if PosSeparador > 0 then
+          Base64 := Copy(Base64, PosSeparador + 1, MaxInt);
+      end;
+
+      Base64 := StringReplace(Base64, #13, '', [rfReplaceAll]);
+      Base64 := StringReplace(Base64, #10, '', [rfReplaceAll]);
+      Base64 := StringReplace(Base64, ' ', '', [rfReplaceAll]);
+
+      try
+        AArquivo := TNetEncoding.Base64.DecodeStringToBytes(Base64);
+        Decodificado := Length(AArquivo) > 0;
+      except
+        AArquivo := nil;
+        Decodificado := False;
+      end;
     end;
 
-    AExtensao := UpperCase(Trim(Qry.FieldByName('extensao_foto').AsString));
+    // Compatibilidade defensiva: se algum registro futuro vier como BLOB
+    // binário real, preserva o comportamento anterior.
+    if not Decodificado then
+    begin
+      Stream := TMemoryStream.Create;
+      try
+        TBlobField(Qry.FieldByName('arquivo_foto')).SaveToStream(Stream);
+
+        if Stream.Size <= 0 then
+          Exit;
+
+        SetLength(AArquivo, Stream.Size);
+        Stream.Position := 0;
+        Stream.ReadBuffer(AArquivo[0], Stream.Size);
+      finally
+        Stream.Free;
+      end;
+    end;
 
     Result := Length(AArquivo) > 0;
   finally
