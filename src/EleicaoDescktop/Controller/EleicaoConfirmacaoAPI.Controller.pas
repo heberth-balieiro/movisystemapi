@@ -35,6 +35,42 @@ begin
 
   {$REGION 'Confirmação'}
 
+  THorse.Get('/api/v1/public/eleicao/:slug/confirmacao/canais',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Slug: string;
+      Contingencia: TEleicaoEmailContingenciaInfo;
+      Retorno: TJSONObject;
+    begin
+      try
+        if not TAppToken.ValidarToken(Req, Res, Claims) then Exit;
+        Slug := Trim(Req.Params['slug']);
+        if Slug.IsEmpty then
+          TAppErrors.RaiseBadRequest('Eleição não informada.');
+        if not TAppToken.PossuiRole(Claims.Roles, 'ELEITOR_IDENTIFICADO') then
+          TAppErrors.RaiseUnauthorized('Identificação inválida ou expirada.');
+        if not TAppToken.PertenceEleicao(Claims, Slug) then
+          TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+
+        Contingencia := TEleicaoEmailContingenciaService.Consultar(
+          Slug, Claims.UserId, Claims.IdEmpresa
+        );
+
+        Retorno := TJSONObject.Create;
+        Retorno.AddPair('email_disponivel', TJSONBool.Create(Contingencia.Disponivel));
+        if Contingencia.Disponivel then
+          Retorno.AddPair('email_destino', Contingencia.DestinoMascarado)
+        else
+          Retorno.AddPair('email_destino', TJSONNull.Create);
+
+        TAppResponse.Ok(Res, Retorno);
+      except
+        on E: Exception do TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
   THorse.Post('/api/v1/public/eleicao/:slug/confirmacao/solicitar-codigo',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     var
