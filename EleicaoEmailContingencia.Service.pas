@@ -182,7 +182,6 @@ var
   Conn: TUniConnection;
   Slug: string;
   Contexto: TEleicaoConfirmacaoContexto;
-  Confirmacao: TEleicaoConfirmacao;
   Email: string;
   EmailConfig: TEleicaoEmailConfig;
 begin
@@ -203,11 +202,6 @@ begin
 
     Email := BuscarEmailPessoa(Conn, Contexto.IdPessoa, Contexto.IdEmpresa);
     if not EmailValido(Email) then
-      Exit;
-
-    if TEleicaoAPIPublicDao.BuscarConfirmacao(
-      Conn, Contexto.IdEleicao, Contexto.IdUsuario, Confirmacao
-    ) and SameText(Trim(Confirmacao.Confirmado), 'S') then
       Exit;
 
     EmailConfig := TEleicaoEmailConfigService.Buscar(Contexto.IdEmpresa);
@@ -273,19 +267,13 @@ begin
       Conn, Contexto.IdEleicao, Contexto.IdUsuario, Confirmacao
     );
 
-    if PossuiConfirmacao then
+    if PossuiConfirmacao and (Confirmacao.EnviadoEm > 0) then
     begin
-      if SameText(Trim(Confirmacao.Confirmado), 'S') then
-        TAppErrors.RaiseBadRequest('A confirmação já foi realizada.');
-
-      if Confirmacao.EnviadoEm > 0 then
-      begin
-        SegundosDesdeEnvio := SecondsBetween(Now, Confirmacao.EnviadoEm);
-        if SegundosDesdeEnvio < TEMPO_REENVIO_SEGUNDOS then
-          TAppErrors.RaiseBadRequest(
-            'Aguarde o tempo de reenvio antes de solicitar um novo código.'
-          );
-      end;
+      SegundosDesdeEnvio := SecondsBetween(Now, Confirmacao.EnviadoEm);
+      if SegundosDesdeEnvio < TEMPO_REENVIO_SEGUNDOS then
+        TAppErrors.RaiseBadRequest(
+          'Aguarde o tempo de reenvio antes de solicitar um novo código.'
+        );
     end;
 
     EmailConfig := TEleicaoEmailConfigService.Buscar(Contexto.IdEmpresa);
