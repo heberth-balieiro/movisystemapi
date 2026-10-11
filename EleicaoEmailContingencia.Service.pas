@@ -56,7 +56,6 @@ uses
 const
   TEMPO_EXPIRACAO_SEGUNDOS = 60;
   TEMPO_REENVIO_SEGUNDOS = 60;
-  MINIMO_ENVIOS_WHATSAPP = 2;
 
 class function TEleicaoEmailContingenciaService.NormalizarSlug(
   const ASlug: string): string;
@@ -206,16 +205,11 @@ begin
     if not EmailValido(Email) then
       Exit;
 
-    if not TEleicaoAPIPublicDao.BuscarConfirmacao(
+    if TEleicaoAPIPublicDao.BuscarConfirmacao(
       Conn, Contexto.IdEleicao, Contexto.IdUsuario, Confirmacao
-    ) then
+    ) and SameText(Trim(Confirmacao.Confirmado), 'S') then
       Exit;
 
-    if SameText(Trim(Confirmacao.Confirmado), 'S') then
-      Exit;
-
-    // A consulta informa apenas se o canal e-mail existe e está configurado.
-    // A tela decide quando exibi-lo conforme o estado do fluxo (falha/reenvio).
     EmailConfig := TEleicaoEmailConfigService.Buscar(Contexto.IdEmpresa);
     if not EmailConfig.Ativo or
        EmailConfig.SmtpHost.IsEmpty or
@@ -241,6 +235,7 @@ var
   Slug: string;
   Contexto: TEleicaoConfirmacaoContexto;
   Confirmacao: TEleicaoConfirmacao;
+  PossuiConfirmacao: Boolean;
   Email: string;
   Codigo: string;
   CodigoHash: string;
@@ -274,30 +269,23 @@ begin
     if not EmailValido(Email) then
       TAppErrors.RaiseBadRequest('Não há um e-mail válido cadastrado para este eleitor.');
 
-    if not TEleicaoAPIPublicDao.BuscarConfirmacao(
+    PossuiConfirmacao := TEleicaoAPIPublicDao.BuscarConfirmacao(
       Conn, Contexto.IdEleicao, Contexto.IdUsuario, Confirmacao
-    ) then
-      TAppErrors.RaiseBadRequest('Solicite o código pelo WhatsApp antes de usar a contingência por e-mail.');
+    );
 
-    if SameText(Trim(Confirmacao.Confirmado), 'S') then
-      TAppErrors.RaiseBadRequest('A confirmação já foi realizada.');
-
-    // Se existe envio WhatsApp ativo, preserva a regra progressiva.
-    // Se EnviadoEm foi zerado pela tentativa atual que falhou, libera o e-mail.
-    if (Confirmacao.EnviadoEm > 0) and
-       (Confirmacao.QuantidadeEnvios > 0) and
-       (Confirmacao.QuantidadeEnvios < MINIMO_ENVIOS_WHATSAPP) then
-      TAppErrors.RaiseBadRequest(
-        'Reenvie o código pelo WhatsApp antes de solicitar o envio por e-mail.'
-      );
-
-    if Confirmacao.EnviadoEm > 0 then
+    if PossuiConfirmacao then
     begin
-      SegundosDesdeEnvio := SecondsBetween(Now, Confirmacao.EnviadoEm);
-      if SegundosDesdeEnvio < TEMPO_REENVIO_SEGUNDOS then
-        TAppErrors.RaiseBadRequest(
-          'Aguarde o tempo de reenvio antes de solicitar um novo código.'
-        );
+      if SameText(Trim(Confirmacao.Confirmado), 'S') then
+        TAppErrors.RaiseBadRequest('A confirmação já foi realizada.');
+
+      if Confirmacao.EnviadoEm > 0 then
+      begin
+        SegundosDesdeEnvio := SecondsBetween(Now, Confirmacao.EnviadoEm);
+        if SegundosDesdeEnvio < TEMPO_REENVIO_SEGUNDOS then
+          TAppErrors.RaiseBadRequest(
+            'Aguarde o tempo de reenvio antes de solicitar um novo código.'
+          );
+      end;
     end;
 
     EmailConfig := TEleicaoEmailConfigService.Buscar(Contexto.IdEmpresa);
@@ -318,7 +306,6 @@ begin
     Codigo := GerarCodigoConfirmacao;
     CodigoHash := GerarHashCodigo(Codigo);
 
-    // O novo hash substitui o anterior, invalidando imediatamente o código antigo.
     TEleicaoAPIPublicDao.SalvarCodigoConfirmacao(
       Conn,
       Contexto.IdEmpresa,
