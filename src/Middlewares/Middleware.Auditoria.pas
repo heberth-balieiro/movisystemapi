@@ -346,59 +346,81 @@ begin
       Mensagem: string;
       Claims: TJWTClaims;
       StatusCode: Integer;
+      StatusConsole: Integer;
       Sucesso: Boolean;
+      HouveExcecao: Boolean;
+      Auditavel: Boolean;
     begin
       Metodo := UpperCase(Trim(Req.RawWebRequest.Method));
       Caminho := Trim(Req.RawWebRequest.PathInfo);
+      Auditavel := EhAuditavel(Metodo, Caminho);
+      HouveExcecao := False;
+      Claims := Default(TJWTClaims);
 
-      if not EhAuditavel(Metodo, Caminho) then
-      begin
-        Next;
-        Exit;
-      end;
-
-      ExtrairClaims(
-        Req,
-        Claims
+      Writeln(
+        FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now) +
+        ' [API] INICIO ' + Metodo + ' ' + Caminho
       );
 
+      if Auditavel then
+        ExtrairClaims(Req, Claims);
+
       try
-        Next;
+        try
+          Next;
+        except
+          HouveExcecao := True;
+          raise;
+        end;
       finally
         StatusCode := Res.RawWebResponse.StatusCode;
 
         if StatusCode <= 0 then
           StatusCode := 200;
 
-        Sucesso :=
-          (StatusCode >= 200) and
-          (StatusCode < 400);
+        StatusConsole := StatusCode;
+        if HouveExcecao and (StatusConsole < 400) then
+          StatusConsole := 500;
 
-        Acao :=
-          ResolverAcao(
-            Metodo,
-            Caminho
-          );
-
-        Entidade :=
-          ResolverEntidade(
-            Caminho
-          );
-
-        Mensagem :=
-          'HTTP ' +
-          IntToStr(StatusCode) +
-          ' - operacao auditada sem persistir o corpo da requisicao.';
-
-        TAuditoriaService.TryRegistrarRequest(
-          Req,
-          Claims,
-          Acao,
-          Entidade,
-          '',
-          Mensagem,
-          Sucesso
+        Writeln(
+          FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', Now) +
+          ' [API] FIM ' + Metodo + ' ' + Caminho +
+          ' -> HTTP ' + IntToStr(StatusConsole)
         );
+
+        if Auditavel then
+        begin
+          Sucesso :=
+            (StatusCode >= 200) and
+            (StatusCode < 400) and
+            (not HouveExcecao);
+
+          Acao :=
+            ResolverAcao(
+              Metodo,
+              Caminho
+            );
+
+          Entidade :=
+            ResolverEntidade(
+              Caminho
+            );
+
+          Mensagem :=
+            'HTTP ' +
+            IntToStr(StatusCode) +
+            ' - operacao auditada sem persistir o corpo da requisicao.';
+
+          TAuditoriaService.TryRegistrarRequest(
+            Req,
+            Claims,
+            Acao,
+            Entidade,
+            '',
+            Mensagem,
+            Sucesso
+          );
+        end;
       end;
     end;
 end;
