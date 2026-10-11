@@ -16,7 +16,7 @@ uses
   Horse,
   System.SysUtils,
   System.JSON,
-  System.NetEncoding,
+  System.Classes,
   App.Response,
   APP.Errors,
   EleicaoAPIPublic.Service,
@@ -48,7 +48,7 @@ begin
       end;
     end);
 
-  // Mídia carregada separadamente para não bloquear dados/configuração.
+  // Mídia carregada separadamente e cacheável pelo navegador.
   THorse.Get('/api/v1/public/eleicao/:slug/midia/:tipo',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     var
@@ -56,8 +56,9 @@ begin
       Tipo: string;
       Bytes: TBytes;
       MimeType: string;
-      Dados: TJSONObject;
+      Stream: TBytesStream;
     begin
+      Stream := nil;
       try
         Slug := Req.Params['slug'];
         Tipo := Req.Params['tipo'];
@@ -65,14 +66,14 @@ begin
         if not TEleicaoPublicMediaService.BuscarMidia(Slug, Tipo, Bytes, MimeType) then
           TAppErrors.RaiseNotFound('Mídia não encontrada.');
 
-        Dados := TJSONObject.Create;
-        Dados.AddPair('mime_type', MimeType);
-        Dados.AddPair('conteudo', TNetEncoding.Base64.EncodeBytesToString(Bytes));
-        TAppResponse.Ok(Res, Dados);
+        Stream := TBytesStream.Create(Bytes);
+        Res.AddHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+        Res.SendFile(Stream, Tipo, MimeType);
       except
         on E: Exception do
           TAppErrors.HandleException(Res, E);
       end;
+      Stream.Free;
     end);
 
   // Compatibilidade: rota legada permanece inalterada para outros consumidores.
