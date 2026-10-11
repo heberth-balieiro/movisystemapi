@@ -38,6 +38,7 @@ begin
       Dados: TJSONObject;
       Lista: TJSONArray;
       Item: TJSONObject;
+      ApuracaoDisponivel: Boolean;
     begin
       try
         if not TAppToken.ValidarToken(Req, Res, Claims) then
@@ -77,12 +78,25 @@ begin
             IdEleicao := Qry.FieldByName('id').AsInteger;
             Situacao := Qry.FieldByName('situacao').AsString;
 
-            if not (
+            ApuracaoDisponivel :=
               SameText(Situacao, 'EM_APURACAO') or
               SameText(Situacao, 'APURADA') or
-              SameText(Situacao, 'PUBLICADA')
-            ) then
-              TAppErrors.RaiseBadRequest('A evolução da apuração somente pode ser consultada durante ou após a apuração.');
+              SameText(Situacao, 'PUBLICADA');
+
+            Dados := TJSONObject.Create;
+            Lista := TJSONArray.Create;
+            Dados.AddPair('situacao', Situacao);
+            Dados.AddPair('apuracao_disponivel', TJSONBool.Create(ApuracaoDisponivel));
+            Dados.AddPair('itens', Lista);
+
+            // Durante a votação (ou antes da apuração), não expõe qualquer
+            // informação de resultado. Retorna uma resposta vazia e válida
+            // para que o painel administrativo possa permanecer carregado.
+            if not ApuracaoDisponivel then
+            begin
+              TAppResponse.Ok(Res, Dados, '');
+              Exit;
+            end;
 
             Qry.Close;
             Qry.SQL.Text :=
@@ -105,9 +119,6 @@ begin
             Qry.ParamByName('ideleicao').AsInteger := IdEleicao;
             Qry.Open;
 
-            Dados := TJSONObject.Create;
-            Lista := TJSONArray.Create;
-
             while not Qry.Eof do
             begin
               Item := TJSONObject.Create;
@@ -120,8 +131,6 @@ begin
               Qry.Next;
             end;
 
-            Dados.AddPair('situacao', Situacao);
-            Dados.AddPair('itens', Lista);
             TAppResponse.Ok(Res, Dados, '');
           finally
             Qry.Free;
