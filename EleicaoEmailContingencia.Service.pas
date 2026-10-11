@@ -214,11 +214,11 @@ begin
     if SameText(Trim(Confirmacao.Confirmado), 'S') then
       Exit;
 
-    // Mantém o fluxo progressivo quando o WhatsApp foi enviado com sucesso:
-    // 1 envio ainda não libera e-mail; 2 ou mais liberam.
-    // Quantidade 0 representa tentativa criada sem envio concluído e libera
-    // a troca imediata de canal em caso de falha técnica do WhatsApp.
-    if (Confirmacao.QuantidadeEnvios > 0) and
+    // Fluxo normal: um WhatsApp efetivamente enviado ainda exige o reenvio.
+    // Quando a tentativa atual falha, SalvarCodigoConfirmacao zera EnviadoEm;
+    // nesse caso o histórico de quantidade não deve esconder o canal e-mail.
+    if (Confirmacao.EnviadoEm > 0) and
+       (Confirmacao.QuantidadeEnvios > 0) and
        (Confirmacao.QuantidadeEnvios < MINIMO_ENVIOS_WHATSAPP) then
       Exit;
 
@@ -288,7 +288,10 @@ begin
     if SameText(Trim(Confirmacao.Confirmado), 'S') then
       TAppErrors.RaiseBadRequest('A confirmação já foi realizada.');
 
-    if (Confirmacao.QuantidadeEnvios > 0) and
+    // Se existe envio WhatsApp ativo, preserva a regra progressiva.
+    // Se EnviadoEm foi zerado pela tentativa atual que falhou, libera o e-mail.
+    if (Confirmacao.EnviadoEm > 0) and
+       (Confirmacao.QuantidadeEnvios > 0) and
        (Confirmacao.QuantidadeEnvios < MINIMO_ENVIOS_WHATSAPP) then
       TAppErrors.RaiseBadRequest(
         'Reenvie o código pelo WhatsApp antes de solicitar o envio por e-mail.'
