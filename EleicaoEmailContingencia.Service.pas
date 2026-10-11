@@ -214,7 +214,12 @@ begin
     if SameText(Trim(Confirmacao.Confirmado), 'S') then
       Exit;
 
-    if Confirmacao.QuantidadeEnvios < MINIMO_ENVIOS_WHATSAPP then
+    // Mantém o fluxo progressivo quando o WhatsApp foi enviado com sucesso:
+    // 1 envio ainda não libera e-mail; 2 ou mais liberam.
+    // Quantidade 0 representa tentativa criada sem envio concluído e libera
+    // a troca imediata de canal em caso de falha técnica do WhatsApp.
+    if (Confirmacao.QuantidadeEnvios > 0) and
+       (Confirmacao.QuantidadeEnvios < MINIMO_ENVIOS_WHATSAPP) then
       Exit;
 
     EmailConfig := TEleicaoEmailConfigService.Buscar(Contexto.IdEmpresa);
@@ -283,7 +288,8 @@ begin
     if SameText(Trim(Confirmacao.Confirmado), 'S') then
       TAppErrors.RaiseBadRequest('A confirmação já foi realizada.');
 
-    if Confirmacao.QuantidadeEnvios < MINIMO_ENVIOS_WHATSAPP then
+    if (Confirmacao.QuantidadeEnvios > 0) and
+       (Confirmacao.QuantidadeEnvios < MINIMO_ENVIOS_WHATSAPP) then
       TAppErrors.RaiseBadRequest(
         'Reenvie o código pelo WhatsApp antes de solicitar o envio por e-mail.'
       );
