@@ -16,9 +16,11 @@ uses
   Horse,
   System.SysUtils,
   System.JSON,
+  System.NetEncoding,
   App.Response,
   APP.Errors,
   EleicaoAPIPublic.Service,
+  EleicaoPublicMedia.Service,
   APP.Classes,
   App.RequestInfo;
 
@@ -28,7 +30,52 @@ class procedure TEleicaoAPIPublicController.Registry;
 begin
 
   {$REGION 'Slug'}
-  //Retornar uma eleicao
+
+  // Retorno leve: não transporta logo/banner em Base64 junto com os dados.
+  THorse.Get('/api/v1/public/eleicao/:slug/leve',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Slug: string;
+      Dados: TJSONObject;
+    begin
+      try
+        Slug := Req.Params['slug'];
+        Dados := TEleicaoPublicMediaService.BuscarEleicaoLeve(Slug);
+        TAppResponse.Ok(Res, Dados);
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end);
+
+  // Mídia carregada separadamente para não bloquear dados/configuração.
+  THorse.Get('/api/v1/public/eleicao/:slug/midia/:tipo',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Slug: string;
+      Tipo: string;
+      Bytes: TBytes;
+      MimeType: string;
+      Dados: TJSONObject;
+    begin
+      try
+        Slug := Req.Params['slug'];
+        Tipo := Req.Params['tipo'];
+
+        if not TEleicaoPublicMediaService.BuscarMidia(Slug, Tipo, Bytes, MimeType) then
+          TAppErrors.RaiseNotFound('Mídia não encontrada.');
+
+        Dados := TJSONObject.Create;
+        Dados.AddPair('mime_type', MimeType);
+        Dados.AddPair('conteudo', TNetEncoding.Base64.EncodeBytesToString(Bytes));
+        TAppResponse.Ok(Res, Dados);
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end);
+
+  // Compatibilidade: rota legada permanece inalterada para outros consumidores.
   THorse.Get('/api/v1/public/eleicao/:slug',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
     var
@@ -64,7 +111,7 @@ begin
         Body := Req.Body<TJSONObject>;
 
         if Body = nil then
-          TAppErrors.RaiseBadRequest('JSON inv�lido ou n�o informado.');
+          TAppErrors.RaiseBadRequest('JSON inválido ou não informado.');
 
         Slug        := Req.Params['slug'];
         CPF         := TAppClasses.GetJsonString(Body, 'cpf');
@@ -79,7 +126,7 @@ begin
         Dados.AddPair('token_identificacao',      Login.Token);
         Dados.AddPair('identificado',             Login.identificado);
         Dados.AddPair('nome',                     Login.nome);
-        TAppResponse.Ok(Res, Dados, 'Identifica��o realizada com sucesso.');
+        TAppResponse.Ok(Res, Dados, 'Identificação realizada com sucesso.');
       except
         on E: Exception do
           TAppErrors.HandleException(Res, E);
