@@ -92,6 +92,7 @@ begin
       Claims: TJWTClaims;
       Slug: string;
       Body: TJSONObject;
+      ValorRespostas: TJSONValue;
       Respostas: TJSONArray;
       TipoVoto: string;
       IdChapa: Integer;
@@ -118,7 +119,16 @@ begin
         if Body = nil then
           TAppErrors.RaiseBadRequest('Dados do voto nao informados.');
 
-        Respostas := Body.GetValue<TJSONArray>('respostas');
+        Respostas := nil;
+        ValorRespostas := Body.GetValue('respostas');
+
+        if Assigned(ValorRespostas) then
+        begin
+          if not (ValorRespostas is TJSONArray) then
+            TAppErrors.RaiseBadRequest('Formato das respostas invalido.');
+
+          Respostas := TJSONArray(ValorRespostas);
+        end;
 
         if Assigned(Respostas) then
         begin
