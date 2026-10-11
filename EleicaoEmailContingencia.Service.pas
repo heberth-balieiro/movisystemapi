@@ -214,14 +214,8 @@ begin
     if SameText(Trim(Confirmacao.Confirmado), 'S') then
       Exit;
 
-    // Fluxo normal: um WhatsApp efetivamente enviado ainda exige o reenvio.
-    // Quando a tentativa atual falha, SalvarCodigoConfirmacao zera EnviadoEm;
-    // nesse caso o histórico de quantidade não deve esconder o canal e-mail.
-    if (Confirmacao.EnviadoEm > 0) and
-       (Confirmacao.QuantidadeEnvios > 0) and
-       (Confirmacao.QuantidadeEnvios < MINIMO_ENVIOS_WHATSAPP) then
-      Exit;
-
+    // A consulta informa apenas se o canal e-mail existe e está configurado.
+    // A tela decide quando exibi-lo conforme o estado do fluxo (falha/reenvio).
     EmailConfig := TEleicaoEmailConfigService.Buscar(Contexto.IdEmpresa);
     if not EmailConfig.Ativo or
        EmailConfig.SmtpHost.IsEmpty or
