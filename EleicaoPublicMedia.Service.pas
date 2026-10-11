@@ -3,6 +3,7 @@ unit EleicaoPublicMedia.Service;
 interface
 
 uses
+  System.SysUtils,
   System.JSON;
 
 type
@@ -17,7 +18,6 @@ type
 implementation
 
 uses
-  System.SysUtils,
   System.NetEncoding,
   Uni,
   App.Config,
