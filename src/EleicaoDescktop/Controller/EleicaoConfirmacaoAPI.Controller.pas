@@ -17,16 +17,121 @@ uses
   Horse,
   System.SysUtils,
   System.JSON,
+  Uni,
   App.Response,
   APP.Errors,
   App.JWT,
   App.Token,
+  App.Config,
+  Database.Connection,
+  EleicaoAPIPublic,
   EleicaoAPIPublic.Service,
   EleicaoEmailContingencia.Service,
   EleicaoCodigoTemporarioAPI.Service,
   EleicaoMelhoriasAPI.Service,
   APP.Classes,
   App.RequestInfo;
+
+function SomenteNumeros(const AValor: string): string;
+var
+  C: Char;
+begin
+  Result := '';
+  for C in AValor do
+    if CharInSet(C, ['0'..'9']) then
+      Result := Result + C;
+end;
+
+function MascararWhatsapp(const AWhatsapp: string): string;
+var
+  Numero: string;
+begin
+  Numero := SomenteNumeros(AWhatsapp);
+  if Length(Numero) < 4 then
+    Exit('WhatsApp cadastrado');
+
+  Result := '(**) *****-' + Copy(Numero, Length(Numero) - 3, 4);
+end;
+
+function ConsultarWhatsappCanal(const ASlug: string; const AIdUsuario,
+  AIdEmpresa: Integer; out ADestinoMascarado: string): Boolean;
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  Contexto: TEleicaoConfirmacaoContexto;
+begin
+  Result := False;
+  ADestinoMascarado := '';
+
+  if Trim(ASlug).IsEmpty or (AIdUsuario <= 0) or (AIdEmpresa <= 0) then
+    Exit;
+
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    if not TEleicaoAPIPublicDao.BuscarContextoConfirmacao(
+      Conn, Trim(ASlug), AIdEmpresa, AIdUsuario, Contexto
+    ) then
+      Exit;
+
+    if SomenteNumeros(Contexto.Whatsapp).IsEmpty then
+      Exit;
+
+    ADestinoMascarado := MascararWhatsapp(Contexto.Whatsapp);
+    Result := True;
+  finally
+    Conn.Free;
+  end;
+end;
+
+procedure PrepararNovaConfirmacaoWhatsapp(const ASlug: string;
+  const AIdUsuario, AIdEmpresa: Integer);
+var
+  Config: TAppApiConfig;
+  Conn: TUniConnection;
+  Qry: TUniQuery;
+  Contexto: TEleicaoConfirmacaoContexto;
+  Confirmacao: TEleicaoConfirmacao;
+begin
+  if Trim(ASlug).IsEmpty or (AIdUsuario <= 0) or (AIdEmpresa <= 0) then
+    Exit;
+
+  Config := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(Config.Database);
+  try
+    if not TEleicaoAPIPublicDao.BuscarContextoConfirmacao(
+      Conn, Trim(ASlug), AIdEmpresa, AIdUsuario, Contexto
+    ) then
+      Exit;
+
+    if not TEleicaoAPIPublicDao.BuscarConfirmacao(
+      Conn, Contexto.IdEleicao, Contexto.IdUsuario, Confirmacao
+    ) then
+      Exit;
+
+    // Nova identificação: permite escolher WhatsApp novamente mesmo quando
+    // uma confirmação anterior já foi concluída. O novo código substituirá
+    // o hash anterior no fluxo normal do serviço.
+    if not SameText(Trim(Confirmacao.Confirmado), 'S') then
+      Exit;
+
+    Qry := TUniQuery.Create(nil);
+    try
+      Qry.Connection := Conn;
+      Qry.SQL.Text :=
+        'UPDATE eleicao_confirmacao SET ' +
+        'confirmado = ''N'', confirmado_em = NULL, ' +
+        'tentativas = 0, enviado_em = NULL, expira_em = NULL ' +
+        'WHERE id = :id';
+      Qry.ParamByName('id').AsLargeInt := Confirmacao.Id;
+      Qry.ExecSQL;
+    finally
+      Qry.Free;
+    end;
+  finally
+    Conn.Free;
+  end;
+end;
 
 { TEleicaoAPIConfirmacaoController }
 
@@ -42,6 +147,8 @@ begin
       Slug: string;
       Contingencia: TEleicaoEmailContingenciaInfo;
       Retorno: TJSONObject;
+      WhatsappDisponivel: Boolean;
+      WhatsappDestino: string;
     begin
       try
         if not TAppToken.ValidarToken(Req, Res, Claims) then Exit;
@@ -57,7 +164,17 @@ begin
           Slug, Claims.UserId, Claims.IdEmpresa
         );
 
+        WhatsappDisponivel := ConsultarWhatsappCanal(
+          Slug, Claims.UserId, Claims.IdEmpresa, WhatsappDestino
+        );
+
         Retorno := TJSONObject.Create;
+        Retorno.AddPair('whatsapp_disponivel', TJSONBool.Create(WhatsappDisponivel));
+        if WhatsappDisponivel then
+          Retorno.AddPair('whatsapp_destino', WhatsappDestino)
+        else
+          Retorno.AddPair('whatsapp_destino', TJSONNull.Create);
+
         Retorno.AddPair('email_disponivel', TJSONBool.Create(Contingencia.Disponivel));
         if Contingencia.Disponivel then
           Retorno.AddPair('email_destino', Contingencia.DestinoMascarado)
@@ -89,6 +206,8 @@ begin
           TAppErrors.RaiseUnauthorized('Identificação inválida ou expirada.');
         if not TAppToken.PertenceEleicao(Claims, Slug) then
           TAppErrors.RaiseUnauthorized('Token não pertence a esta eleição.');
+
+        PrepararNovaConfirmacaoWhatsapp(Slug, Claims.UserId, Claims.IdEmpresa);
 
         Result := TEleicaoAPIPublicService.SolicitarCodigoConfirmacao(
           Slug, Claims.UserId, Claims.IdEmpresa,
