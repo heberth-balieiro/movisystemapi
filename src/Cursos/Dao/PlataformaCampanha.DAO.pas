@@ -116,9 +116,22 @@ type
       const ANomeInstancia: string
     ); static;
 
+    class function CriarExecucao(
+      const AConn: TUniConnection;
+      const AIdCampanha, AIdUsuario: Int64;
+      const ASituacaoEsperada, ASituacaoExecucao, AWhatsAppModo: string;
+      const AIdWhatsAppUsuario: Int64;
+      const AWhatsAppInstancia: string
+    ): Int64; static;
+
     class procedure Iniciar(
       const AConn: TUniConnection;
-      const AIdCampanha: Int64
+      const AIdCampanha, AIdExecucao: Int64
+    ); static;
+
+    class procedure Reenviar(
+      const AConn: TUniConnection;
+      const AIdCampanha, AIdExecucao: Int64
     ); static;
 
     class procedure AtivarAgendadas(
@@ -341,7 +354,9 @@ begin
       'SELECT e.id, e.canal, e.destinatario, e.situacao, e.tentativas, e.enviado_em, e.ultimo_erro, ' +
       'd.nome destinatario_nome FROM plataforma_campanha_envio e ' +
       'JOIN plataforma_campanha_destinatario d ON d.id = e.id_destinatario ' +
-      'WHERE e.id_campanha = :id ORDER BY e.id DESC LIMIT 500';
+      'WHERE e.id_campanha = :id AND e.id_execucao = (' +
+      'SELECT x.id FROM plataforma_campanha_execucao x WHERE x.id_campanha=:id ORDER BY x.numero_execucao DESC LIMIT 1' +
+      ') ORDER BY e.id DESC LIMIT 500';
     Q.ParamByName('id').AsLargeInt := AId;
     Q.Open;
     Envios := TJSONArray.Create;
@@ -674,7 +689,7 @@ begin
       'whatsapp_modo_remetente = :modo, ' +
       'id_whatsapp_usuario = :id_usuario, ' +
       'whatsapp_instancia = :instancia ' +
-      'WHERE id = :id AND situacao = ''RASCUNHO''';
+      'WHERE id = :id AND situacao IN (''RASCUNHO'',''CONCLUIDA'')';
 
     Q.ParamByName('modo').AsString := UpperCase(Trim(AModo));
 
@@ -691,8 +706,71 @@ begin
   end;
 end;
 
+class function TPlataformaCampanhaDAO.CriarExecucao(
+  const AConn: TUniConnection;
+  const AIdCampanha, AIdUsuario: Int64;
+  const ASituacaoEsperada, ASituacaoExecucao, AWhatsAppModo: string;
+  const AIdWhatsAppUsuario: Int64;
+  const AWhatsAppInstancia: string
+): Int64;
+var
+  Q: TUniQuery;
+  SituacaoAtual: string;
+  Numero: Integer;
+begin
+  Result := 0;
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := AConn;
+    Q.SQL.Text := 'SELECT situacao FROM plataforma_campanha WHERE id=:id FOR UPDATE';
+    Q.ParamByName('id').AsLargeInt := AIdCampanha;
+    Q.Open;
+    if Q.IsEmpty then
+      raise Exception.Create('Campanha não encontrada.');
+
+    SituacaoAtual := Q.FieldByName('situacao').AsString;
+    if not SameText(SituacaoAtual, ASituacaoEsperada) then
+      raise Exception.Create('A campanha não está disponível para esta operação.');
+
+    Q.Close;
+    Q.SQL.Text :=
+      'SELECT COALESCE(MAX(numero_execucao),0)+1 numero FROM plataforma_campanha_execucao ' +
+      'WHERE id_campanha=:id';
+    Q.ParamByName('id').AsLargeInt := AIdCampanha;
+    Q.Open;
+    Numero := Q.FieldByName('numero').AsInteger;
+
+    Q.Close;
+    Q.SQL.Text :=
+      'INSERT INTO plataforma_campanha_execucao ' +
+      '(id_campanha,numero_execucao,situacao,iniciado_por,iniciado_em,' +
+      'whatsapp_modo_remetente,id_whatsapp_usuario,whatsapp_instancia) ' +
+      'VALUES (:campanha,:numero,:situacao,:usuario,' +
+      'CASE WHEN :situacao_agendada=''AGENDADA'' THEN NULL ELSE CURRENT_TIMESTAMP(3) END,' +
+      ':modo,:id_whatsapp_usuario,:instancia)';
+    Q.ParamByName('campanha').AsLargeInt := AIdCampanha;
+    Q.ParamByName('numero').AsInteger := Numero;
+    Q.ParamByName('situacao').AsString := UpperCase(Trim(ASituacaoExecucao));
+    Q.ParamByName('situacao_agendada').AsString := UpperCase(Trim(ASituacaoExecucao));
+    Q.ParamByName('usuario').AsLargeInt := AIdUsuario;
+    if Trim(AWhatsAppModo).IsEmpty then Q.ParamByName('modo').Clear
+    else Q.ParamByName('modo').AsString := UpperCase(Trim(AWhatsAppModo));
+    if AIdWhatsAppUsuario > 0 then Q.ParamByName('id_whatsapp_usuario').AsLargeInt := AIdWhatsAppUsuario
+    else Q.ParamByName('id_whatsapp_usuario').Clear;
+    if Trim(AWhatsAppInstancia).IsEmpty then Q.ParamByName('instancia').Clear
+    else Q.ParamByName('instancia').AsString := Trim(AWhatsAppInstancia);
+    Q.Execute;
+
+    Q.SQL.Text := 'SELECT LAST_INSERT_ID() id';
+    Q.Open;
+    Result := Q.FieldByName('id').AsLargeInt;
+  finally
+    Q.Free;
+  end;
+end;
+
 class procedure TPlataformaCampanhaDAO.Iniciar(
-  const AConn:TUniConnection; const AIdCampanha:Int64);
+  const AConn:TUniConnection; const AIdCampanha,AIdExecucao:Int64);
 var Q:TUniQuery;
 begin
  Q:=TUniQuery.Create(nil);
@@ -706,20 +784,59 @@ begin
   if Q.RowsAffected<>1 then raise Exception.Create('A campanha não está disponível para início.');
 
   Q.SQL.Text:=
-   'INSERT IGNORE INTO plataforma_campanha_envio (id_campanha,id_destinatario,canal,destinatario) '+
-   'SELECT c.id,d.id,''EMAIL'',d.email FROM plataforma_campanha c JOIN plataforma_campanha_destinatario d ON d.id_campanha=c.id '+
+   'INSERT IGNORE INTO plataforma_campanha_envio (id_campanha,id_execucao,id_destinatario,canal,destinatario) '+
+   'SELECT c.id,:execucao,d.id,''EMAIL'',d.email FROM plataforma_campanha c JOIN plataforma_campanha_destinatario d ON d.id_campanha=c.id '+
    'LEFT JOIN plataforma_contato_bloqueio b ON b.canal=''EMAIL'' AND b.valor_normalizado=LOWER(TRIM(d.email)) '+
    'WHERE c.id=:id AND c.canal IN (''EMAIL'',''AMBOS'') AND d.email IS NOT NULL AND d.email<>'''' AND b.id IS NULL';
+  Q.ParamByName('execucao').AsLargeInt:=AIdExecucao;
   Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
 
   Q.SQL.Text:=
-   'INSERT IGNORE INTO plataforma_campanha_envio (id_campanha,id_destinatario,canal,destinatario) '+
-   'SELECT c.id,d.id,''WHATSAPP'',d.whatsapp FROM plataforma_campanha c JOIN plataforma_campanha_destinatario d ON d.id_campanha=c.id '+
+   'INSERT IGNORE INTO plataforma_campanha_envio (id_campanha,id_execucao,id_destinatario,canal,destinatario) '+
+   'SELECT c.id,:execucao,d.id,''WHATSAPP'',d.whatsapp FROM plataforma_campanha c JOIN plataforma_campanha_destinatario d ON d.id_campanha=c.id '+
    'LEFT JOIN plataforma_contato_bloqueio b ON b.canal=''WHATSAPP'' AND b.valor_normalizado=d.whatsapp '+
    'WHERE c.id=:id AND c.canal IN (''WHATSAPP'',''AMBOS'') AND d.whatsapp IS NOT NULL AND d.whatsapp<>'''' AND b.id IS NULL';
+  Q.ParamByName('execucao').AsLargeInt:=AIdExecucao;
   Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
   AtualizarTotaisCampanha(AConn,AIdCampanha);
  finally Q.Free; end;
+end;
+
+class procedure TPlataformaCampanhaDAO.Reenviar(
+  const AConn:TUniConnection; const AIdCampanha,AIdExecucao:Int64);
+var Q:TUniQuery;
+begin
+ Q:=TUniQuery.Create(nil);
+ try
+  Q.Connection:=AConn;
+  Q.SQL.Text:=
+    'UPDATE plataforma_campanha SET situacao=''PROCESSANDO'',iniciado_em=CURRENT_TIMESTAMP(3),' +
+    'concluido_em=NULL,cancelado_em=NULL WHERE id=:id AND situacao=''CONCLUIDA''';
+  Q.ParamByName('id').AsLargeInt:=AIdCampanha;
+  Q.Execute;
+  if Q.RowsAffected<>1 then raise Exception.Create('A campanha não está disponível para reenvio.');
+
+  Q.SQL.Text:=
+   'INSERT INTO plataforma_campanha_envio (id_campanha,id_execucao,id_destinatario,canal,destinatario) '+
+   'SELECT c.id,:execucao,d.id,''EMAIL'',d.email FROM plataforma_campanha c JOIN plataforma_campanha_destinatario d ON d.id_campanha=c.id '+
+   'LEFT JOIN plataforma_contato_bloqueio b ON b.canal=''EMAIL'' AND b.valor_normalizado=LOWER(TRIM(d.email)) '+
+   'WHERE c.id=:id AND c.canal IN (''EMAIL'',''AMBOS'') AND d.email IS NOT NULL AND d.email<>'''' AND b.id IS NULL';
+  Q.ParamByName('execucao').AsLargeInt:=AIdExecucao;
+  Q.ParamByName('id').AsLargeInt:=AIdCampanha;
+  Q.Execute;
+
+  Q.SQL.Text:=
+   'INSERT INTO plataforma_campanha_envio (id_campanha,id_execucao,id_destinatario,canal,destinatario) '+
+   'SELECT c.id,:execucao,d.id,''WHATSAPP'',d.whatsapp FROM plataforma_campanha c JOIN plataforma_campanha_destinatario d ON d.id_campanha=c.id '+
+   'LEFT JOIN plataforma_contato_bloqueio b ON b.canal=''WHATSAPP'' AND b.valor_normalizado=d.whatsapp '+
+   'WHERE c.id=:id AND c.canal IN (''WHATSAPP'',''AMBOS'') AND d.whatsapp IS NOT NULL AND d.whatsapp<>'''' AND b.id IS NULL';
+  Q.ParamByName('execucao').AsLargeInt:=AIdExecucao;
+  Q.ParamByName('id').AsLargeInt:=AIdCampanha;
+  Q.Execute;
+  AtualizarTotaisCampanha(AConn,AIdCampanha);
+ finally
+  Q.Free;
+ end;
 end;
 
 class procedure TPlataformaCampanhaDAO.AtivarAgendadas(
@@ -733,6 +850,14 @@ begin
       'UPDATE plataforma_campanha SET situacao=''PROCESSANDO'', iniciado_em=CURRENT_TIMESTAMP(3) ' +
       'WHERE situacao=''AGENDADA'' AND agendado_para IS NOT NULL ' +
       'AND agendado_para<=CURRENT_TIMESTAMP(3)';
+    Q.Execute;
+
+    Q.SQL.Text :=
+      'UPDATE plataforma_campanha_execucao x ' +
+      'JOIN plataforma_campanha c ON c.id=x.id_campanha ' +
+      'SET x.situacao=''PROCESSANDO'',x.iniciado_em=COALESCE(x.iniciado_em,CURRENT_TIMESTAMP(3)) ' +
+      'WHERE x.situacao=''AGENDADA'' AND c.situacao=''PROCESSANDO'' ' +
+      'AND c.agendado_para IS NOT NULL AND c.agendado_para<=CURRENT_TIMESTAMP(3)';
     Q.Execute;
   finally
     Q.Free;
@@ -748,7 +873,14 @@ begin
   Q.SQL.Text:='UPDATE plataforma_campanha SET situacao=''CANCELADA'',cancelado_em=CURRENT_TIMESTAMP(3) '+
    'WHERE id=:id AND situacao IN (''RASCUNHO'',''AGENDADA'',''PROCESSANDO'')';
   Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
-  Q.SQL.Text:='UPDATE plataforma_campanha_envio SET situacao=''CANCELADO'' WHERE id_campanha=:id AND situacao=''PENDENTE''';
+  Q.SQL.Text:=
+   'UPDATE plataforma_campanha_envio SET situacao=''CANCELADO'' WHERE id_campanha=:id AND situacao=''PENDENTE'' '+
+   'AND id_execucao=(SELECT x.id FROM plataforma_campanha_execucao x WHERE x.id_campanha=:id ORDER BY x.numero_execucao DESC LIMIT 1)';
+  Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
+  Q.SQL.Text:=
+   'UPDATE plataforma_campanha_execucao SET situacao=''CANCELADA'',concluido_em=CURRENT_TIMESTAMP(3) '+
+   'WHERE id=(SELECT x.id FROM (SELECT id FROM plataforma_campanha_execucao WHERE id_campanha=:id ORDER BY numero_execucao DESC LIMIT 1) x) '+
+   'AND situacao IN (''AGENDADA'',''PROCESSANDO'')';
   Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
   AtualizarTotaisCampanha(AConn,AIdCampanha);
  finally Q.Free; end;
@@ -758,10 +890,17 @@ class procedure TPlataformaCampanhaDAO.ReprocessarFalhas(
  const AConn:TUniConnection; const AIdCampanha:Int64);
 var Q:TUniQuery;
 begin Q:=TUniQuery.Create(nil); try Q.Connection:=AConn;
- Q.SQL.Text:='UPDATE plataforma_campanha_envio SET situacao=''PENDENTE'',proxima_tentativa_em=NULL,ultimo_erro=NULL '+
-  'WHERE id_campanha=:id AND situacao=''FALHA''';
+ Q.SQL.Text:=
+  'UPDATE plataforma_campanha_envio SET situacao=''PENDENTE'',proxima_tentativa_em=NULL,ultimo_erro=NULL '+
+  'WHERE id_campanha=:id AND situacao=''FALHA'' AND id_execucao=(' +
+  'SELECT x.id FROM plataforma_campanha_execucao x WHERE x.id_campanha=:id ORDER BY x.numero_execucao DESC LIMIT 1)';
  Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
  Q.SQL.Text:='UPDATE plataforma_campanha SET situacao=''PROCESSANDO'',concluido_em=NULL WHERE id=:id AND situacao<>''CANCELADA''';
+ Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
+ Q.SQL.Text:=
+  'UPDATE plataforma_campanha_execucao SET situacao=''PROCESSANDO'',concluido_em=NULL '+
+  'WHERE id=(SELECT x.id FROM (SELECT id FROM plataforma_campanha_execucao WHERE id_campanha=:id ORDER BY numero_execucao DESC LIMIT 1) x) '+
+  'AND situacao<>''CANCELADA''';
  Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
  AtualizarTotaisCampanha(AConn,AIdCampanha);
  finally Q.Free; end; end;
@@ -773,17 +912,19 @@ begin
  Result:=nil; Q:=TUniQuery.Create(nil);
  try Q.Connection:=AConn;
  Q.SQL.Text:=
-  'SELECT e.id,e.id_campanha,e.canal,e.destinatario,d.nome,d.empresa,c.assunto_email,c.corpo_email,c.mensagem_whatsapp, '+
-  'c.whatsapp_modo_remetente,c.id_whatsapp_usuario,c.whatsapp_instancia '+
+  'SELECT e.id,e.id_campanha,e.id_execucao,e.canal,e.destinatario,d.nome,d.empresa,c.assunto_email,c.corpo_email,c.mensagem_whatsapp, '+
+  'x.whatsapp_modo_remetente,x.id_whatsapp_usuario,x.whatsapp_instancia '+
   'FROM plataforma_campanha_envio e JOIN plataforma_campanha c ON c.id=e.id_campanha '+
+  'JOIN plataforma_campanha_execucao x ON x.id=e.id_execucao '+
   'JOIN plataforma_campanha_destinatario d ON d.id=e.id_destinatario '+
-  'WHERE c.situacao=''PROCESSANDO'' AND e.situacao=''PENDENTE'' '+
+  'WHERE c.situacao=''PROCESSANDO'' AND x.situacao=''PROCESSANDO'' AND e.situacao=''PENDENTE'' '+
   'AND (e.proxima_tentativa_em IS NULL OR e.proxima_tentativa_em<=CURRENT_TIMESTAMP(3)) '+
   'ORDER BY e.id LIMIT 1 FOR UPDATE SKIP LOCKED';
  Q.Open; if Q.IsEmpty then Exit;
  Result:=TJSONObject.Create;
  Result.AddPair('id',TJSONNumber.Create(Q.FieldByName('id').AsLargeInt));
  Result.AddPair('id_campanha',TJSONNumber.Create(Q.FieldByName('id_campanha').AsLargeInt));
+ Result.AddPair('id_execucao',TJSONNumber.Create(Q.FieldByName('id_execucao').AsLargeInt));
  Result.AddPair('canal',Q.FieldByName('canal').AsString); Result.AddPair('destinatario',Q.FieldByName('destinatario').AsString);
  Result.AddPair('nome',Q.FieldByName('nome').AsString); Result.AddPair('empresa',Q.FieldByName('empresa').AsString);
  Result.AddPair('assunto_email',Q.FieldByName('assunto_email').AsString); Result.AddPair('corpo_email',Q.FieldByName('corpo_email').AsString);
@@ -819,23 +960,69 @@ var Q:TUniQuery; begin Q:=TUniQuery.Create(nil); try Q.Connection:=AConn;
   Q.Execute; finally Q.Free; end; end;
 
 class procedure TPlataformaCampanhaDAO.AtualizarTotaisCampanha(const AConn:TUniConnection; const AIdCampanha:Int64);
-var Q:TUniQuery;
-begin Q:=TUniQuery.Create(nil); try Q.Connection:=AConn;
- Q.SQL.Text:=
-  'UPDATE plataforma_campanha c SET '+
-  'total_destinatarios=(SELECT COUNT(*) FROM plataforma_campanha_destinatario d WHERE d.id_campanha=c.id), '+
-  'total_envios=(SELECT COUNT(*) FROM plataforma_campanha_envio e WHERE e.id_campanha=c.id), '+
-  'total_enviados=(SELECT COUNT(*) FROM plataforma_campanha_envio e WHERE e.id_campanha=c.id AND e.situacao=''ENVIADO''), '+
-  'total_falhas=(SELECT COUNT(*) FROM plataforma_campanha_envio e WHERE e.id_campanha=c.id AND e.situacao=''FALHA'') '+
-  'WHERE c.id=:id';
- Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
+var
+  Q:TUniQuery;
+  IdExecucao:Int64;
+begin
+ Q:=TUniQuery.Create(nil);
+ try
+  Q.Connection:=AConn;
+  IdExecucao:=0;
+  Q.SQL.Text:='SELECT id FROM plataforma_campanha_execucao WHERE id_campanha=:id ORDER BY numero_execucao DESC LIMIT 1';
+  Q.ParamByName('id').AsLargeInt:=AIdCampanha;
+  Q.Open;
+  if not Q.IsEmpty then IdExecucao:=Q.FieldByName('id').AsLargeInt;
+  Q.Close;
 
- Q.SQL.Text:=
-  'UPDATE plataforma_campanha c SET situacao=''CONCLUIDA'',concluido_em=CURRENT_TIMESTAMP(3) '+
-  'WHERE c.id=:id AND c.situacao=''PROCESSANDO'' AND NOT EXISTS ('+
-  'SELECT 1 FROM plataforma_campanha_envio e WHERE e.id_campanha=c.id AND e.situacao IN (''PENDENTE'',''PROCESSANDO''))';
- Q.ParamByName('id').AsLargeInt:=AIdCampanha; Q.Execute;
- finally Q.Free; end; end;
+  if IdExecucao<=0 then
+  begin
+    Q.SQL.Text:=
+      'UPDATE plataforma_campanha c SET '+
+      'total_destinatarios=(SELECT COUNT(*) FROM plataforma_campanha_destinatario d WHERE d.id_campanha=c.id), '+
+      'total_envios=0,total_enviados=0,total_falhas=0 WHERE c.id=:id';
+    Q.ParamByName('id').AsLargeInt:=AIdCampanha;
+    Q.Execute;
+    Exit;
+  end;
+
+  Q.SQL.Text:=
+    'UPDATE plataforma_campanha_execucao x SET '+
+    'total_envios=(SELECT COUNT(*) FROM plataforma_campanha_envio e WHERE e.id_execucao=x.id), '+
+    'total_enviados=(SELECT COUNT(*) FROM plataforma_campanha_envio e WHERE e.id_execucao=x.id AND e.situacao=''ENVIADO''), '+
+    'total_falhas=(SELECT COUNT(*) FROM plataforma_campanha_envio e WHERE e.id_execucao=x.id AND e.situacao=''FALHA'') '+
+    'WHERE x.id=:execucao';
+  Q.ParamByName('execucao').AsLargeInt:=IdExecucao;
+  Q.Execute;
+
+  Q.SQL.Text:=
+    'UPDATE plataforma_campanha c SET '+
+    'total_destinatarios=(SELECT COUNT(*) FROM plataforma_campanha_destinatario d WHERE d.id_campanha=c.id), '+
+    'total_envios=(SELECT COUNT(*) FROM plataforma_campanha_envio e WHERE e.id_execucao=:execucao), '+
+    'total_enviados=(SELECT COUNT(*) FROM plataforma_campanha_envio e WHERE e.id_execucao=:execucao AND e.situacao=''ENVIADO''), '+
+    'total_falhas=(SELECT COUNT(*) FROM plataforma_campanha_envio e WHERE e.id_execucao=:execucao AND e.situacao=''FALHA'') '+
+    'WHERE c.id=:id';
+  Q.ParamByName('execucao').AsLargeInt:=IdExecucao;
+  Q.ParamByName('id').AsLargeInt:=AIdCampanha;
+  Q.Execute;
+
+  Q.SQL.Text:=
+    'UPDATE plataforma_campanha c SET situacao=''CONCLUIDA'',concluido_em=CURRENT_TIMESTAMP(3) '+
+    'WHERE c.id=:id AND c.situacao=''PROCESSANDO'' AND NOT EXISTS ('+
+    'SELECT 1 FROM plataforma_campanha_envio e WHERE e.id_execucao=:execucao AND e.situacao IN (''PENDENTE'',''PROCESSANDO''))';
+  Q.ParamByName('id').AsLargeInt:=AIdCampanha;
+  Q.ParamByName('execucao').AsLargeInt:=IdExecucao;
+  Q.Execute;
+
+  Q.SQL.Text:=
+    'UPDATE plataforma_campanha_execucao x SET situacao=''CONCLUIDA'',concluido_em=CURRENT_TIMESTAMP(3) '+
+    'WHERE x.id=:execucao AND x.situacao=''PROCESSANDO'' AND NOT EXISTS ('+
+    'SELECT 1 FROM plataforma_campanha_envio e WHERE e.id_execucao=x.id AND e.situacao IN (''PENDENTE'',''PROCESSANDO''))';
+  Q.ParamByName('execucao').AsLargeInt:=IdExecucao;
+  Q.Execute;
+ finally
+  Q.Free;
+ end;
+end;
 
 class procedure TPlataformaCampanhaDAO.RegistrarAuditoria(
  const AConn:TUniConnection; const AIdUsuario:Int64; const AAcao:string;
