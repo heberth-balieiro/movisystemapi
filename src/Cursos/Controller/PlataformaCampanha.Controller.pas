@@ -110,8 +110,6 @@ begin
     var
       Claims: TJWTClaims;
       Dados: TJSONObject;
-      AgendadoPara: TDateTime;
-      TemAgendadoPara: Boolean;
     begin
       try
         if not AutorizarSuperAdmin(Req, Res, Claims) then
@@ -498,6 +496,37 @@ begin
       except
         on E: Exception do
           TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
+
+  THorse.Post(
+    '/v1/certifica/plataforma/campanhas/:id/reenviar',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Dados: TJSONObject;
+    begin
+      try
+        if not AutorizarSuperAdmin(Req, Res, Claims) then
+          Exit;
+
+        Dados :=
+          TPlataformaCampanhaService.Reenviar(
+            Claims.UserId,
+            StrToInt64Def(Req.Params.Items['id'],0),
+            TAppRequestInfo.GetIP(Req),
+            TAppRequestInfo.GetUserAgent(Req)
+          );
+
+        TAppResponse.Ok(
+          Res,
+          Dados,
+          'Campanha reenviada. Os envios serão processados em fila.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res,E);
       end;
     end
   );
