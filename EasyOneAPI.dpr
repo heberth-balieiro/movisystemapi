@@ -62,6 +62,10 @@ uses
   PlataformaCampanha.Service in 'src\Cursos\Services\PlataformaCampanha.Service.pas',
   PlataformaCampanha.Worker in 'src\Cursos\Services\PlataformaCampanha.Worker.pas',
   PlataformaCampanha.Controller in 'src\Cursos\Controller\PlataformaCampanha.Controller.pas',
+  PlataformaContato.DAO in 'src\Cursos\Dao\PlataformaContato.DAO.pas',
+  PlataformaContato.Service in 'src\Cursos\Services\PlataformaContato.Service.pas',
+  PlataformaContato.Controller in 'src\Cursos\Controller\PlataformaContato.Controller.pas',
+  PlataformaContato.Migration in 'src\Cursos\Migrations\PlataformaContato.Migration.pas',
   PlataformaModulo.Model in 'src\Cursos\Model\PlataformaModulo.Model.pas',
   PlataformaModulo.DAO in 'src\Cursos\Dao\PlataformaModulo.DAO.pas',
   PlataformaModulo.Service in 'src\Cursos\Services\PlataformaModulo.Service.pas',
@@ -558,6 +562,8 @@ begin
 
           //Roda tabelas
           TCursosMigration.Run(LConfig.Database);
+          TPlataformaContatoMigration.Run;
+          Writeln('Migration da Base de Contatos executada com sucesso.');
           TContratosMigration.Run(LConfig.Database);
           Writeln('Migrations do MoviSystem Contratos executadas com sucesso.');
 
