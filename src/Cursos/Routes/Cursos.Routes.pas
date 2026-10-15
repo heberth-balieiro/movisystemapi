@@ -23,6 +23,7 @@ Uses
   PlataformaAjuda.Controller,
   PlataformaCampanha.Controller,
   PlataformaContato.Controller,
+  PlataformaContatoColeta.Controller,
   PlataformaUsuarioWhatsApp.Controller,
   PublicoRecuperacaoSenha.Controller,
   InstituicaoAuth.Controller,
@@ -82,6 +83,7 @@ begin
   TPlataformaAjudaController.Registry;
   TPlataformaCampanhaController.Registry;
   TPlataformaContatoController.Registry;
+  TPlataformaContatoColetaController.Registry;
   TPlataformaUsuarioWhatsAppController.Registry;
   TPublicoRecuperacaoSenhaController.Registry;
   TInstituicaoAuthController.Registry;
