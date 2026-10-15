@@ -17,9 +17,6 @@ uses
   Database.Connection;
 
 class procedure TPlataformaContatoColetaMigration.Run;
-const
-  VERSION = '065';
-  DESCRIPTION = 'Coletas automatizadas para a base de contatos da plataforma';
 var
   C: TAppApiConfig;
   Conn: TUniConnection;
@@ -39,22 +36,31 @@ var
     end;
   end;
 
-  function MigrationExists: Boolean;
+  function MigrationExists(const AVersion: string): Boolean;
   begin
     Q.Close;
-    Q.SQL.Text := 'SELECT 1 FROM schema_migrations WHERE version=:version LIMIT 1';
-    Q.ParamByName('version').AsString := VERSION;
+    Q.SQL.Text :=
+      'SELECT 1 FROM schema_migrations ' +
+      'WHERE version=:version LIMIT 1';
+    Q.ParamByName('version').AsString := AVersion;
     Q.Open;
     Result := not Q.IsEmpty;
   end;
 
-begin
-  C := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
-  Conn := TDatabaseConnection.NewConnection(C.Database);
-  Q := TUniQuery.Create(nil);
-  try
-    Q.Connection := Conn;
-    if MigrationExists then
+  procedure RegisterMigration(const AVersion, ADescription: string);
+  begin
+    Q.Close;
+    Q.SQL.Text :=
+      'INSERT INTO schema_migrations (version,description) ' +
+      'VALUES (:version,:descricao)';
+    Q.ParamByName('version').AsString := AVersion;
+    Q.ParamByName('descricao').AsString := ADescription;
+    Q.Execute;
+  end;
+
+  procedure Run065;
+  begin
+    if MigrationExists('065') then
       Exit;
 
     ExecSQL(
@@ -114,11 +120,38 @@ begin
       ') ENGINE=InnoDB COMMENT=''Resultados encontrados pelo coletor de contatos.'';'
     );
 
-    Q.Close;
-    Q.SQL.Text := 'INSERT INTO schema_migrations (version,description) VALUES (:version,:descricao)';
-    Q.ParamByName('version').AsString := VERSION;
-    Q.ParamByName('descricao').AsString := DESCRIPTION;
-    Q.Execute;
+    RegisterMigration(
+      '065',
+      'Coletas automatizadas para a base de contatos da plataforma'
+    );
+  end;
+
+  procedure Run066;
+  begin
+    if MigrationExists('066') then
+      Exit;
+
+    ExecSQL(
+      'ALTER TABLE plataforma_contato_coleta ' +
+      'ADD COLUMN modo_alvo VARCHAR(20) NOT NULL DEFAULT ''TODOS'' AFTER uf,' +
+      'ADD COLUMN municipio VARCHAR(120) NULL AFTER modo_alvo,' +
+      'ADD KEY ix_contato_coleta_alvo (tipo,uf,modo_alvo,municipio);'
+    );
+
+    RegisterMigration(
+      '066',
+      'Filtros de alvo da coleta e preparacao para novos tipos de coletor'
+    );
+  end;
+
+begin
+  C := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(C.Database);
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := Conn;
+    Run065;
+    Run066;
   finally
     Q.Free;
     Conn.Free;
