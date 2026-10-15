@@ -70,7 +70,18 @@ begin
       try
         if not AutorizarSuperAdmin(Req,Res,Claims) then Exit;
         Body:=ParseBody(Req);
-        try Dados:=TPlataformaContatoColetaService.Criar(Claims.UserId,JStr(Body,'nome'),JStr(Body,'tipo'),JStr(Body,'uf'),JInt(Body,'limite'),JInt(Body,'workers')); finally Body.Free; end;
+        try
+          Dados:=TPlataformaContatoColetaService.Criar(
+            Claims.UserId,
+            JStr(Body,'nome'),
+            JStr(Body,'tipo'),
+            JStr(Body,'uf'),
+            JStr(Body,'modo_alvo'),
+            JStr(Body,'municipio'),
+            JInt(Body,'limite'),
+            JInt(Body,'workers')
+          );
+        finally Body.Free; end;
         TAppResponse.Created(Res,Dados,'Coleta criada com sucesso.');
       except on E:Exception do TAppErrors.HandleException(Res,E); end;
     end);
