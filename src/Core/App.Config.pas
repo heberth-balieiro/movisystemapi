@@ -42,6 +42,7 @@ type
     Ambiente: string;
     RunDemoSeeds: Boolean;
     CorsAllowedOrigin: string;
+    CollectorToken: string;
     Porta: Integer;
     SSL: Boolean;
     UsuarioBasic: string;
@@ -96,8 +97,6 @@ begin
 
   Ini := TIniFile.Create(ACaminhoIni);
   try
-    // O produto é obrigatório. Nunca assumir módulo por padrão,
-    // pois a mesma API atende bancos e estruturas diferentes.
     PortaStr := Trim(Ini.ReadString('APP', 'Produto', ''));
 
     if PortaStr.IsEmpty then
@@ -140,6 +139,15 @@ begin
         )
       );
 
+    Result.CollectorToken :=
+      Trim(
+        Ini.ReadString(
+          'SECURITY',
+          'CollectorToken',
+          ''
+        )
+      );
+
     if not SameText(Result.CorsAllowedOrigin, '*') then
       while Result.CorsAllowedOrigin.EndsWith('/') do
         Delete(
@@ -148,7 +156,6 @@ begin
           1
         );
 
-    // --- DATABASE / DADOS
     Result.Database.Driver   := Ini.ReadString('DADOS', 'DriverID', 'MySQL');
     Result.Database.Server   := Ini.ReadString('DADOS', 'Server', 'localhost');
     Result.Database.Port     := Ini.ReadInteger('DADOS', 'Port', 3306);
@@ -174,7 +181,6 @@ begin
     if Result.Database.Port <= 0 then
       Result.Database.Port := 3306;
 
-    // --- API
     PortaStr := Ini.ReadString('API', 'Porta', '9000');
     Result.Porta := StrToIntDef(Trim(PortaStr), 9000);
 
@@ -191,11 +197,9 @@ begin
     if Result.Porta <= 0 then
       Result.Porta := 9000;
 
-    // --- JWT
     Result.JWT.Secret                   := Ini.ReadString('JWT', 'Secret', '');
     Result.JWT.Issuer                   := Ini.ReadString('JWT', 'Issuer', 'EASYONEDIGITAL');
     Result.JWT.TtlMinutos               := Ini.ReadInteger('JWT', 'TTL_Minutos', 60);
-    // --- Alteracao para admin
     Result.JWT.TtlIdentificacaoMinutos  := Ini.ReadInteger('JWT', 'TTL_Identificacao_Minutos', 10);
     Result.JWT.TtlVotacaoMinutos        := Ini.ReadInteger('JWT', 'TTL_Votacao_Minutos', 30);
     Result.JWT.TtlAdminMinutos          := Ini.ReadInteger('JWT', 'TTL_Admin_Minutos', 120);
@@ -210,12 +214,11 @@ begin
       );
 
     if Result.JWT.Issuer.Trim.IsEmpty then
-      Result.JWT.Issuer     := 'EASYONEDIGITAL';
+      Result.JWT.Issuer := 'EASYONEDIGITAL';
 
     if Result.JWT.TtlMinutos <= 0 then
-      Result.JWT.TtlMinutos     := 60;
+      Result.JWT.TtlMinutos := 60;
 
-    // --- Validar os campos admin votacao
     if Result.JWT.TtlIdentificacaoMinutos <= 0 then
       Result.JWT.TtlIdentificacaoMinutos := 10;
     if Result.JWT.TtlVotacaoMinutos <= 0 then
@@ -223,7 +226,6 @@ begin
     if Result.JWT.TtlAdminMinutos <= 0 then
       Result.JWT.TtlAdminMinutos := 120;
 
-    // --- UPLOAD
     Result.Upload.Pasta       := Ini.ReadString('UPLOAD', 'Pasta', 'uploads');
     Result.Upload.PublicURL   := Ini.ReadString('UPLOAD', 'PublicURL', 'http://localhost:9000/v1/public/arquivos');
     Result.Upload.MaxMB       := Ini.ReadInteger('UPLOAD', 'MaxMB', 5);
@@ -231,7 +233,6 @@ begin
     if Result.Upload.MaxMB <= 0 then
       Result.Upload.MaxMB := 5;
 
-    // --- WEB / FRONTEND PÚBLICO
     Result.Web.PublicURL :=
       Ini.ReadString(
         'WEB',
