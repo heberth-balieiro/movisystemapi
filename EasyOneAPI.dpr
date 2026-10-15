@@ -66,6 +66,7 @@ uses
   PlataformaContato.Controller in 'src\Cursos\Controller\PlataformaContato.Controller.pas',
   PlataformaContato.Migration in 'src\Cursos\Migrations\PlataformaContato.Migration.pas',
   PlataformaContatoColeta.DAO in 'src\Cursos\Dao\PlataformaContatoColeta.DAO.pas',
+  PlataformaContatoColetaEntidade.DAO in 'src\Cursos\Dao\PlataformaContatoColetaEntidade.DAO.pas',
   PlataformaContatoColeta.Service in 'src\Cursos\Services\PlataformaContatoColeta.Service.pas',
   PlataformaContatoColeta.Controller in 'src\Cursos\Controller\PlataformaContatoColeta.Controller.pas',
   PlataformaContatoColeta.Migration in 'src\Cursos\Migrations\PlataformaContatoColeta.Migration.pas',
