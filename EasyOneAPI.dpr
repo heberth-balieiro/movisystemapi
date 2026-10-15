@@ -2,7 +2,6 @@
 
 {API nova para windows e linux}
 
-
 {$APPTYPE CONSOLE}
 
 {$R *.res}
@@ -66,6 +65,10 @@ uses
   PlataformaContato.Service in 'src\Cursos\Services\PlataformaContato.Service.pas',
   PlataformaContato.Controller in 'src\Cursos\Controller\PlataformaContato.Controller.pas',
   PlataformaContato.Migration in 'src\Cursos\Migrations\PlataformaContato.Migration.pas',
+  PlataformaContatoColeta.DAO in 'src\Cursos\Dao\PlataformaContatoColeta.DAO.pas',
+  PlataformaContatoColeta.Service in 'src\Cursos\Services\PlataformaContatoColeta.Service.pas',
+  PlataformaContatoColeta.Controller in 'src\Cursos\Controller\PlataformaContatoColeta.Controller.pas',
+  PlataformaContatoColeta.Migration in 'src\Cursos\Migrations\PlataformaContatoColeta.Migration.pas',
   PlataformaModulo.Model in 'src\Cursos\Model\PlataformaModulo.Model.pas',
   PlataformaModulo.DAO in 'src\Cursos\Dao\PlataformaModulo.DAO.pas',
   PlataformaModulo.Service in 'src\Cursos\Services\PlataformaModulo.Service.pas',
@@ -485,7 +488,6 @@ var
   LCertDocCfg   : TCertificadoDocumentoConfig;
 begin
   try
-    // Carrega sempre o Config.ini da mesma pasta do executável.
     Writeln('Config.ini: ' + ExtractFilePath(ParamStr(0)) + 'Config.ini');
 
     LConfig := TAppConfig.Carregar(
@@ -504,13 +506,11 @@ begin
     Writeln('--------------------------------------------');
 
     case LConfig.Produto of
-
       {$REGION 'Catalogo'}
       apCatalogo:
         begin
           TCatalogoMigration.Run(LConfig.Database);
           Writeln('Migrations do catalogo executadas com sucesso.');
-
           TCatalogoSeeds.Run;
           Writeln('Seeds do catalogo executadas com sucesso.');
         end;
@@ -519,71 +519,48 @@ begin
       {$REGION 'EasyOne'}
       apEasyOne:
         begin
-          //asmuv
-          //TAsmuvMigration.Run(LConfig.Database);
-          //Writeln('Migrations do Asmuv executadas com sucesso.');
-
-          //TAsmuvSeeds.Run;
-          //Writeln('Seeds do Asmuv executadas com sucesso.');
-
-          //EasyONe
           TEasyOneMigration.Run(LConfig.Database);
           Writeln('Migrations do Asmuv executadas com sucesso.');
-
           TeasyOneSeeds.Run;
           Writeln('Seeds do EasyOne executadas com sucesso.');
-
-          //Eleicao
           TEleicaoMigration.Run(LConfig.Database);
           Writeln('Migrations do Eleição executadas com sucesso.');
-
           TEleicaoSeeds.Run;
           Writeln('Seeds do Eleição executadas com sucesso.');
-
         end;
       {$ENDREGION}
 
       {$REGION 'MoviSystem'}
       apMoviSystem:
         begin
-          // Cria uma configuração temporária sem banco selecionado.
-          // Assim conseguimos conectar no servidor MySQL mesmo quando
-          // o banco configurado ainda não existe.
           LDatabaseCfg          := LConfig.Database;
           LDatabaseCfg.Database := '';
           LConn := TDatabaseConnection.NewConnection(LDatabaseCfg);
           try
-            // Garante que o banco configurado exista antes das migrations.
             TCursosDatabaseBootstrap.EnsureDatabase(LConn,LConfig.Database.Database);
             Writeln('Banco MoviSystem verificado/criado com sucesso.');
           finally
             LConn.Free;
           end;
 
-          //Roda tabelas
           TCursosMigration.Run(LConfig.Database);
           TPlataformaContatoMigration.Run;
           Writeln('Migration da Base de Contatos executada com sucesso.');
+          TPlataformaContatoColetaMigration.Run;
+          Writeln('Migration de Coletas de Contatos executada com sucesso.');
           TContratosMigration.Run(LConfig.Database);
           Writeln('Migrations do MoviSystem Contratos executadas com sucesso.');
 
           if SameText(LConfig.Ambiente, 'PRODUCAO') then
           begin
-            LCertDocCfg :=
-              TInstituicaoCertificadoDocumentoConfig.Carregar(True);
-
-            Writeln(
-              'Configuracao de documentos de certificado validada com sucesso.'
-            );
+            LCertDocCfg := TInstituicaoCertificadoDocumentoConfig.Carregar(True);
+            Writeln('Configuracao de documentos de certificado validada com sucesso.');
           end;
 
-          //Roda o seeds com dados inicial
           TCertificaSeeds.Run;
           Writeln('Seed do administrador MoviSystem executado com sucesso.');
-
           TCursosSeeds.Run;
           Writeln('Seeds de permissoes e perfis executadas com sucesso.');
-
           TContratosSeeds.Run;
           Writeln('Seeds do MoviSystem Contratos executadas com sucesso.');
 
@@ -597,17 +574,12 @@ begin
 
           TPlataformaCampanhaWorker.Start;
           Writeln('Worker de campanhas iniciado com sucesso.');
-
           TCertificadoProcessamentoWorker.Start;
           Writeln('Worker de certificados iniciado com sucesso.');
-
           TCertificadoNotificacaoWorker.Start;
           Writeln('Worker de notificacoes de certificados iniciado com sucesso.');
-
-
         end;
       {$ENDREGION}
-
     end;
 
     HorseCORS
@@ -624,7 +596,6 @@ begin
     THorse.Use(Horse.Upload.Upload);
 
     case LConfig.Produto of
-
       {$REGION 'Catalogo'}
       apCatalogo:
         begin
@@ -638,10 +609,8 @@ begin
         begin
           TAsmuvRoutes.Registry;
           Writeln('Rotas do ASMUV registradas com sucesso.');
-
           TEasyOneRoutes.Registry;
           Writeln('Rotas do EasyOne registradas com sucesso.');
-
           TEleicaoRoutes.Registry;
           Writeln('Rotas do Eleição registradas com sucesso.');
         end;
@@ -650,30 +619,22 @@ begin
       {$REGION 'MoviSystem'}
       apMoviSystem:
         begin
-          //registro das rotas
           TCursosRoutes.Registry;
-            Writeln('Rotas MoviSystem registrada com sucesso.');
-
+          Writeln('Rotas MoviSystem registrada com sucesso.');
           TContratosRoutes.Registry;
-            Writeln('Rotas MoviSystem Contratos registradas com sucesso.');
+          Writeln('Rotas MoviSystem Contratos registradas com sucesso.');
         end;
-
       {$ENDREGION}
     end;
 
     case LConfig.Produto of
-      apCatalogo:
-        Writeln('Modulo ativo: CATALOGO');
-      apEasyOne:
-        Writeln('Modulo ativo: EASYONE');
-      apMoviSystem:
-        Writeln('Modulo ativo: MoviSystem');
+      apCatalogo: Writeln('Modulo ativo: CATALOGO');
+      apEasyOne: Writeln('Modulo ativo: EASYONE');
+      apMoviSystem: Writeln('Modulo ativo: MoviSystem');
     end;
 
     Writeln('API iniciada na porta ' + LConfig.Porta.ToString);
     Writeln('Ambiente: Windows/Linux');
-
-
     Writeln('Pressione CTRL + C para finalizar.');
 
     THorse.Listen(LConfig.Porta);
