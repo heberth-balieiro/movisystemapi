@@ -281,25 +281,70 @@ begin
 end;
 
 class procedure TPlataformaContatoColetaDAO.MarcarProcessando(const AConn:TUniConnection; const AId:Int64; const ATotalAlvos:Integer);
-var Q:TUniQuery; begin Q:=TUniQuery.Create(nil); try Q.Connection:=AConn; Q.SQL.Text:='UPDATE plataforma_contato_coleta SET situacao=''PROCESSANDO'',iniciado_em=COALESCE(iniciado_em,CURRENT_TIMESTAMP(3)),finalizado_em=NULL,mensagem_erro=NULL,total_alvos=:total WHERE id=:id AND situacao=''PENDENTE'''; Q.ParamByName('total').AsInteger:=ATotalAlvos; Q.ParamByName('id').AsLargeInt:=AId; Q.Execute; finally Q.Free; end; end;
+var Q:TUniQuery;
+begin
+  Q:=TUniQuery.Create(nil);
+  try
+    Q.Connection:=AConn;
+    Q.SQL.Text:=
+      'UPDATE plataforma_contato_coleta SET situacao=''PROCESSANDO'',' +
+      'iniciado_em=COALESCE(iniciado_em,CURRENT_TIMESTAMP(3)),' +
+      'finalizado_em=NULL,mensagem_erro=NULL,total_alvos=:total ' +
+      'WHERE id=:id AND situacao=''PENDENTE''';
+    Q.ParamByName('total').AsInteger:=ATotalAlvos;
+    Q.ParamByName('id').AsLargeInt:=AId;
+    Q.Execute;
+  finally Q.Free; end;
+end;
 
 class function TPlataformaContatoColetaDAO.InserirItem(const AConn:TUniConnection; const AIdColeta:Int64; const ANomeOrgao,ACidade,AUF,AEmail,ASite,APaginaOrigem,AClassificacao,AObservacao,ADataColeta:string):Boolean;
 var Q:TUniQuery; D:TDateTime; TemData:Boolean; Y,M,Day:Word;
   procedure S(const N,V:string); begin if Trim(V).IsEmpty then Q.ParamByName(N).Clear else Q.ParamByName(N).AsString:=Trim(V); end;
 begin
   TemData:=False; D:=0; if Length(Trim(ADataColeta))=10 then begin Y:=StrToIntDef(Copy(ADataColeta,1,4),0); M:=StrToIntDef(Copy(ADataColeta,6,2),0); Day:=StrToIntDef(Copy(ADataColeta,9,2),0); TemData:=TryEncodeDate(Y,M,Day,D); end;
-  Q:=TUniQuery.Create(nil); try
+  Q:=TUniQuery.Create(nil);
+  try
     Q.Connection:=AConn;
-    Q.SQL.Text:='INSERT IGNORE INTO plataforma_contato_coleta_item (id_coleta,nome_orgao,cidade,uf,email,site,pagina_origem,classificacao,observacao,situacao_revisao,coletado_em) VALUES (:coleta,:nome,:cidade,:uf,:email,:site,:pagina,:classificacao,:obs,:revisao,:data)';
+    Q.SQL.Text:=
+      'INSERT IGNORE INTO plataforma_contato_coleta_item ' +
+      '(id_coleta,nome_orgao,cidade,uf,email,site,pagina_origem,' +
+      'classificacao,observacao,situacao_revisao,coletado_em) ' +
+      'VALUES (:coleta,:nome,:cidade,:uf,:email,:site,:pagina,' +
+      ':classificacao,:obs,:revisao,:data)';
     Q.ParamByName('coleta').AsLargeInt:=AIdColeta; Q.ParamByName('nome').AsString:=Trim(ANomeOrgao); Q.ParamByName('cidade').AsString:=Trim(ACidade); Q.ParamByName('uf').AsString:=UpperCase(Trim(AUF)); S('email',LowerCase(Trim(AEmail))); S('site',ASite); S('pagina',APaginaOrigem); Q.ParamByName('classificacao').AsString:=UpperCase(Trim(AClassificacao)); S('obs',AObservacao); if SameText(Trim(AClassificacao),'INSTITUCIONAL') then Q.ParamByName('revisao').AsString:='APROVADO' else Q.ParamByName('revisao').AsString:='PENDENTE'; if TemData then Q.ParamByName('data').AsDateTime:=D else Q.ParamByName('data').Clear; Q.Execute; Result:=Q.RowsAffected>0;
   finally Q.Free; end;
 end;
 
 class procedure TPlataformaContatoColetaDAO.AtualizarProgresso(const AConn:TUniConnection; const AId:Int64; const ATotalProcessados,ATotalEmails,ATotalInstitucionais,ATotalRevisar,ATotalSemEmail:Integer);
-var Q:TUniQuery; begin Q:=TUniQuery.Create(nil); try Q.Connection:=AConn; Q.SQL.Text:='UPDATE plataforma_contato_coleta SET total_processados=:p,total_emails=:e,total_institucionais=:i,total_revisar=:r,total_sem_email=:s WHERE id=:id AND situacao=''PROCESSANDO'''; Q.ParamByName('p').AsInteger:=ATotalProcessados; Q.ParamByName('e').AsInteger:=ATotalEmails; Q.ParamByName('i').AsInteger:=ATotalInstitucionais; Q.ParamByName('r').AsInteger:=ATotalRevisar; Q.ParamByName('s').AsInteger:=ATotalSemEmail; Q.ParamByName('id').AsLargeInt:=AId; Q.Execute; finally Q.Free; end; end;
+var Q:TUniQuery;
+begin
+  Q:=TUniQuery.Create(nil);
+  try
+    Q.Connection:=AConn;
+    Q.SQL.Text:=
+      'UPDATE plataforma_contato_coleta SET ' +
+      'total_processados=:p,total_emails=:e,total_institucionais=:i,' +
+      'total_revisar=:r,total_sem_email=:s ' +
+      'WHERE id=:id AND situacao=''PROCESSANDO''';
+    Q.ParamByName('p').AsInteger:=ATotalProcessados; Q.ParamByName('e').AsInteger:=ATotalEmails; Q.ParamByName('i').AsInteger:=ATotalInstitucionais; Q.ParamByName('r').AsInteger:=ATotalRevisar; Q.ParamByName('s').AsInteger:=ATotalSemEmail; Q.ParamByName('id').AsLargeInt:=AId; Q.Execute;
+  finally Q.Free; end;
+end;
 
 class procedure TPlataformaContatoColetaDAO.Finalizar(const AConn:TUniConnection; const AId:Int64; const ATotalAlvos,ATotalProcessados,ATotalEmails,ATotalInstitucionais,ATotalRevisar,ATotalSemEmail:Integer);
-var Q:TUniQuery; begin Q:=TUniQuery.Create(nil); try Q.Connection:=AConn; Q.SQL.Text:='UPDATE plataforma_contato_coleta SET situacao=''CONCLUIDA'',total_alvos=:a,total_processados=:p,total_emails=:e,total_institucionais=:i,total_revisar=:r,total_sem_email=:s,finalizado_em=CURRENT_TIMESTAMP(3),mensagem_erro=NULL WHERE id=:id AND situacao=''PROCESSANDO'''; Q.ParamByName('a').AsInteger:=ATotalAlvos; Q.ParamByName('p').AsInteger:=ATotalProcessados; Q.ParamByName('e').AsInteger:=ATotalEmails; Q.ParamByName('i').AsInteger:=ATotalInstitucionais; Q.ParamByName('r').AsInteger:=ATotalRevisar; Q.ParamByName('s').AsInteger:=ATotalSemEmail; Q.ParamByName('id').AsLargeInt:=AId; Q.Execute; finally Q.Free; end; end;
+var Q:TUniQuery;
+begin
+  Q:=TUniQuery.Create(nil);
+  try
+    Q.Connection:=AConn;
+    Q.SQL.Text:=
+      'UPDATE plataforma_contato_coleta SET ' +
+      'situacao=''CONCLUIDA'',total_alvos=:a,total_processados=:p,' +
+      'total_emails=:e,total_institucionais=:i,total_revisar=:r,' +
+      'total_sem_email=:s,finalizado_em=CURRENT_TIMESTAMP(3),' +
+      'mensagem_erro=NULL WHERE id=:id AND situacao=''PROCESSANDO''';
+    Q.ParamByName('a').AsInteger:=ATotalAlvos; Q.ParamByName('p').AsInteger:=ATotalProcessados; Q.ParamByName('e').AsInteger:=ATotalEmails; Q.ParamByName('i').AsInteger:=ATotalInstitucionais; Q.ParamByName('r').AsInteger:=ATotalRevisar; Q.ParamByName('s').AsInteger:=ATotalSemEmail; Q.ParamByName('id').AsLargeInt:=AId; Q.Execute;
+  finally Q.Free; end;
+end;
 
 class procedure TPlataformaContatoColetaDAO.MarcarErro(const AConn:TUniConnection; const AId:Int64; const AMensagem:string);
 var Q:TUniQuery; begin Q:=TUniQuery.Create(nil); try Q.Connection:=AConn; Q.SQL.Text:='UPDATE plataforma_contato_coleta SET situacao=''ERRO'',mensagem_erro=:m,finalizado_em=CURRENT_TIMESTAMP(3) WHERE id=:id AND situacao IN (''PENDENTE'',''PROCESSANDO'')'; Q.ParamByName('m').AsString:=Copy(Trim(AMensagem),1,4000); Q.ParamByName('id').AsLargeInt:=AId; Q.Execute; finally Q.Free; end; end;
@@ -314,18 +359,41 @@ class function TPlataformaContatoColetaDAO.ImportarAprovados(const AConn:TUniCon
 var Q:TUniQuery; Novos,Existentes,Vinculados:Integer; Tipo,Orgao:string;
 begin
   Novos:=0; Existentes:=0; Vinculados:=0;
-  Q:=TUniQuery.Create(nil); try
+  Q:=TUniQuery.Create(nil);
+  try
     Q.Connection:=AConn;
     Q.SQL.Text:='SELECT tipo FROM plataforma_contato_coleta WHERE id=:id'; Q.ParamByName('id').AsLargeInt:=AIdColeta; Q.Open; Tipo:=Q.FieldByName('tipo').AsString;
     if SameText(Tipo,'PREFEITURA') then Orgao:='Prefeitura Municipal' else Orgao:='Câmara Municipal';
     Q.Close; Q.SQL.Text:='SELECT COUNT(*) total FROM plataforma_contato_coleta_item WHERE id_coleta=:coleta AND situacao_revisao=''APROVADO'' AND COALESCE(email,'''')<>'''''; Q.ParamByName('coleta').AsLargeInt:=AIdColeta; Q.Open; Existentes:=Q.FieldByName('total').AsInteger;
-    Q.Close; Q.SQL.Text:=
-      'INSERT INTO plataforma_contato (razao_social,nome_fantasia,email,email_normalizado,grau,cidade,uf,orgao,site,observacao,fonte,data_coleta,situacao,criado_por) ' +
-      'SELECT i.nome_orgao,i.nome_orgao,i.email,LOWER(i.email),:orgao,i.cidade,i.uf,:orgao,i.site,i.observacao,i.pagina_origem,i.coletado_em,''ATIVO'',:usuario ' +
-      'FROM plataforma_contato_coleta_item i WHERE i.id_coleta=:coleta AND i.situacao_revisao=''APROVADO'' AND COALESCE(i.email,'''')<>'''' AND NOT EXISTS (SELECT 1 FROM plataforma_contato c WHERE c.email_normalizado=LOWER(i.email))';
+    Q.Close;
+    Q.SQL.Text:=
+      'INSERT INTO plataforma_contato ' +
+      '(razao_social,nome_fantasia,email,email_normalizado,grau,cidade,uf,' +
+      'orgao,site,observacao,fonte,data_coleta,situacao,criado_por) ' +
+      'SELECT i.nome_orgao,i.nome_orgao,i.email,LOWER(i.email),:orgao,' +
+      'i.cidade,i.uf,:orgao,i.site,i.observacao,i.pagina_origem,' +
+      'i.coletado_em,''ATIVO'',:usuario FROM plataforma_contato_coleta_item i ' +
+      'WHERE i.id_coleta=:coleta AND i.situacao_revisao=''APROVADO'' ' +
+      'AND COALESCE(i.email,'''')<>'''' AND NOT EXISTS (' +
+      'SELECT 1 FROM plataforma_contato c ' +
+      'WHERE c.email_normalizado=LOWER(i.email))';
     Q.ParamByName('orgao').AsString:=Orgao; Q.ParamByName('usuario').AsLargeInt:=AIdUsuario; Q.ParamByName('coleta').AsLargeInt:=AIdColeta; Q.Execute; Novos:=Q.RowsAffected; Existentes:=Existentes-Novos;
-    Q.Close; Q.SQL.Text:='UPDATE plataforma_contato_coleta_item i JOIN plataforma_contato c ON c.email_normalizado=LOWER(i.email) SET i.id_contato=c.id,i.situacao_revisao=''IMPORTADO'' WHERE i.id_coleta=:coleta AND i.situacao_revisao=''APROVADO'''; Q.ParamByName('coleta').AsLargeInt:=AIdColeta; Q.Execute;
-    if AIdLista>0 then begin Q.Close; Q.SQL.Text:='INSERT IGNORE INTO plataforma_contato_lista_item (id_lista,id_contato) SELECT :lista,id_contato FROM plataforma_contato_coleta_item WHERE id_coleta=:coleta AND situacao_revisao=''IMPORTADO'' AND id_contato IS NOT NULL'; Q.ParamByName('lista').AsLargeInt:=AIdLista; Q.ParamByName('coleta').AsLargeInt:=AIdColeta; Q.Execute; Vinculados:=Q.RowsAffected; end;
+    Q.Close;
+    Q.SQL.Text:=
+      'UPDATE plataforma_contato_coleta_item i ' +
+      'JOIN plataforma_contato c ON c.email_normalizado=LOWER(i.email) ' +
+      'SET i.id_contato=c.id,i.situacao_revisao=''IMPORTADO'' ' +
+      'WHERE i.id_coleta=:coleta AND i.situacao_revisao=''APROVADO''';
+    Q.ParamByName('coleta').AsLargeInt:=AIdColeta; Q.Execute;
+    if AIdLista>0 then begin
+      Q.Close;
+      Q.SQL.Text:=
+        'INSERT IGNORE INTO plataforma_contato_lista_item (id_lista,id_contato) ' +
+        'SELECT :lista,id_contato FROM plataforma_contato_coleta_item ' +
+        'WHERE id_coleta=:coleta AND situacao_revisao=''IMPORTADO'' ' +
+        'AND id_contato IS NOT NULL';
+      Q.ParamByName('lista').AsLargeInt:=AIdLista; Q.ParamByName('coleta').AsLargeInt:=AIdColeta; Q.Execute; Vinculados:=Q.RowsAffected;
+    end;
     Result:=TJSONObject.Create; Result.AddPair('novos',TJSONNumber.Create(Novos)); Result.AddPair('existentes',TJSONNumber.Create(Existentes)); Result.AddPair('vinculados_lista',TJSONNumber.Create(Vinculados));
   finally Q.Free; end;
 end;
