@@ -60,8 +60,7 @@ var
 
   procedure Run065;
   begin
-    if MigrationExists('065') then
-      Exit;
+    if MigrationExists('065') then Exit;
 
     ExecSQL(
       'CREATE TABLE IF NOT EXISTS plataforma_contato_coleta (' +
@@ -120,16 +119,12 @@ var
       ') ENGINE=InnoDB COMMENT=''Resultados encontrados pelo coletor de contatos.'';'
     );
 
-    RegisterMigration(
-      '065',
-      'Coletas automatizadas para a base de contatos da plataforma'
-    );
+    RegisterMigration('065','Coletas automatizadas para a base de contatos da plataforma');
   end;
 
   procedure Run066;
   begin
-    if MigrationExists('066') then
-      Exit;
+    if MigrationExists('066') then Exit;
 
     ExecSQL(
       'ALTER TABLE plataforma_contato_coleta ' +
@@ -138,10 +133,21 @@ var
       'ADD KEY ix_contato_coleta_alvo (tipo,uf,modo_alvo,municipio);'
     );
 
-    RegisterMigration(
-      '066',
-      'Filtros de alvo da coleta e preparacao para novos tipos de coletor'
+    RegisterMigration('066','Filtros de alvo da coleta e preparacao para novos tipos de coletor');
+  end;
+
+  procedure Run067;
+  begin
+    if MigrationExists('067') then Exit;
+
+    ExecSQL(
+      'ALTER TABLE plataforma_contato_coleta ' +
+      'ADD COLUMN termo_busca VARCHAR(255) NULL AFTER municipio,' +
+      'ADD COLUMN segmento VARCHAR(80) NULL AFTER termo_busca,' +
+      'ADD KEY ix_contato_coleta_segmento (tipo,uf,segmento);'
     );
+
+    RegisterMigration('067','Parametros de busca para sindicatos e associacoes');
   end;
 
 begin
@@ -152,6 +158,7 @@ begin
     Q.Connection := Conn;
     Run065;
     Run066;
+    Run067;
   finally
     Q.Free;
     Conn.Free;
