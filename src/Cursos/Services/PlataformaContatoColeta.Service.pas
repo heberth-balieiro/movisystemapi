@@ -10,7 +10,7 @@ type
   public
     class function Criar(
       const AIdUsuario:Int64;
-      const ANome,ATipo,AUF,AModoAlvo,AMunicipio:string;
+      const ANome,ATipo,AUF,AModoAlvo,AMunicipio,ATermoBusca,ASegmento:string;
       const ALimite,AWorkers:Integer
     ):TJSONObject; static;
     class function Listar(const ASituacao,ATipo,AUF:string; const APagina,APorPagina:Integer):TJSONObject; static;
@@ -36,6 +36,7 @@ uses
   APP.Errors,
   Database.Connection,
   PlataformaContatoColeta.DAO,
+  PlataformaContatoColetaEntidade.DAO,
   PlataformaContato.DAO;
 
 function NovaConexao:TUniConnection;
@@ -47,20 +48,32 @@ end;
 
 function JStr(const O:TJSONObject; const N:string):string;
 var V:TJSONValue;
-begin Result:=''; if O=nil then Exit; V:=O.GetValue(N); if (V<>nil) and not (V is TJSONNull) then Result:=V.Value; end;
+begin
+  Result:='';
+  if O=nil then Exit;
+  V:=O.GetValue(N);
+  if (V<>nil) and not (V is TJSONNull) then Result:=V.Value;
+end;
 
 function JInt(const O:TJSONObject; const N:string):Integer;
-begin Result:=StrToIntDef(JStr(O,N),0); end;
+begin
+  Result:=StrToIntDef(JStr(O,N),0);
+end;
+
+function TipoEntidade(const ATipo:string):Boolean;
+begin
+  Result:=MatchText(UpperCase(Trim(ATipo)),['SINDICATO','ASSOCIACAO']);
+end;
 
 class function TPlataformaContatoColetaService.Criar(
   const AIdUsuario:Int64;
-  const ANome,ATipo,AUF,AModoAlvo,AMunicipio:string;
+  const ANome,ATipo,AUF,AModoAlvo,AMunicipio,ATermoBusca,ASegmento:string;
   const ALimite,AWorkers:Integer
 ):TJSONObject;
 var
   C:TUniConnection;
   Id:Int64;
-  Tipo,UF,Modo,Municipio:string;
+  Tipo,UF,Modo,Municipio,TermoBusca,Segmento:string;
   Limite,Workers:Integer;
 begin
   if AIdUsuario<=0 then TAppErrors.RaiseForbidden('Usuário não identificado.');
@@ -68,8 +81,8 @@ begin
 
   Tipo:=UpperCase(Trim(ATipo));
   if Tipo.IsEmpty then Tipo:='CAMARA';
-  if not MatchText(Tipo,['CAMARA','PREFEITURA']) then
-    TAppErrors.RaiseBadRequest('Tipo de coleta ainda não suportado. Use CAMARA ou PREFEITURA.');
+  if not MatchText(Tipo,['CAMARA','PREFEITURA','SINDICATO','ASSOCIACAO']) then
+    TAppErrors.RaiseBadRequest('Tipo de coleta não suportado.');
 
   UF:=UpperCase(Trim(AUF));
   if Length(UF)<>2 then TAppErrors.RaiseBadRequest('UF inválida.');
@@ -79,10 +92,18 @@ begin
   if not MatchText(Modo,['TODOS','MUNICIPIO','SEM_CONTATO']) then
     TAppErrors.RaiseBadRequest('Modo de alvo inválido.');
 
+  if TipoEntidade(Tipo) and SameText(Modo,'SEM_CONTATO') then
+    TAppErrors.RaiseBadRequest('O modo SEM_CONTATO ainda não se aplica a sindicatos e associações.');
+
   Municipio:=Trim(AMunicipio);
   if (Modo='MUNICIPIO') and Municipio.IsEmpty then
     TAppErrors.RaiseBadRequest('Informe o município da coleta.');
   if Modo<>'MUNICIPIO' then Municipio:='';
+
+  TermoBusca:=Trim(ATermoBusca);
+  Segmento:=UpperCase(Trim(ASegmento));
+  if TipoEntidade(Tipo) and TermoBusca.IsEmpty then
+    TAppErrors.RaiseBadRequest('Informe o termo de busca para sindicato ou associação.');
 
   Limite:=ALimite;
   if Limite<0 then Limite:=0;
@@ -99,6 +120,9 @@ begin
       Id:=TPlataformaContatoColetaDAO.Criar(
         C,AIdUsuario,Trim(ANome),Tipo,UF,Modo,Municipio,Limite,Workers
       );
+      TPlataformaContatoColetaEntidadeDAO.AtualizarParametros(
+        C,Id,TermoBusca,Segmento
+      );
       TPlataformaContatoDAO.RegistrarAuditoria(
         C,AIdUsuario,'COLETA_CRIADA','plataforma_contato_coleta',Id.ToString,
         'Coleta de contatos criada.','',''
@@ -108,17 +132,39 @@ begin
       if C.InTransaction then C.Rollback;
       raise;
     end;
+
     Result:=TPlataformaContatoColetaDAO.Buscar(C,Id);
-  finally C.Free; end;
+    TPlataformaContatoColetaEntidadeDAO.EnriquecerColeta(C,Id,Result);
+  finally
+    C.Free;
+  end;
 end;
 
 class function TPlataformaContatoColetaService.Listar(const ASituacao,ATipo,AUF:string; const APagina,APorPagina:Integer):TJSONObject;
 var C:TUniConnection;
-begin C:=NovaConexao; try Result:=TPlataformaContatoColetaDAO.Listar(C,ASituacao,ATipo,AUF,APagina,APorPagina); finally C.Free; end; end;
+begin
+  C:=NovaConexao;
+  try
+    Result:=TPlataformaContatoColetaDAO.Listar(C,ASituacao,ATipo,AUF,APagina,APorPagina);
+    TPlataformaContatoColetaEntidadeDAO.EnriquecerLista(C,Result);
+  finally
+    C.Free;
+  end;
+end;
 
 class function TPlataformaContatoColetaService.Buscar(const AId:Int64):TJSONObject;
 var C:TUniConnection;
-begin if AId<=0 then TAppErrors.RaiseBadRequest('Coleta inválida.'); C:=NovaConexao; try Result:=TPlataformaContatoColetaDAO.Buscar(C,AId); if Result=nil then TAppErrors.RaiseNotFound('Coleta não encontrada.'); finally C.Free; end; end;
+begin
+  if AId<=0 then TAppErrors.RaiseBadRequest('Coleta inválida.');
+  C:=NovaConexao;
+  try
+    Result:=TPlataformaContatoColetaDAO.Buscar(C,AId);
+    if Result=nil then TAppErrors.RaiseNotFound('Coleta não encontrada.');
+    TPlataformaContatoColetaEntidadeDAO.EnriquecerColeta(C,AId,Result);
+  finally
+    C.Free;
+  end;
+end;
 
 class function TPlataformaContatoColetaService.ListarItens(const AIdColeta:Int64; const AClassificacao,ASituacaoRevisao:string; const APagina,APorPagina:Integer):TJSONObject;
 var C:TUniConnection; J:TJSONObject;
@@ -134,14 +180,21 @@ begin
 end;
 
 class function TPlataformaContatoColetaService.ProximaPendente:TJSONObject;
-var C:TUniConnection; Modo,Tipo,UF:string; Municipios:TJSONArray;
+var C:TUniConnection; Modo,Tipo,UF:string; Municipios:TJSONArray; V:TJSONValue; Id:Int64;
 begin
   C:=NovaConexao;
   try
     Result:=TPlataformaContatoColetaDAO.ProximaPendente(C);
     if Result=nil then Exit;
+
+    V:=Result.GetValue('id');
+    Id:=0;
+    if V<>nil then Id:=StrToInt64Def(V.Value,0);
+    TPlataformaContatoColetaEntidadeDAO.EnriquecerColeta(C,Id,Result);
+
     Modo:=JStr(Result,'modo_alvo');
-    if SameText(Modo,'SEM_CONTATO') then begin
+    if SameText(Modo,'SEM_CONTATO') then
+    begin
       Tipo:=JStr(Result,'tipo');
       UF:=JStr(Result,'uf');
       Municipios:=TPlataformaContatoColetaDAO.ListarMunicipiosComContato(C,Tipo,UF);
@@ -164,6 +217,7 @@ begin
     finally J.Free; end;
     TPlataformaContatoColetaDAO.MarcarProcessando(C,AId,ATotalAlvos);
     Result:=TPlataformaContatoColetaDAO.Buscar(C,AId);
+    TPlataformaContatoColetaEntidadeDAO.EnriquecerColeta(C,AId,Result);
   finally C.Free; end;
 end;
 
@@ -180,10 +234,12 @@ begin
       if not SameText(JStr(J,'situacao'),'PROCESSANDO') then
         TAppErrors.RaiseBadRequest('A coleta não está em processamento.');
     finally J.Free; end;
+
     Inseridos:=0;
     C.StartTransaction;
     try
-      for I:=0 to AItens.Count-1 do begin
+      for I:=0 to AItens.Count-1 do
+      begin
         V:=AItens.Items[I];
         if not (V is TJSONObject) then Continue;
         O:=V as TJSONObject;
@@ -206,6 +262,7 @@ begin
       if C.InTransaction then C.Rollback;
       raise;
     end;
+
     Result:=TJSONObject.Create;
     Result.AddPair('inseridos',TJSONNumber.Create(Inseridos));
   finally C.Free; end;
@@ -224,6 +281,7 @@ begin
     );
     Result:=TPlataformaContatoColetaDAO.Buscar(C,AId);
     if Result=nil then TAppErrors.RaiseNotFound('Coleta não encontrada.');
+    TPlataformaContatoColetaEntidadeDAO.EnriquecerColeta(C,AId,Result);
   finally C.Free; end;
 end;
 
@@ -236,6 +294,7 @@ begin
     TPlataformaContatoColetaDAO.MarcarErro(C,AId,AMensagem);
     Result:=TPlataformaContatoColetaDAO.Buscar(C,AId);
     if Result=nil then TAppErrors.RaiseNotFound('Coleta não encontrada.');
+    TPlataformaContatoColetaEntidadeDAO.EnriquecerColeta(C,AId,Result);
   finally C.Free; end;
 end;
 
@@ -258,6 +317,7 @@ begin
       raise;
     end;
     Result:=TPlataformaContatoColetaDAO.Buscar(C,AId);
+    TPlataformaContatoColetaEntidadeDAO.EnriquecerColeta(C,AId,Result);
   finally C.Free; end;
 end;
 
@@ -277,7 +337,7 @@ begin
 end;
 
 class function TPlataformaContatoColetaService.ImportarAprovados(const AIdUsuario,AIdColeta,AIdLista:Int64):TJSONObject;
-var C:TUniConnection;
+var C:TUniConnection; J:TJSONObject; Tipo:string;
 begin
   if AIdUsuario<=0 then TAppErrors.RaiseForbidden('Usuário não identificado.');
   if AIdColeta<=0 then TAppErrors.RaiseBadRequest('Coleta inválida.');
@@ -285,9 +345,18 @@ begin
   try
     if (AIdLista>0) and not TPlataformaContatoDAO.ListaExiste(C,AIdLista) then
       TAppErrors.RaiseBadRequest('Lista de contatos não encontrada.');
+
+    J:=TPlataformaContatoColetaDAO.Buscar(C,AIdColeta);
+    if J=nil then TAppErrors.RaiseNotFound('Coleta não encontrada.');
+    try Tipo:=JStr(J,'tipo'); finally J.Free; end;
+
     C.StartTransaction;
     try
-      Result:=TPlataformaContatoColetaDAO.ImportarAprovados(C,AIdColeta,AIdLista,AIdUsuario);
+      if TipoEntidade(Tipo) then
+        Result:=TPlataformaContatoColetaEntidadeDAO.ImportarAprovados(C,AIdColeta,AIdLista,AIdUsuario)
+      else
+        Result:=TPlataformaContatoColetaDAO.ImportarAprovados(C,AIdColeta,AIdLista,AIdUsuario);
+
       TPlataformaContatoDAO.RegistrarAuditoria(C,AIdUsuario,'COLETA_IMPORTADA','plataforma_contato_coleta',AIdColeta.ToString,'Contatos aprovados da coleta importados para a base.','','');
       C.Commit;
     except
