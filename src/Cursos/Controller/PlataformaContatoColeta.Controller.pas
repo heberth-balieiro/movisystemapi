@@ -78,6 +78,8 @@ begin
             JStr(Body,'uf'),
             JStr(Body,'modo_alvo'),
             JStr(Body,'municipio'),
+            JStr(Body,'termo_busca'),
+            JStr(Body,'segmento'),
             JInt(Body,'limite'),
             JInt(Body,'workers')
           );
