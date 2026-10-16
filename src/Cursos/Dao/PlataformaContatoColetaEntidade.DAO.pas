@@ -308,7 +308,7 @@ begin
       AddNullable(O,'url_perfil',Q.FieldByName('url_perfil').AsString);
       AddNullable(O,'foto_url',Q.FieldByName('foto_url').AsString);
       if O.GetValue('unale_associado')=nil then
-        O.AddPair('unale_associado',TJSONBool.Create(Q.FieldByName('unale_associado').AsInteger=1));
+        O.AddPair('unale_associado',TJSONBool.Create(Q.FieldByName('unale_associado').AsBoolean));
     end;
   finally
     Q.Free;
