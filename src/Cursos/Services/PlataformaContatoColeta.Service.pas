@@ -37,6 +37,7 @@ uses
   Database.Connection,
   PlataformaContatoColeta.DAO,
   PlataformaContatoColetaEntidade.DAO,
+  PlataformaContatoColetaParlamentar.DAO,
   PlataformaContato.DAO;
 
 function NovaConexao:TUniConnection;
@@ -60,9 +61,21 @@ begin
   Result:=StrToIntDef(JStr(O,N),0);
 end;
 
+function JBool(const O:TJSONObject; const N:string):Boolean;
+var S:string;
+begin
+  S:=LowerCase(Trim(JStr(O,N)));
+  Result:=MatchText(S,['1','true','sim','yes']);
+end;
+
 function TipoEntidade(const ATipo:string):Boolean;
 begin
   Result:=MatchText(UpperCase(Trim(ATipo)),['SINDICATO','ASSOCIACAO']);
+end;
+
+function TipoParlamentarColeta(const ATipo:string):Boolean;
+begin
+  Result:=MatchText(UpperCase(Trim(ATipo)),['VEREADOR','DEPUTADO_ESTADUAL','UNALE_ASSOCIADO']);
 end;
 
 class function TPlataformaContatoColetaService.Criar(
@@ -81,7 +94,10 @@ begin
 
   Tipo:=UpperCase(Trim(ATipo));
   if Tipo.IsEmpty then Tipo:='CAMARA';
-  if not MatchText(Tipo,['CAMARA','PREFEITURA','SINDICATO','ASSOCIACAO']) then
+  if not MatchText(Tipo,[
+    'CAMARA','PREFEITURA','SINDICATO','ASSOCIACAO',
+    'VEREADOR','DEPUTADO_ESTADUAL','UNALE_ASSOCIADO'
+  ]) then
     TAppErrors.RaiseBadRequest('Tipo de coleta não suportado.');
 
   UF:=UpperCase(Trim(AUF));
@@ -92,8 +108,11 @@ begin
   if not MatchText(Modo,['TODOS','MUNICIPIO','SEM_CONTATO']) then
     TAppErrors.RaiseBadRequest('Modo de alvo inválido.');
 
-  if TipoEntidade(Tipo) and SameText(Modo,'SEM_CONTATO') then
-    TAppErrors.RaiseBadRequest('O modo SEM_CONTATO ainda não se aplica a sindicatos e associações.');
+  if (TipoEntidade(Tipo) or TipoParlamentarColeta(Tipo)) and SameText(Modo,'SEM_CONTATO') then
+    TAppErrors.RaiseBadRequest('O modo SEM_CONTATO ainda não se aplica a este tipo de coleta.');
+
+  if MatchText(Tipo,['DEPUTADO_ESTADUAL','UNALE_ASSOCIADO']) and SameText(Modo,'MUNICIPIO') then
+    TAppErrors.RaiseBadRequest('Deputados estaduais e associados UNALE são coletados por UF, não por município.');
 
   Municipio:=Trim(AMunicipio);
   if (Modo='MUNICIPIO') and Municipio.IsEmpty then
@@ -176,6 +195,7 @@ begin
     if J=nil then TAppErrors.RaiseNotFound('Coleta não encontrada.');
     J.Free;
     Result:=TPlataformaContatoColetaDAO.ListarItens(C,AIdColeta,AClassificacao,ASituacaoRevisao,APagina,APorPagina);
+    TPlataformaContatoColetaParlamentarDAO.EnriquecerItens(C,Result);
   finally C.Free; end;
 end;
 
@@ -222,7 +242,7 @@ begin
 end;
 
 class function TPlataformaContatoColetaService.ReceberResultados(const AId:Int64; const AItens:TJSONArray; const AProgresso:TJSONObject):TJSONObject;
-var C:TUniConnection; I,Inseridos:Integer; V:TJSONValue; O,J:TJSONObject;
+var C:TUniConnection; I,Inseridos:Integer; V:TJSONValue; O,J:TJSONObject; TipoColeta:string; Inseriu:Boolean;
 begin
   if AId<=0 then TAppErrors.RaiseBadRequest('Coleta inválida.');
   if AItens=nil then TAppErrors.RaiseBadRequest('Itens não informados.');
@@ -233,6 +253,7 @@ begin
     try
       if not SameText(JStr(J,'situacao'),'PROCESSANDO') then
         TAppErrors.RaiseBadRequest('A coleta não está em processamento.');
+      TipoColeta:=JStr(J,'tipo');
     finally J.Free; end;
 
     Inseridos:=0;
@@ -245,11 +266,20 @@ begin
         O:=V as TJSONObject;
         if Trim(JStr(O,'nome_orgao')).IsEmpty or Trim(JStr(O,'cidade')).IsEmpty or
            Trim(JStr(O,'uf')).IsEmpty or Trim(JStr(O,'classificacao')).IsEmpty then Continue;
-        if TPlataformaContatoColetaDAO.InserirItem(
+        Inseriu:=TPlataformaContatoColetaDAO.InserirItem(
           C,AId,JStr(O,'nome_orgao'),JStr(O,'cidade'),JStr(O,'uf'),JStr(O,'email'),
           JStr(O,'site'),JStr(O,'pagina_origem'),JStr(O,'classificacao'),
           JStr(O,'observacao'),JStr(O,'data_coleta')
-        ) then Inc(Inseridos);
+        );
+        if Inseriu then Inc(Inseridos);
+
+        if TipoParlamentarColeta(TipoColeta) then
+          TPlataformaContatoColetaParlamentarDAO.AtualizarMetadadosItem(
+            C,AId,JStr(O,'nome_orgao'),JStr(O,'cidade'),JStr(O,'uf'),JStr(O,'email'),
+            'PARLAMENTAR',JStr(O,'cargo'),JStr(O,'partido'),JStr(O,'id_externo'),
+            JStr(O,'fonte_dados'),JStr(O,'url_perfil'),JStr(O,'foto_url'),
+            JBool(O,'unale_associado') or SameText(TipoColeta,'UNALE_ASSOCIADO')
+          );
       end;
       if AProgresso<>nil then
         TPlataformaContatoColetaDAO.AtualizarProgresso(
@@ -354,6 +384,8 @@ begin
     try
       if TipoEntidade(Tipo) then
         Result:=TPlataformaContatoColetaEntidadeDAO.ImportarAprovados(C,AIdColeta,AIdLista,AIdUsuario)
+      else if TipoParlamentarColeta(Tipo) then
+        Result:=TPlataformaContatoColetaParlamentarDAO.ImportarAprovados(C,AIdColeta,AIdLista,AIdUsuario)
       else
         Result:=TPlataformaContatoColetaDAO.ImportarAprovados(C,AIdColeta,AIdLista,AIdUsuario);
 
