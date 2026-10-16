@@ -37,7 +37,6 @@ uses
   Database.Connection,
   PlataformaContatoColeta.DAO,
   PlataformaContatoColetaEntidade.DAO,
-  PlataformaContatoColetaParlamentar.DAO,
   PlataformaContato.DAO;
 
 function NovaConexao:TUniConnection;
@@ -195,7 +194,7 @@ begin
     if J=nil then TAppErrors.RaiseNotFound('Coleta não encontrada.');
     J.Free;
     Result:=TPlataformaContatoColetaDAO.ListarItens(C,AIdColeta,AClassificacao,ASituacaoRevisao,APagina,APorPagina);
-    TPlataformaContatoColetaParlamentarDAO.EnriquecerItens(C,Result);
+    TPlataformaContatoColetaEntidadeDAO.EnriquecerItensParlamentares(C,Result);
   finally C.Free; end;
 end;
 
@@ -274,7 +273,7 @@ begin
         if Inseriu then Inc(Inseridos);
 
         if TipoParlamentarColeta(TipoColeta) then
-          TPlataformaContatoColetaParlamentarDAO.AtualizarMetadadosItem(
+          TPlataformaContatoColetaEntidadeDAO.AtualizarMetadadosParlamentar(
             C,AId,JStr(O,'nome_orgao'),JStr(O,'cidade'),JStr(O,'uf'),JStr(O,'email'),
             'PARLAMENTAR',JStr(O,'cargo'),JStr(O,'partido'),JStr(O,'id_externo'),
             JStr(O,'fonte_dados'),JStr(O,'url_perfil'),JStr(O,'foto_url'),
@@ -385,7 +384,7 @@ begin
       if TipoEntidade(Tipo) then
         Result:=TPlataformaContatoColetaEntidadeDAO.ImportarAprovados(C,AIdColeta,AIdLista,AIdUsuario)
       else if TipoParlamentarColeta(Tipo) then
-        Result:=TPlataformaContatoColetaParlamentarDAO.ImportarAprovados(C,AIdColeta,AIdLista,AIdUsuario)
+        Result:=TPlataformaContatoColetaEntidadeDAO.ImportarAprovadosParlamentares(C,AIdColeta,AIdLista,AIdUsuario)
       else
         Result:=TPlataformaContatoColetaDAO.ImportarAprovados(C,AIdColeta,AIdLista,AIdUsuario);
 
