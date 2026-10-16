@@ -58,6 +58,19 @@ var
     Q.Execute;
   end;
 
+  function ColumnExists(const ATable, AColumn: string): Boolean;
+  begin
+    Q.Close;
+    Q.SQL.Text :=
+      'SELECT 1 FROM information_schema.columns ' +
+      'WHERE table_schema=DATABASE() AND table_name=:tabela ' +
+      'AND column_name=:coluna LIMIT 1';
+    Q.ParamByName('tabela').AsString := ATable;
+    Q.ParamByName('coluna').AsString := AColumn;
+    Q.Open;
+    Result := not Q.IsEmpty;
+  end;
+
   procedure Run065;
   begin
     if MigrationExists('065') then Exit;
@@ -150,6 +163,61 @@ var
     RegisterMigration('067','Parametros de busca para sindicatos e associacoes');
   end;
 
+  procedure Run069;
+  begin
+    if MigrationExists('069') then Exit;
+
+    if not ColumnExists('plataforma_contato_coleta_item','tipo_contato') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato_coleta_item ' +
+        'ADD COLUMN tipo_contato VARCHAR(20) NULL AFTER nome_orgao'
+      );
+
+    if not ColumnExists('plataforma_contato_coleta_item','cargo') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato_coleta_item ' +
+        'ADD COLUMN cargo VARCHAR(40) NULL AFTER tipo_contato'
+      );
+
+    if not ColumnExists('plataforma_contato_coleta_item','partido') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato_coleta_item ' +
+        'ADD COLUMN partido VARCHAR(30) NULL AFTER cargo'
+      );
+
+    if not ColumnExists('plataforma_contato_coleta_item','id_externo') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato_coleta_item ' +
+        'ADD COLUMN id_externo VARCHAR(80) NULL AFTER partido'
+      );
+
+    if not ColumnExists('plataforma_contato_coleta_item','fonte_dados') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato_coleta_item ' +
+        'ADD COLUMN fonte_dados VARCHAR(50) NULL AFTER id_externo'
+      );
+
+    if not ColumnExists('plataforma_contato_coleta_item','url_perfil') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato_coleta_item ' +
+        'ADD COLUMN url_perfil VARCHAR(500) NULL AFTER fonte_dados'
+      );
+
+    if not ColumnExists('plataforma_contato_coleta_item','foto_url') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato_coleta_item ' +
+        'ADD COLUMN foto_url VARCHAR(500) NULL AFTER url_perfil'
+      );
+
+    if not ColumnExists('plataforma_contato_coleta_item','unale_associado') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato_coleta_item ' +
+        'ADD COLUMN unale_associado TINYINT(1) NOT NULL DEFAULT 0 AFTER foto_url'
+      );
+
+    RegisterMigration('069','Metadados parlamentares nos itens de coleta de contatos');
+  end;
+
 begin
   C := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(C.Database);
@@ -159,6 +227,7 @@ begin
     Run065;
     Run066;
     Run067;
+    Run069;
   finally
     Q.Free;
     Conn.Free;
