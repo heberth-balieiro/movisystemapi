@@ -15,16 +15,11 @@ uses
   System.SysUtils,
   System.JSON,
   System.Classes,
-  System.StrUtils,
-  Uni,
-  App.Config,
   App.JWT,
   App.Token,
   App.RequestInfo,
   App.Response,
   APP.Errors,
-  Database.Connection,
-  PlataformaContato.DAO,
   PlataformaContato.Service;
 
 function AutorizarSuperAdmin(const Req:THorseRequest; const Res:THorseResponse; out AClaims:TJWTClaims):Boolean;
@@ -66,80 +61,8 @@ begin
   Result:=Raw as TJSONObject;
 end;
 
-procedure AddNullable(const O:TJSONObject; const N,V:string);
-begin
-  if Trim(V).IsEmpty then O.AddPair(N,TJSONNull.Create) else O.AddPair(N,V);
-end;
-
-function RelatorioContatos(const AIdUsuario:Int64; const ATipo,AUF,AMunicipio,APartido,ASituacao:string;
-  const AEmExercicio,ATemEmail:Integer; const AIP,AUserAgent:string):TJSONObject;
-var
-  Cfg:TAppApiConfig; Conn:TUniConnection; Q:TUniQuery; Arr:TJSONArray; J,F:TJSONObject;
-  Tipo,UF,Municipio,Partido,Situacao,W:string;
-  procedure Parametros;
-  begin
-    if not UF.IsEmpty then Q.ParamByName('uf').AsString:=UF;
-    if not Municipio.IsEmpty then Q.ParamByName('cidade').AsString:=Municipio;
-    if not Partido.IsEmpty then Q.ParamByName('partido').AsString:=Partido;
-    if not Situacao.IsEmpty then Q.ParamByName('situacao').AsString:=Situacao;
-    if MatchText(Tipo,['VEREADOR','DEPUTADO_ESTADUAL','DEPUTADO_FEDERAL','SENADOR']) then Q.ParamByName('cargo').AsString:=Tipo;
-  end;
-begin
-  Tipo:=UpperCase(Trim(ATipo));
-  if not MatchText(Tipo,['CAMARA','PREFEITURA','SINDICATO','ASSOCIACAO','VEREADOR','DEPUTADO_ESTADUAL','DEPUTADO_FEDERAL','SENADOR','UNALE_ASSOCIADO']) then
-    TAppErrors.RaiseBadRequest('Tipo de relatório inválido.');
-  UF:=UpperCase(Trim(AUF)); if (not UF.IsEmpty) and (Length(UF)<>2) then TAppErrors.RaiseBadRequest('UF inválida.');
-  Municipio:=Trim(AMunicipio); Partido:=UpperCase(Trim(APartido)); Situacao:=UpperCase(Trim(ASituacao));
-  if (not Situacao.IsEmpty) and not MatchText(Situacao,['ATIVO','INATIVO']) then TAppErrors.RaiseBadRequest('Situação inválida.');
-
-  W:=' WHERE 1=1 ';
-  if Tipo='CAMARA' then W:=W+'AND COALESCE(c.tipo_contato,''ENTIDADE'')<>''PARLAMENTAR'' AND (c.orgao=''Câmara Municipal'' OR c.grau=''Câmara Municipal'') '
-  else if Tipo='PREFEITURA' then W:=W+'AND COALESCE(c.tipo_contato,''ENTIDADE'')<>''PARLAMENTAR'' AND (c.orgao=''Prefeitura Municipal'' OR c.grau=''Prefeitura Municipal'') '
-  else if Tipo='SINDICATO' then W:=W+'AND COALESCE(c.tipo_contato,''ENTIDADE'')<>''PARLAMENTAR'' AND (c.orgao=''Sindicato'' OR c.grau=''Sindicato'') '
-  else if Tipo='ASSOCIACAO' then W:=W+'AND COALESCE(c.tipo_contato,''ENTIDADE'')<>''PARLAMENTAR'' AND (c.orgao=''Associação'' OR c.grau=''Associação'') '
-  else if Tipo='UNALE_ASSOCIADO' then W:=W+'AND c.tipo_contato=''PARLAMENTAR'' AND c.unale_associado=1 '
-  else W:=W+'AND c.tipo_contato=''PARLAMENTAR'' AND c.cargo=:cargo ';
-  if not UF.IsEmpty then W:=W+'AND c.uf=:uf ';
-  if not Municipio.IsEmpty then W:=W+'AND c.cidade=:cidade ';
-  if not Partido.IsEmpty then W:=W+'AND c.partido=:partido ';
-  if not Situacao.IsEmpty then W:=W+'AND c.situacao=:situacao ';
-  if AEmExercicio=1 then W:=W+'AND c.em_exercicio=1 ' else if AEmExercicio=0 then W:=W+'AND c.em_exercicio=0 ';
-  if ATemEmail=1 then W:=W+'AND COALESCE(c.email_normalizado,'''')<>'''' ' else if ATemEmail=0 then W:=W+'AND COALESCE(c.email_normalizado,'''')='''' ';
-
-  Cfg:=TAppConfig.Carregar(ExtractFilePath(ParamStr(0))+'Config.ini'); Conn:=TDatabaseConnection.NewConnection(Cfg.Database); Q:=TUniQuery.Create(nil);
-  try
-    Q.Connection:=Conn;
-    Q.SQL.Text:='SELECT c.id,c.tipo_documento,c.documento,c.razao_social,c.nome_fantasia,c.responsavel,c.telefone,c.email,c.grau,c.cidade,c.uf,c.orgao,c.site,c.fonte,c.data_coleta,c.situacao,c.cargo,c.partido,c.id_externo,c.fonte_dados,c.url_perfil,c.unale_associado,c.em_exercicio FROM plataforma_contato c '+W+'ORDER BY c.uf,c.cidade,COALESCE(NULLIF(c.responsavel,''''),NULLIF(c.nome_fantasia,''''),c.razao_social),c.id LIMIT 5000';
-    Parametros; Q.Open; Arr:=TJSONArray.Create;
-    while not Q.Eof do begin
-      J:=TJSONObject.Create; J.AddPair('id',TJSONNumber.Create(Q.FieldByName('id').AsLargeInt));
-      if SameText(Q.FieldByName('tipo_documento').AsString,'CNPJ') then AddNullable(J,'documento',Q.FieldByName('documento').AsString) else J.AddPair('documento',TJSONNull.Create);
-      AddNullable(J,'razao_social',Q.FieldByName('razao_social').AsString); AddNullable(J,'nome_fantasia',Q.FieldByName('nome_fantasia').AsString); AddNullable(J,'responsavel',Q.FieldByName('responsavel').AsString);
-      AddNullable(J,'telefone',Q.FieldByName('telefone').AsString); AddNullable(J,'email',Q.FieldByName('email').AsString); AddNullable(J,'grau',Q.FieldByName('grau').AsString); AddNullable(J,'cidade',Q.FieldByName('cidade').AsString); AddNullable(J,'uf',Q.FieldByName('uf').AsString); AddNullable(J,'orgao',Q.FieldByName('orgao').AsString);
-      AddNullable(J,'site',Q.FieldByName('site').AsString); AddNullable(J,'fonte',Q.FieldByName('fonte').AsString); AddNullable(J,'cargo',Q.FieldByName('cargo').AsString); AddNullable(J,'partido',Q.FieldByName('partido').AsString); AddNullable(J,'id_externo',Q.FieldByName('id_externo').AsString); AddNullable(J,'fonte_dados',Q.FieldByName('fonte_dados').AsString); AddNullable(J,'url_perfil',Q.FieldByName('url_perfil').AsString);
-      J.AddPair('unale_associado',TJSONBool.Create(Q.FieldByName('unale_associado').AsBoolean)); J.AddPair('em_exercicio',TJSONBool.Create(Q.FieldByName('em_exercicio').AsBoolean)); J.AddPair('situacao',Q.FieldByName('situacao').AsString);
-      if Q.FieldByName('data_coleta').IsNull then J.AddPair('data_coleta',TJSONNull.Create) else J.AddPair('data_coleta',FormatDateTime('yyyy-mm-dd',Q.FieldByName('data_coleta').AsDateTime));
-      Arr.AddElement(J); Q.Next;
-    end;
-    F:=TJSONObject.Create; F.AddPair('tipo',Tipo); AddNullable(F,'uf',UF); AddNullable(F,'municipio',Municipio); AddNullable(F,'partido',Partido); AddNullable(F,'situacao',Situacao);
-    Result:=TJSONObject.Create; Result.AddPair('tipo',Tipo); Result.AddPair('total',TJSONNumber.Create(Arr.Count)); Result.AddPair('limite',TJSONNumber.Create(5000)); Result.AddPair('filtros',F); Result.AddPair('itens',Arr);
-    TPlataformaContatoDAO.RegistrarAuditoria(Conn,AIdUsuario,'RELATORIO_CONTATOS_GERADO','plataforma_contato','','Relatório analítico gerado: '+Tipo,AIP,AUserAgent);
-  finally Q.Free; Conn.Free; end;
-end;
-
 class procedure TPlataformaContatoController.Registry;
 begin
-  THorse.Get('/v1/certifica/plataforma/relatorios/contatos',
-    procedure(Req:THorseRequest; Res:THorseResponse; Next:TProc)
-    var Claims:TJWTClaims; Dados:TJSONObject;
-    begin
-      try
-        if not AutorizarSuperAdmin(Req,Res,Claims) then Exit;
-        Dados:=RelatorioContatos(Claims.UserId,Req.Query.Items['tipo'],Req.Query.Items['uf'],Req.Query.Items['municipio'],Req.Query.Items['partido'],Req.Query.Items['situacao'],QueryFlag(Req.Query.Items['em_exercicio']),QueryFlag(Req.Query.Items['tem_email']),TAppRequestInfo.GetIP(Req),TAppRequestInfo.GetUserAgent(Req));
-        TAppResponse.Ok(Res,Dados,'Relatório de contatos carregado com sucesso.');
-      except on E:Exception do TAppErrors.HandleException(Res,E); end;
-    end);
-
   THorse.Get('/v1/certifica/plataforma/contatos',
     procedure(Req:THorseRequest; Res:THorseResponse; Next:TProc)
     var Claims:TJWTClaims; Dados:TJSONObject;
