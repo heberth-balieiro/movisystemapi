@@ -1,7 +1,6 @@
 unit Cursos.Routes;
 
 interface
-
 type
   TCursosRoutes = class
   public
@@ -23,6 +22,7 @@ Uses
   PlataformaAjuda.Controller,
   PlataformaCampanha.Controller,
   PlataformaContato.Controller,
+  PlataformaParlamentar.Controller,
   PlataformaContatoColeta.Controller,
   PlataformaUsuarioWhatsApp.Controller,
   PublicoRecuperacaoSenha.Controller,
@@ -83,6 +83,7 @@ begin
   TPlataformaAjudaController.Registry;
   TPlataformaCampanhaController.Registry;
   TPlataformaContatoController.Registry;
+  TPlataformaParlamentarController.Registry;
   TPlataformaContatoColetaController.Registry;
   TPlataformaUsuarioWhatsAppController.Registry;
   TPublicoRecuperacaoSenhaController.Registry;
