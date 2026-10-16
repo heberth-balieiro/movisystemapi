@@ -253,7 +253,7 @@ begin
       AddNullable(J,'partido',Q.FieldByName('partido').AsString);
       J.AddPair('unale_associado',TJSONBool.Create(Q.FieldByName('unale_associado').AsBoolean));
       J.AddPair('em_exercicio',TJSONBool.Create(Q.FieldByName('em_exercicio').AsBoolean));
-      J.AddPair('ja_adicionado',TJSONBool.Create(Q.FieldByName('ja_adicionado').AsBoolean));
+      J.AddPair('ja_adicionado',TJSONBool.Create(Q.FieldByName('ja_adicionado').AsInteger=1));
       Arr.AddElement(J);
       Q.Next;
     end;
