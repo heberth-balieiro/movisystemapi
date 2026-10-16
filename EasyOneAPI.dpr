@@ -70,7 +70,6 @@ uses
   PlataformaParlamentar.Controller in 'src\Cursos\Controller\PlataformaParlamentar.Controller.pas',
   PlataformaContatoColeta.DAO in 'src\Cursos\Dao\PlataformaContatoColeta.DAO.pas',
   PlataformaContatoColetaEntidade.DAO in 'src\Cursos\Dao\PlataformaContatoColetaEntidade.DAO.pas',
-  PlataformaContatoColetaParlamentar.DAO in 'src\Cursos\Dao\PlataformaContatoColetaParlamentar.DAO.pas',
   PlataformaContatoColeta.Service in 'src\Cursos\Services\PlataformaContatoColeta.Service.pas',
   PlataformaContatoColeta.Controller in 'src\Cursos\Controller\PlataformaContatoColeta.Controller.pas',
   PlataformaContatoColeta.Migration in 'src\Cursos\Migrations\PlataformaContatoColeta.Migration.pas',
@@ -618,6 +617,16 @@ begin
           Writeln('Rotas do EasyOne registradas com sucesso.');
           TEleicaoRoutes.Registry;
           Writeln('Rotas do Eleição registradas com sucesso.');
+        end;
+      {$ENDREGION}
+
+      {$REGION 'MoviSystem'}
+      apMoviSystem:
+        begin
+          TCursosRoutes.Registry;
+          Writeln('Rotas MoviSystem registrada com sucesso.');
+          TContratosRoutes.Registry;
+          Writeln('Rotas MoviSystem Contratos registradas com sucesso.');
         end;
       {$ENDREGION}
     end;
