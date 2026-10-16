@@ -129,7 +129,7 @@ begin
     Qry.Connection := AConn;
 
     Qry.SQL.Text :=
-      'SELECT api_key_criptografada IS NOT NULL AS tem_key ' +
+      'SELECT CASE WHEN api_key_criptografada IS NOT NULL THEN 1 ELSE 0 END AS tem_key ' +
       'FROM plataforma_whatsapp_configuracao ' +
       'WHERE id = 1';
 
@@ -137,7 +137,7 @@ begin
 
     Result :=
       (not Qry.IsEmpty) and
-      Qry.FieldByName('tem_key').AsBoolean;
+      (Qry.FieldByName('tem_key').AsInteger = 1);
   finally
     Qry.Free;
   end;
