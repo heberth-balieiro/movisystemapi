@@ -22,6 +22,10 @@ type
       const AIdUsuario: Int64;
       const AUF, AIP, AUserAgent: string
     ): TJSONObject; static;
+    class function ListarParlamentares(
+      const ABusca, ACargo, AUF, APartido: string;
+      const AUnaleAssociado, AEmExercicio, APagina, APorPagina: Integer
+    ): TJSONObject; static;
   end;
 
 implementation
@@ -161,6 +165,33 @@ begin
     Result := Raw as TJSONObject;
   finally
     Client.Free;
+  end;
+end;
+
+class function TPlataformaParlamentarService.ListarParlamentares(
+  const ABusca, ACargo, AUF, APartido: string;
+  const AUnaleAssociado, AEmExercicio, APagina, APorPagina: Integer
+): TJSONObject;
+var
+  Conn:TUniConnection;
+  Cargo:string;
+begin
+  Cargo:=UpperCase(Trim(ACargo));
+  if (not Cargo.IsEmpty) and
+     not MatchText(Cargo,['VEREADOR','DEPUTADO_ESTADUAL','DEPUTADO_FEDERAL','SENADOR']) then
+    TAppErrors.RaiseBadRequest('Cargo parlamentar inválido.');
+
+  if (not Trim(AUF).IsEmpty) and (Length(Trim(AUF))<>2) then
+    TAppErrors.RaiseBadRequest('UF inválida.');
+
+  Conn:=NovaConexao;
+  try
+    Result:=TPlataformaParlamentarDAO.Listar(
+      Conn,ABusca,Cargo,AUF,APartido,
+      AUnaleAssociado,AEmExercicio,APagina,APorPagina
+    );
+  finally
+    Conn.Free;
   end;
 end;
 
