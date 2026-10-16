@@ -307,7 +307,7 @@ begin
       'SELECT :campanha,c.id,'+
       'COALESCE(NULLIF(c.responsavel,''''),NULLIF(c.nome_fantasia,''''),c.razao_social),'+
       'c.email_normalizado,c.telefone_normalizado,'+
-      'COALESCE(NULLIF(c.nome_fantasia,''''),c.razao_social),''BASE_CONTATOS'' '+
+      'COALESCE(NULLIF(c.nome_fantasia,''''),c.razao_social),''MANUAL'' '+
       'FROM plataforma_contato c '+W+
       'AND NOT EXISTS ('+
       'SELECT 1 FROM plataforma_campanha_destinatario d '+
