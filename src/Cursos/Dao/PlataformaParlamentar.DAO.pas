@@ -291,8 +291,8 @@ begin
       AddNullableString(J,'fonte_dados',Q.FieldByName('fonte_dados').AsString);
       AddNullableString(J,'url_perfil',Q.FieldByName('url_perfil').AsString);
       AddNullableString(J,'foto_url',Q.FieldByName('foto_url').AsString);
-      J.AddPair('unale_associado',TJSONBool.Create(Q.FieldByName('unale_associado').AsInteger=1));
-      J.AddPair('em_exercicio',TJSONBool.Create(Q.FieldByName('em_exercicio').AsInteger=1));
+      J.AddPair('unale_associado',TJSONBool.Create(Q.FieldByName('unale_associado').AsBoolean));
+      J.AddPair('em_exercicio',TJSONBool.Create(Q.FieldByName('em_exercicio').AsBoolean));
       J.AddPair('situacao',Q.FieldByName('situacao').AsString);
       J.AddPair('atualizado_em',FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz',Q.FieldByName('atualizado_em').AsDateTime));
       Arr.AddElement(J);
