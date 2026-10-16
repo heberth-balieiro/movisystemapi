@@ -113,6 +113,43 @@ begin
       end;
     end
   );
+
+  THorse.Post(
+    '/v1/certifica/plataforma/contatos/sincronizar/senadores',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims: TJWTClaims;
+      Body, Dados: TJSONObject;
+      UF: string;
+    begin
+      try
+        if not AutorizarSuperAdmin(Req, Res, Claims) then
+          Exit;
+
+        Body := ParseBodyOpcional(Req);
+        try
+          UF := JsonString(Body, 'uf');
+          Dados := TPlataformaParlamentarService.SincronizarSenadores(
+            Claims.UserId,
+            UF,
+            TAppRequestInfo.GetIP(Req),
+            TAppRequestInfo.GetUserAgent(Req)
+          );
+        finally
+          Body.Free;
+        end;
+
+        TAppResponse.Ok(
+          Res,
+          Dados,
+          'Senadores sincronizados com sucesso.'
+        );
+      except
+        on E: Exception do
+          TAppErrors.HandleException(Res, E);
+      end;
+    end
+  );
 end;
 
 end.
