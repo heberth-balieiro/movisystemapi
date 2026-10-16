@@ -3,12 +3,13 @@ unit PlataformaCampanhaPublico.Service;
 interface
 
 uses
-  System.JSON;
+  System.JSON,
+  Uni;
 
 type
   TPlataformaCampanhaPublicoService = class
   private
-    class function NovaConexao: TObject; static;
+    class function NovaConexao: TUniConnection; static;
     class procedure ValidarTipo(const ATipo:string); static;
     class procedure ValidarFlag(const ANome:string; var AValor:Integer); static;
   public
@@ -18,7 +19,6 @@ type
       AEmExercicio,AUnaleAssociado,ATemEmail,ATemWhatsApp:Integer;
       const APagina,APorPagina:Integer
     ):TJSONObject; static;
-
     class function AdicionarTodos(
       const AIdUsuario,AIdCampanha:Int64;
       const ATipo,ABusca,AUF,AMunicipio,APartido:string;
@@ -32,7 +32,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Uni,
   App.Config,
   APP.Errors,
   Database.Connection,
@@ -40,7 +39,7 @@ uses
   PlataformaCampanha.DAO,
   PlataformaContato.DAO;
 
-class function TPlataformaCampanhaPublicoService.NovaConexao:TObject;
+class function TPlataformaCampanhaPublicoService.NovaConexao:TUniConnection;
 var C:TAppApiConfig;
 begin
   C:=TAppConfig.Carregar(ExtractFilePath(ParamStr(0))+'Config.ini');
@@ -72,8 +71,7 @@ begin
   if AIdCampanha<=0 then TAppErrors.RaiseBadRequest('Campanha inválida.');
   ValidarTipo(ATipo); ValidarFlag('em_exercicio',AEmExercicio); ValidarFlag('unale_associado',AUnaleAssociado); ValidarFlag('tem_email',ATemEmail); ValidarFlag('tem_whatsapp',ATemWhatsApp);
   if (not Trim(AUF).IsEmpty) and (Length(Trim(AUF))<>2) then TAppErrors.RaiseBadRequest('UF inválida.');
-
-  C:=TUniConnection(NovaConexao);
+  C:=NovaConexao;
   try
     if not TPlataformaCampanhaPublicoDAO.ObterCampanhaContexto(C,AIdCampanha,Situacao,Canal) then TAppErrors.RaiseNotFound('Campanha não encontrada.');
     if not SameText(Situacao,'RASCUNHO') then TAppErrors.RaiseBadRequest('O público só pode ser alterado enquanto a campanha estiver em rascunho.');
@@ -92,8 +90,7 @@ begin
   if AIdCampanha<=0 then TAppErrors.RaiseBadRequest('Campanha inválida.');
   ValidarTipo(ATipo); ValidarFlag('em_exercicio',AEmExercicio); ValidarFlag('unale_associado',AUnaleAssociado); ValidarFlag('tem_email',ATemEmail); ValidarFlag('tem_whatsapp',ATemWhatsApp);
   if (not Trim(AUF).IsEmpty) and (Length(Trim(AUF))<>2) then TAppErrors.RaiseBadRequest('UF inválida.');
-
-  C:=TUniConnection(NovaConexao);
+  C:=NovaConexao;
   try
     if not TPlataformaCampanhaPublicoDAO.ObterCampanhaContexto(C,AIdCampanha,Situacao,Canal) then TAppErrors.RaiseNotFound('Campanha não encontrada.');
     if not SameText(Situacao,'RASCUNHO') then TAppErrors.RaiseBadRequest('O público só pode ser alterado enquanto a campanha estiver em rascunho.');
