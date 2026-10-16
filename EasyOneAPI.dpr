@@ -1,4 +1,4 @@
-﻿program EasyOneAPI;
+program EasyOneAPI;
 
 {API nova para windows e linux}
 
@@ -61,6 +61,9 @@ uses
   PlataformaCampanha.Service in 'src\Cursos\Services\PlataformaCampanha.Service.pas',
   PlataformaCampanha.Worker in 'src\Cursos\Services\PlataformaCampanha.Worker.pas',
   PlataformaCampanha.Controller in 'src\Cursos\Controller\PlataformaCampanha.Controller.pas',
+  PlataformaCampanhaPublico.DAO in 'src\Cursos\Dao\PlataformaCampanhaPublico.DAO.pas',
+  PlataformaCampanhaPublico.Service in 'src\Cursos\Services\PlataformaCampanhaPublico.Service.pas',
+  PlataformaCampanhaPublico.Controller in 'src\Cursos\Controller\PlataformaCampanhaPublico.Controller.pas',
   PlataformaContato.DAO in 'src\Cursos\Dao\PlataformaContato.DAO.pas',
   PlataformaContato.Service in 'src\Cursos\Services\PlataformaContato.Service.pas',
   PlataformaContato.Controller in 'src\Cursos\Controller\PlataformaContato.Controller.pas',
