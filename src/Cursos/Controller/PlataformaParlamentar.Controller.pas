@@ -35,7 +35,7 @@ begin
   begin
     TAppResponse.Forbidden(
       Res,
-      'Sem permissão para sincronizar contatos parlamentares.'
+      'Sem permissão para administrar contatos parlamentares.'
     );
     Exit;
   end;
@@ -75,8 +75,42 @@ begin
     Result := V.Value;
 end;
 
+function QueryFlag(const S:string):Integer;
+begin
+  if Trim(S).IsEmpty then Exit(-1);
+  if SameText(Trim(S),'1') or SameText(Trim(S),'true') or SameText(Trim(S),'sim') then Exit(1);
+  if SameText(Trim(S),'0') or SameText(Trim(S),'false') or SameText(Trim(S),'nao') then Exit(0);
+  Result:=-1;
+end;
+
 class procedure TPlataformaParlamentarController.Registry;
 begin
+  THorse.Get(
+    '/v1/certifica/plataforma/parlamentares',
+    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+    var
+      Claims:TJWTClaims;
+      Dados:TJSONObject;
+    begin
+      try
+        if not AutorizarSuperAdmin(Req,Res,Claims) then Exit;
+        Dados:=TPlataformaParlamentarService.ListarParlamentares(
+          Req.Query.Items['busca'],
+          Req.Query.Items['cargo'],
+          Req.Query.Items['uf'],
+          Req.Query.Items['partido'],
+          QueryFlag(Req.Query.Items['unale_associado']),
+          QueryFlag(Req.Query.Items['em_exercicio']),
+          StrToIntDef(Req.Query.Items['page'],1),
+          StrToIntDef(Req.Query.Items['page_size'],50)
+        );
+        TAppResponse.Ok(Res,Dados,'Parlamentares carregados com sucesso.');
+      except
+        on E:Exception do TAppErrors.HandleException(Res,E);
+      end;
+    end
+  );
+
   THorse.Post(
     '/v1/certifica/plataforma/contatos/sincronizar/deputados-federais',
     procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
