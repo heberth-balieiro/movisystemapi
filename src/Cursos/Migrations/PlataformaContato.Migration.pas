@@ -301,6 +301,22 @@ var
     );
   end;
 
+  procedure Run070;
+  begin
+    if MigrationExists('070') then
+      Exit;
+
+    ExecSQL(
+      'ALTER TABLE plataforma_campanha_destinatario ' +
+      'MODIFY COLUMN origem VARCHAR(20) NOT NULL DEFAULT ''MANUAL'''
+    );
+
+    RegisterMigration(
+      '070',
+      'Amplia origem dos destinatarios para identificar base de contatos'
+    );
+  end;
+
 begin
   C := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
   Conn := TDatabaseConnection.NewConnection(C.Database);
@@ -309,6 +325,7 @@ begin
     Q.Connection := Conn;
     Run064;
     Run068;
+    Run070;
   finally
     Q.Free;
     Conn.Free;
