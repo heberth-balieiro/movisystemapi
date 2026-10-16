@@ -333,7 +333,7 @@ begin
   Result:=0; Q:=TUniQuery.Create(nil); try Q.Connection:=AConn;
     Q.SQL.Text:='INSERT INTO plataforma_campanha_destinatario (id_campanha,id_contato_origem,nome,email,whatsapp,empresa,origem) '+
       'SELECT :campanha,c.id,COALESCE(NULLIF(c.responsavel,''''),NULLIF(c.nome_fantasia,''''),c.razao_social),c.email_normalizado,c.telefone_normalizado,'+
-      'COALESCE(NULLIF(c.nome_fantasia,''''),c.razao_social),''BASE_CONTATOS'' FROM plataforma_contato c WHERE c.id=:contato AND c.situacao=''ATIVO'' '+
+      'COALESCE(NULLIF(c.nome_fantasia,''''),c.razao_social),''MANUAL'' FROM plataforma_contato c WHERE c.id=:contato AND c.situacao=''ATIVO'' '+
       'AND (COALESCE(c.email_normalizado,'''')<>'''' OR COALESCE(c.telefone_normalizado,'''')<>'''') '+
       'AND NOT EXISTS (SELECT 1 FROM plataforma_campanha_destinatario d WHERE d.id_campanha=:campanha AND '+
       '((c.email_normalizado IS NOT NULL AND c.email_normalizado<>'''' AND d.email=c.email_normalizado) OR '+
@@ -349,7 +349,7 @@ begin
   Q:=TUniQuery.Create(nil); try Q.Connection:=AConn;
     Q.SQL.Text:='INSERT INTO plataforma_campanha_destinatario (id_campanha,id_contato_origem,nome,email,whatsapp,empresa,origem) '+
       'SELECT :campanha,c.id,COALESCE(NULLIF(c.responsavel,''''),NULLIF(c.nome_fantasia,''''),c.razao_social),c.email_normalizado,c.telefone_normalizado,'+
-      'COALESCE(NULLIF(c.nome_fantasia,''''),c.razao_social),''BASE_CONTATOS'' FROM plataforma_contato_lista_item li JOIN plataforma_contato c ON c.id=li.id_contato '+
+      'COALESCE(NULLIF(c.nome_fantasia,''''),c.razao_social),''MANUAL'' FROM plataforma_contato_lista_item li JOIN plataforma_contato c ON c.id=li.id_contato '+
       'WHERE li.id_lista=:lista AND c.situacao=''ATIVO'' AND (COALESCE(c.email_normalizado,'''')<>'''' OR COALESCE(c.telefone_normalizado,'''')<>'''') '+
       'AND NOT EXISTS (SELECT 1 FROM plataforma_campanha_destinatario d WHERE d.id_campanha=:campanha AND '+
       '((c.email_normalizado IS NOT NULL AND c.email_normalizado<>'''' AND d.email=c.email_normalizado) OR '+
