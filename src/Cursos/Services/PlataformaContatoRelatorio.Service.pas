@@ -61,10 +61,14 @@ begin
     if not MatchText(AFiltro.Situacao, ['ATIVO', 'INATIVO']) then
       TAppErrors.RaiseBadRequest('Situação inválida.');
 
-  if not (AFiltro.EmExercicio in [-1, 0, 1]) then
+  if (AFiltro.EmExercicio <> -1) and
+     (AFiltro.EmExercicio <> 0) and
+     (AFiltro.EmExercicio <> 1) then
     AFiltro.EmExercicio := -1;
 
-  if not (AFiltro.TemEmail in [-1, 0, 1]) then
+  if (AFiltro.TemEmail <> -1) and
+     (AFiltro.TemEmail <> 0) and
+     (AFiltro.TemEmail <> 1) then
     AFiltro.TemEmail := -1;
 end;
 
