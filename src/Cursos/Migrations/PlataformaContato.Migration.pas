@@ -17,9 +17,6 @@ uses
   Database.Connection;
 
 class procedure TPlataformaContatoMigration.Run;
-const
-  VERSION = '064';
-  DESCRIPTION = 'Base de contatos reutilizavel para campanhas da plataforma';
 var
   C: TAppApiConfig;
   Conn: TUniConnection;
@@ -39,13 +36,26 @@ var
     end;
   end;
 
-  function MigrationExists: Boolean;
+  function MigrationExists(const AVersion: string): Boolean;
   begin
     Q.Close;
-    Q.SQL.Text := 'SELECT 1 FROM schema_migrations WHERE version=:version LIMIT 1';
-    Q.ParamByName('version').AsString := VERSION;
+    Q.SQL.Text :=
+      'SELECT 1 FROM schema_migrations ' +
+      'WHERE version=:version LIMIT 1';
+    Q.ParamByName('version').AsString := AVersion;
     Q.Open;
     Result := not Q.IsEmpty;
+  end;
+
+  procedure RegisterMigration(const AVersion, ADescription: string);
+  begin
+    Q.Close;
+    Q.SQL.Text :=
+      'INSERT INTO schema_migrations (version,description) ' +
+      'VALUES (:version,:descricao)';
+    Q.ParamByName('version').AsString := AVersion;
+    Q.ParamByName('descricao').AsString := ADescription;
+    Q.Execute;
   end;
 
   function ColumnExists(const ATable, AColumn: string): Boolean;
@@ -87,13 +97,9 @@ var
     Result := not Q.IsEmpty;
   end;
 
-begin
-  C := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
-  Conn := TDatabaseConnection.NewConnection(C.Database);
-  Q := TUniQuery.Create(nil);
-  try
-    Q.Connection := Conn;
-    if MigrationExists then
+  procedure Run064;
+  begin
+    if MigrationExists('064') then
       Exit;
 
     ExecSQL(
@@ -189,12 +195,120 @@ begin
         'ON UPDATE RESTRICT ON DELETE SET NULL'
       );
 
-    Q.Close;
-    Q.SQL.Text :=
-      'INSERT INTO schema_migrations (version,description) VALUES (:version,:descricao)';
-    Q.ParamByName('version').AsString := VERSION;
-    Q.ParamByName('descricao').AsString := DESCRIPTION;
-    Q.Execute;
+    RegisterMigration(
+      '064',
+      'Base de contatos reutilizavel para campanhas da plataforma'
+    );
+  end;
+
+  procedure Run068;
+  begin
+    if MigrationExists('068') then
+      Exit;
+
+    if not ColumnExists('plataforma_contato','tipo_contato') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD COLUMN tipo_contato VARCHAR(20) NOT NULL DEFAULT ''ENTIDADE'' AFTER id'
+      );
+
+    if not ColumnExists('plataforma_contato','cargo') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD COLUMN cargo VARCHAR(40) NULL AFTER grau'
+      );
+
+    if not ColumnExists('plataforma_contato','partido') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD COLUMN partido VARCHAR(30) NULL AFTER cargo'
+      );
+
+    if not ColumnExists('plataforma_contato','id_externo') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD COLUMN id_externo VARCHAR(80) NULL AFTER partido'
+      );
+
+    if not ColumnExists('plataforma_contato','fonte_dados') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD COLUMN fonte_dados VARCHAR(50) NULL AFTER id_externo'
+      );
+
+    if not ColumnExists('plataforma_contato','url_perfil') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD COLUMN url_perfil VARCHAR(500) NULL AFTER fonte_dados'
+      );
+
+    if not ColumnExists('plataforma_contato','foto_url') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD COLUMN foto_url VARCHAR(500) NULL AFTER url_perfil'
+      );
+
+    if not ColumnExists('plataforma_contato','unale_associado') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD COLUMN unale_associado TINYINT(1) NOT NULL DEFAULT 0 AFTER foto_url'
+      );
+
+    if not ColumnExists('plataforma_contato','em_exercicio') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD COLUMN em_exercicio TINYINT(1) NOT NULL DEFAULT 1 AFTER unale_associado'
+      );
+
+    if not IndexExists('plataforma_contato','uq_plataforma_contato_fonte_externo') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD UNIQUE KEY uq_plataforma_contato_fonte_externo (fonte_dados,id_externo)'
+      );
+
+    if not IndexExists('plataforma_contato','ix_plataforma_contato_parlamentar') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD KEY ix_plataforma_contato_parlamentar ' +
+        '(tipo_contato,cargo,uf,partido,situacao)'
+      );
+
+    if not IndexExists('plataforma_contato','ix_plataforma_contato_unale') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD KEY ix_plataforma_contato_unale ' +
+        '(unale_associado,uf,situacao)'
+      );
+
+    if not ConstraintExists('plataforma_contato','ck_plataforma_contato_tipo') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD CONSTRAINT ck_plataforma_contato_tipo CHECK (' +
+        'tipo_contato IN (''ENTIDADE'',''PARLAMENTAR'',''PESSOA''))'
+      );
+
+    if not ConstraintExists('plataforma_contato','ck_plataforma_contato_cargo') then
+      ExecSQL(
+        'ALTER TABLE plataforma_contato ' +
+        'ADD CONSTRAINT ck_plataforma_contato_cargo CHECK (' +
+        'cargo IS NULL OR cargo IN (' +
+        '''VEREADOR'',''DEPUTADO_ESTADUAL'',''DEPUTADO_FEDERAL'',''SENADOR''))'
+      );
+
+    RegisterMigration(
+      '068',
+      'Base de contatos preparada para parlamentares e associados UNALE'
+    );
+  end;
+
+begin
+  C := TAppConfig.Carregar(ExtractFilePath(ParamStr(0)) + 'Config.ini');
+  Conn := TDatabaseConnection.NewConnection(C.Database);
+  Q := TUniQuery.Create(nil);
+  try
+    Q.Connection := Conn;
+    Run064;
+    Run068;
   finally
     Q.Free;
     Conn.Free;
