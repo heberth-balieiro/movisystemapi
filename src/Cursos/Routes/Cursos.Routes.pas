@@ -21,6 +21,7 @@ Uses
   PlataformaIdentidade.Controller,
   PlataformaAjuda.Controller,
   PlataformaCampanha.Controller,
+  PlataformaCampanhaPublico.Controller,
   PlataformaContato.Controller,
   PlataformaContatoRelatorio.Controller,
   PlataformaParlamentar.Controller,
@@ -83,6 +84,7 @@ begin
   TPlataformaIdentidadeController.Registry;
   TPlataformaAjudaController.Registry;
   TPlataformaCampanhaController.Registry;
+  TPlataformaCampanhaPublicoController.Registry;
   TPlataformaContatoController.Registry;
   TPlataformaContatoRelatorioController.Registry;
   TPlataformaParlamentarController.Registry;
