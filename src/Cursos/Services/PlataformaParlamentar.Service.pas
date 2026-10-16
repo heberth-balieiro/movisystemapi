@@ -12,8 +12,13 @@ type
       const AUF: string;
       const APagina, AItens: Integer
     ): TJSONObject; static;
+    class function BuscarSenadores: TJSONObject; static;
   public
     class function SincronizarDeputadosFederais(
+      const AIdUsuario: Int64;
+      const AUF, AIP, AUserAgent: string
+    ): TJSONObject; static;
+    class function SincronizarSenadores(
       const AIdUsuario: Int64;
       const AUF, AIP, AUserAgent: string
     ): TJSONObject; static;
@@ -35,8 +40,11 @@ uses
 
 const
   CAMARA_API = 'https://dadosabertos.camara.leg.br/api/v2';
-  FONTE_DADOS = 'CAMARA_DADOS_ABERTOS';
-  CARGO = 'DEPUTADO_FEDERAL';
+  SENADO_API = 'https://legis.senado.leg.br/dadosabertos/senador/lista/atual.json';
+  FONTE_CAMARA = 'CAMARA_DADOS_ABERTOS';
+  FONTE_SENADO = 'SENADO_DADOS_ABERTOS';
+  CARGO_DEPUTADO_FEDERAL = 'DEPUTADO_FEDERAL';
+  CARGO_SENADOR = 'SENADOR';
 
 function NovaConexao: TUniConnection;
 var
@@ -56,6 +64,30 @@ begin
   V := AObj.GetValue(ANome);
   if (V <> nil) and not (V is TJSONNull) then
     Result := V.Value;
+end;
+
+function JsonObject(const AObj: TJSONObject; const ANome: string): TJSONObject;
+var
+  V: TJSONValue;
+begin
+  Result := nil;
+  if AObj = nil then
+    Exit;
+  V := AObj.GetValue(ANome);
+  if V is TJSONObject then
+    Result := V as TJSONObject;
+end;
+
+function JsonArray(const AObj: TJSONObject; const ANome: string): TJSONArray;
+var
+  V: TJSONValue;
+begin
+  Result := nil;
+  if AObj = nil then
+    Exit;
+  V := AObj.GetValue(ANome);
+  if V is TJSONArray then
+    Result := V as TJSONArray;
 end;
 
 class function TPlataformaParlamentarService.BuscarPaginaDeputados(
@@ -100,6 +132,38 @@ begin
   end;
 end;
 
+class function TPlataformaParlamentarService.BuscarSenadores: TJSONObject;
+var
+  Client: THTTPClient;
+  Resp: IHTTPResponse;
+  Raw: TJSONValue;
+begin
+  Result := nil;
+  Client := THTTPClient.Create;
+  try
+    Client.ConnectionTimeout := 10000;
+    Client.ResponseTimeout := 30000;
+    Client.UserAgent := 'MoviSystem/1.0';
+    Resp := Client.Get(SENADO_API);
+
+    if Resp.StatusCode <> 200 then
+      TAppErrors.RaiseBadRequest(
+        'Falha ao consultar Dados Abertos do Senado. HTTP ' +
+        Resp.StatusCode.ToString + '.'
+      );
+
+    Raw := TJSONObject.ParseJSONValue(Resp.ContentAsString(TEncoding.UTF8));
+    if not (Raw is TJSONObject) then
+    begin
+      Raw.Free;
+      TAppErrors.RaiseBadRequest('Resposta inválida da API do Senado Federal.');
+    end;
+    Result := Raw as TJSONObject;
+  finally
+    Client.Free;
+  end;
+end;
+
 class function TPlataformaParlamentarService.SincronizarDeputadosFederais(
   const AIdUsuario: Int64;
   const AUF, AIP, AUserAgent: string
@@ -127,8 +191,8 @@ begin
     try
       TPlataformaParlamentarDAO.MarcarForaExercicio(
         Conn,
-        FONTE_DADOS,
-        CARGO,
+        FONTE_CAMARA,
+        CARGO_DEPUTADO_FEDERAL,
         UF
       );
 
@@ -215,13 +279,131 @@ begin
   end;
 
   Result := TJSONObject.Create;
-  Result.AddPair('cargo', CARGO);
+  Result.AddPair('cargo', CARGO_DEPUTADO_FEDERAL);
   if UF.IsEmpty then
     Result.AddPair('uf', TJSONNull.Create)
   else
     Result.AddPair('uf', UF);
   Result.AddPair('processados', TJSONNumber.Create(Processados));
-  Result.AddPair('fonte_dados', FONTE_DADOS);
+  Result.AddPair('fonte_dados', FONTE_CAMARA);
+end;
+
+class function TPlataformaParlamentarService.SincronizarSenadores(
+  const AIdUsuario: Int64;
+  const AUF, AIP, AUserAgent: string
+): TJSONObject;
+var
+  Conn: TUniConnection;
+  Json, Raiz, Parlamentares, Parlamentar, Identificacao: TJSONObject;
+  Arr: TJSONArray;
+  V: TJSONValue;
+  UF, IdExterno, Nome, Email, Partido, UfSenador, Foto, Perfil: string;
+  Processados, I: Integer;
+begin
+  if AIdUsuario <= 0 then
+    TAppErrors.RaiseForbidden('Usuário não identificado.');
+
+  UF := UpperCase(Trim(AUF));
+  if (not UF.IsEmpty) and (Length(UF) <> 2) then
+    TAppErrors.RaiseBadRequest('UF inválida.');
+
+  Json := BuscarSenadores;
+  try
+    Raiz := JsonObject(Json, 'ListaParlamentarEmExercicio');
+    if Raiz = nil then
+      TAppErrors.RaiseBadRequest('Resposta do Senado sem ListaParlamentarEmExercicio.');
+
+    Parlamentares := JsonObject(Raiz, 'Parlamentares');
+    if Parlamentares = nil then
+      TAppErrors.RaiseBadRequest('Resposta do Senado sem Parlamentares.');
+
+    Arr := JsonArray(Parlamentares, 'Parlamentar');
+    if Arr = nil then
+      TAppErrors.RaiseBadRequest('Resposta do Senado sem a coleção de senadores.');
+
+    Conn := NovaConexao;
+    try
+      Conn.StartTransaction;
+      try
+        TPlataformaParlamentarDAO.MarcarForaExercicio(
+          Conn,
+          FONTE_SENADO,
+          CARGO_SENADOR,
+          UF
+        );
+
+        Processados := 0;
+        for I := 0 to Arr.Count - 1 do
+        begin
+          V := Arr.Items[I];
+          if not (V is TJSONObject) then
+            Continue;
+
+          Parlamentar := V as TJSONObject;
+          Identificacao := JsonObject(Parlamentar, 'IdentificacaoParlamentar');
+          if Identificacao = nil then
+            Continue;
+
+          IdExterno := JsonString(Identificacao, 'CodigoParlamentar');
+          Nome := JsonString(Identificacao, 'NomeParlamentar');
+          Email := JsonString(Identificacao, 'EmailParlamentar');
+          Partido := JsonString(Identificacao, 'SiglaPartidoParlamentar');
+          UfSenador := UpperCase(JsonString(Identificacao, 'UfParlamentar'));
+          Foto := JsonString(Identificacao, 'UrlFotoParlamentar');
+          Perfil := JsonString(Identificacao, 'UrlPaginaParlamentar');
+
+          if (not UF.IsEmpty) and (not SameText(UF, UfSenador)) then
+            Continue;
+
+          if TPlataformaParlamentarDAO.UpsertSenador(
+            Conn,
+            AIdUsuario,
+            IdExterno,
+            Nome,
+            Email,
+            Partido,
+            UfSenador,
+            Perfil,
+            Foto
+          ) then
+            Inc(Processados);
+        end;
+
+        TPlataformaContatoDAO.RegistrarAuditoria(
+          Conn,
+          AIdUsuario,
+          'SENADORES_SINCRONIZADOS',
+          'plataforma_contato',
+          '',
+          Format(
+            'Sincronização de senadores concluída. UF=%s; processados=%d.',
+            [IfThen(UF.IsEmpty, 'TODAS', UF), Processados]
+          ),
+          AIP,
+          AUserAgent
+        );
+
+        Conn.Commit;
+      except
+        if Conn.InTransaction then
+          Conn.Rollback;
+        raise;
+      end;
+    finally
+      Conn.Free;
+    end;
+  finally
+    Json.Free;
+  end;
+
+  Result := TJSONObject.Create;
+  Result.AddPair('cargo', CARGO_SENADOR);
+  if UF.IsEmpty then
+    Result.AddPair('uf', TJSONNull.Create)
+  else
+    Result.AddPair('uf', UF);
+  Result.AddPair('processados', TJSONNumber.Create(Processados));
+  Result.AddPair('fonte_dados', FONTE_SENADO);
 end;
 
 end.
